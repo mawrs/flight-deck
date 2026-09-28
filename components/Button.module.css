@@ -1,0 +1,120 @@
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-small);
+  border: 1px solid transparent;
+  border-radius: var(--radius-extra-small);
+  padding: var(--space-small) var(--space-extra-large);
+  font-family: inherit;
+  font-size: var(--font-size-body-large);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-body-large);
+  text-decoration: none;
+  cursor: pointer;
+  background: transparent;
+  transition:
+    background var(--transition-fast),
+    border-color var(--transition-fast),
+    color var(--transition-fast);
+}
+
+.button:focus-visible {
+  outline: var(--focus-ring-width) solid var(--primary);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.loading:disabled {
+  cursor: wait;
+  opacity: 1;
+}
+
+.small {
+  height: var(--height-control);
+  padding: 0 var(--space-medium);
+  font-size: var(--font-size-body-small);
+  line-height: var(--line-height-body-small);
+}
+
+.fullWidth {
+  width: 100%;
+}
+
+.icon {
+  display: flex;
+  width: 16px;
+  height: 16px;
+  flex: none;
+}
+
+.primary {
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+
+.primary:hover {
+  background: var(--primary-hover);
+}
+
+.secondary {
+  background: var(--color-neutral-gray-lightest);
+  border-color: var(--color-neutral-gray-light);
+  color: var(--foreground);
+}
+
+.secondary:hover {
+  background: var(--color-neutral-gray-light);
+}
+
+.outline {
+  background: var(--surface);
+  border-color: var(--foreground-muted);
+  color: var(--foreground-muted);
+}
+
+.outline:hover {
+  background: var(--color-neutral-gray-extra-light);
+  border-color: var(--foreground);
+  color: var(--foreground);
+}
+
+.outline[aria-pressed="true"] {
+  border-color: var(--primary);
+  background: var(--primary-background);
+  color: var(--primary);
+}
+
+.warning {
+  border-color: var(--secondary-orange);
+  background: var(--secondary-orange-background);
+  color: var(--secondary-orange-hover);
+}
+
+.warning:hover {
+  background: var(--secondary-orange);
+  color: var(--primary-foreground);
+}
+
+.danger {
+  background: var(--error);
+  color: var(--primary-foreground);
+}
+
+.danger:hover {
+  background: var(--error-hover);
+}
+
+.text {
+  height: auto;
+  padding: var(--space-small) var(--space-extra-small);
+  color: var(--foreground-muted);
+}
+
+.text:hover {
+  color: var(--foreground);
+}

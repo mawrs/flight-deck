@@ -1,0 +1,96 @@
+.field {
+  position: relative;
+  width: 100%;
+  height: 86px;
+}
+
+.label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.input {
+  width: 100%;
+  height: 100%;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-small);
+  background: var(--surface);
+  color: transparent;
+  caret-color: transparent;
+  text-align: center;
+  font: inherit;
+  font-size: var(--font-size-heading-h2);
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+.slots {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  gap: var(--space-extra-small);
+  pointer-events: none;
+  font-size: var(--font-size-heading-h2);
+  font-weight: var(--font-weight-semibold);
+  line-height: 1;
+}
+
+.caret {
+  position: absolute;
+  top: 50%;
+  width: 2px;
+  height: 28px;
+  margin-top: -14px;
+  background: var(--foreground);
+  opacity: 0;
+}
+
+.field:focus-within .caret {
+  animation: blink 1s steps(1) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .field:focus-within .caret {
+    animation: none;
+    opacity: 1;
+  }
+}
+
+@keyframes blink {
+  0%,
+  45% {
+    opacity: 1;
+  }
+
+  50%,
+  100% {
+    opacity: 0;
+  }
+}
+
+.placeholder,
+.digit {
+  width: 28px;
+  text-align: center;
+}
+
+.placeholder {
+  color: var(--foreground-subtle);
+}
+
+.digit {
+  color: var(--foreground);
+}

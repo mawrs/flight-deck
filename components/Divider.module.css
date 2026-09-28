@@ -1,0 +1,14 @@
+.horizontal {
+  display: block;
+  width: 100%;
+  height: 1px;
+  background: var(--border);
+}
+
+.vertical {
+  display: block;
+  width: 1px;
+  height: 16px;
+  flex: none;
+  background: var(--border);
+}

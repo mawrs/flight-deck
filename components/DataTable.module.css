@@ -1,0 +1,97 @@
+.card {
+  min-width: 0;
+  overflow: hidden;
+  background: var(--surface);
+  border: var(--border-width) solid var(--border-subtle);
+  border-radius: var(--radius-small);
+  box-shadow: var(--shadow-card);
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-small);
+  padding: var(--space-large);
+}
+
+.scroll {
+  min-width: 0;
+  overflow: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  color: var(--foreground);
+}
+
+.table th {
+  height: var(--height-table-header);
+  padding: 0 var(--space-large);
+  background: var(--surface-muted);
+  border-top: var(--border-width) solid var(--border-subtle);
+  border-bottom: var(--border-width) solid var(--border-subtle);
+  color: var(--foreground-muted);
+  font-size: var(--font-size-body-small);
+  font-weight: var(--font-weight-regular);
+  line-height: var(--line-height-body-small);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.table td {
+  padding: var(--space-small) var(--space-large);
+  border-bottom: var(--border-width) solid var(--border-subtle);
+  color: var(--foreground);
+  font-size: var(--font-size-body-small);
+  font-weight: var(--font-weight-regular);
+  line-height: var(--line-height-body-small);
+  vertical-align: middle;
+}
+
+.compact td {
+  height: var(--height-table-row-compact);
+}
+
+.comfortable td {
+  height: var(--height-table-row-comfortable);
+}
+
+.table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.table tbody tr:hover td {
+  background: var(--surface-muted);
+}
+
+.table tbody tr:focus-visible {
+  outline: var(--focus-ring-width) solid var(--primary);
+  outline-offset: calc(var(--focus-ring-width) * -1);
+}
+
+.headerLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-extra-small);
+}
+
+.headerLabel img {
+  width: 14px;
+  height: 14px;
+  flex: none;
+}
+
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-medium);
+  padding: var(--space-large);
+  border-top: var(--border-width) solid var(--border-subtle);
+  color: var(--foreground-muted);
+  font-size: var(--font-size-body-small);
+  line-height: var(--line-height-body-small);
+}

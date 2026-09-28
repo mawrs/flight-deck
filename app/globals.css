@@ -1,13 +1,165 @@
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --color-brand-blue: #09A6E0;
+  --color-brand-green: #7FBC42;
+  --ui-brand-blue: var(--color-brand-blue);
+  --ui-brand-green: var(--color-brand-green);
+
+  --color-primary-blue: #1779BA;
+  --color-primary-blue-hover: #003F68;
+  --color-primary-blue-background: #F7FBFF;
+  --color-primary-blue-background-dev: #DEECF9;
+
+  --color-secondary-lightyellow: #E0E17C;
+  --color-secondary-lightyellow-hover: #D3D475;
+  --color-secondary-lightyellow-background: #E5E5CF;
+  --color-secondary-orange: #D75F00;
+  --color-secondary-orange-hover: #BF5500;
+  --color-secondary-orange-background: #E5D2C3;
+  --color-secondary-darkteal: #004B45;
+  --color-secondary-darkteal-hover: #00332F;
+  --color-secondary-darkteal-background: #C2CCCB;
+  --color-secondary-navyblue: #003765;
+  --color-secondary-navyblue-hover: #002340;
+  --color-secondary-navyblue-background: #B8D1E5;
+
+  --color-status-success: #278A27;
+  --color-status-success-hover: #107C10;
+  --color-status-success-background: #F1FCF0;
+  --color-status-warning: #FFC80A;
+  --color-status-warning-hover: #F5C000;
+  --color-status-warning-background: #FFF4CE;
+  --color-status-error: #A4262C;
+  --color-status-error-hover: #801E22;
+  --color-status-error-background: #FDE7E9;
+
+  --color-neutral-black: #000000;
+  --color-neutral-charcoal: #272829;
+  --color-neutral-gray-dark: #535459;
+  --color-neutral-gray-medium: #888A8D;
+  --color-neutral-gray-light: #E5E0E6;
+  --color-neutral-gray-border: #E5E7EB;
+  --color-neutral-gray-step: #DDDBDA;
+  --color-neutral-gray-step-future: #E8E6EA;
+  --color-neutral-gray-lightest: #F5F5F5;
+  --color-neutral-gray-extra-light: #FCFCFC;
+  --color-neutral-white: #FFFFFF;
+
+  --font-size-heading-h2: 28px;
+  --font-size-heading-h3: 24px;
+  --font-size-heading-h4: 20px;
+  --font-size-body-large: 18px;
+  --font-size-body-base: 16px;
+  --font-size-body-small: 14px;
+  --font-size-body-extra-small: 12px;
+
+  --font-weight-regular: 400;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+  --ui-font-weight-regular: var(--font-weight-regular);
+  --ui-font-weight-semibold: var(--font-weight-semibold);
+  --ui-font-weight-bold: var(--font-weight-bold);
+
+  --line-height-heading-h2: 1.28;
+  --line-height-heading-h3: 1.25;
+  --line-height-heading-h4: 1.4;
+  --line-height-body-large: 1.33;
+  --line-height-body-base: 1.4;
+  --line-height-body-small: 1.42;
+  --line-height-body-extra-small: 1.33;
+
+  --space-extra-small: 4px;
+  --space-small: 8px;
+  --space-small-medium: 12px;
+  --space-medium: 16px;
+  --space-large: 20px;
+  --space-extra-large: 24px;
+  --space-xl: 32px;
+  --space-xxl: 64px;
+
+  --radius-extra-small: 4px;
+  --radius-small: 8px;
+  --radius-medium: 12px;
+  --radius-large: 16px;
+  --radius-pill: 999px;
+
+  --height-control-small: 30px;
+  --height-control: 38px;
+  --height-table-header: 44px;
+  --height-table-row-compact: 52px;
+  --height-list-row: 64px;
+  --height-table-row-comfortable: 82px;
+
+  --width-panel: 413px;
+  --width-page-content: 100%;
+  --width-workspace-content: 1440px;
+
+  --border-width: 1px;
+  --focus-ring-width: 2px;
+  --focus-ring-offset: 2px;
+
+  --shadow-card: 0 1px 0.5px 0.05px rgba(29, 41, 61, 0.02);
+  --shadow-popover: 0 8px 24px rgba(29, 41, 61, 0.08);
+  --shadow-dropdown: 0 0.3px 0.9px rgba(0, 0, 0, 0.1), 0 1.6px 3.6px rgba(0, 0, 0, 0.13);
+  --shadow-overlay: 0 16px 40px rgba(29, 41, 61, 0.18);
+  --overlay-background: rgba(29, 41, 61, 0.28);
+  --border-inverse-muted: rgba(255, 255, 255, 0.35);
+  --color-status-warning-foreground: #8A6A00;
+  --color-status-success-bright: #3CB43C;
+
+  --transition-fast: 160ms ease;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+:root,
+[data-theme="default"] {
+  color-scheme: light;
+
+  --background: var(--color-primary-blue-background);
+  --surface: var(--color-neutral-white);
+  --surface-muted: var(--color-neutral-gray-extra-light);
+  --surface-sunken: var(--color-neutral-gray-lightest);
+  --foreground: var(--color-neutral-black);
+  --foreground-strong: var(--color-neutral-charcoal);
+  --foreground-muted: var(--color-neutral-gray-dark);
+  --foreground-subtle: var(--color-neutral-gray-medium);
+  --border: var(--color-neutral-gray-light);
+  --border-subtle: var(--color-neutral-gray-border);
+
+  --brand: var(--color-brand-blue);
+  --brand-accent: var(--color-brand-green);
+
+  --primary: var(--color-primary-blue);
+  --primary-hover: var(--color-primary-blue-hover);
+  --primary-foreground: var(--color-neutral-white);
+  --primary-background: var(--color-primary-blue-background);
+
+  --secondary-lightyellow: var(--color-secondary-lightyellow);
+  --secondary-lightyellow-hover: var(--color-secondary-lightyellow-hover);
+  --secondary-lightyellow-background: var(--color-secondary-lightyellow-background);
+  --secondary-orange: var(--color-secondary-orange);
+  --secondary-orange-hover: var(--color-secondary-orange-hover);
+  --secondary-orange-background: var(--color-secondary-orange-background);
+  --secondary-darkteal: var(--color-secondary-darkteal);
+  --secondary-darkteal-hover: var(--color-secondary-darkteal-hover);
+  --secondary-darkteal-background: var(--color-secondary-darkteal-background);
+  --secondary-navyblue: var(--color-secondary-navyblue);
+  --secondary-navyblue-hover: var(--color-secondary-navyblue-hover);
+  --secondary-navyblue-background: var(--color-secondary-navyblue-background);
+
+  --success: var(--color-status-success);
+  --success-hover: var(--color-status-success-hover);
+  --success-background: var(--color-status-success-background);
+  --warning: var(--color-status-warning);
+  --warning-hover: var(--color-status-warning-hover);
+  --warning-background: var(--color-status-warning-background);
+  --warning-foreground: var(--color-status-warning-foreground);
+  --error: var(--color-status-error);
+  --error-hover: var(--color-status-error-hover);
+  --error-background: var(--color-status-error-background);
+}
+
+[data-theme="dev"] {
+  --background: var(--color-primary-blue-background-dev);
+  --primary-background: var(--color-primary-blue-background-dev);
 }
 
 html {
@@ -17,16 +169,16 @@ html {
 html,
 body {
   max-width: 100vw;
-  overflow-x: hidden;
 }
 
 body {
   min-height: 100%;
-  display: flex;
-  flex-direction: column;
   color: var(--foreground);
   background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-figtree), Figtree, sans-serif;
+  font-size: var(--font-size-body-base);
+  font-weight: var(--font-weight-regular);
+  line-height: var(--line-height-body-base);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -42,8 +194,14 @@ a {
   text-decoration: none;
 }
 
-@media (prefers-color-scheme: dark) {
-  html {
-    color-scheme: dark;
-  }
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: var(--focus-ring-width) solid var(--primary);
+  outline-offset: var(--focus-ring-offset);
 }

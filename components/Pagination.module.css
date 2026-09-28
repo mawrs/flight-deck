@@ -1,0 +1,90 @@
+.summary,
+.pageSize,
+.pager {
+  display: flex;
+  align-items: center;
+}
+
+.summary {
+  flex-wrap: wrap;
+  gap: var(--space-small-medium);
+}
+
+.pageSize {
+  gap: var(--space-small-medium);
+  color: var(--foreground-subtle);
+}
+
+.pageSize select {
+  height: var(--height-control-small);
+  padding: 0 var(--space-small);
+  border: var(--border-width) solid var(--foreground-subtle);
+  border-radius: var(--radius-extra-small);
+  background: var(--surface);
+  color: var(--foreground);
+  font: inherit;
+  font-size: var(--font-size-body-small);
+  font-weight: var(--font-weight-semibold);
+}
+
+.range {
+  color: var(--foreground);
+}
+
+.range strong {
+  font-weight: var(--font-weight-semibold);
+}
+
+.pager {
+  flex-wrap: wrap;
+}
+
+.button,
+.current {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  margin-left: calc(var(--border-width) * -1);
+  border: var(--border-width) solid var(--border);
+  background: var(--surface);
+  color: var(--foreground-muted);
+  font: inherit;
+  font-size: var(--font-size-body-small);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  transition:
+    background var(--transition-fast),
+    color var(--transition-fast);
+}
+
+.pager > :first-child {
+  margin-left: 0;
+  border-radius: var(--radius-small) 0 0 var(--radius-small);
+}
+
+.pager > :last-child {
+  border-radius: 0 var(--radius-small) var(--radius-small) 0;
+}
+
+.button:hover:not(:disabled) {
+  background: var(--surface-sunken);
+  color: var(--foreground);
+}
+
+.current {
+  position: relative;
+  background: var(--primary-background);
+  color: var(--primary);
+}
+
+.button:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.button img {
+  width: 16px;
+  height: 16px;
+}
