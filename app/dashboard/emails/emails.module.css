@@ -6,7 +6,8 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-extra-large);
-  padding: var(--space-medium) var(--space-xl) var(--space-xl);
+  padding: 0 0 var(--space-xl);
+  background: var(--surface);
 }
 
 .header {
@@ -54,6 +55,16 @@
   color: var(--foreground-muted);
   font-size: var(--font-size-body-base);
   line-height: var(--line-height-body-base);
+}
+
+.pageHeader {
+  padding: var(--space-extra-large) var(--space-xl);
+  background: var(--surface);
+}
+
+.statsBand {
+  padding: var(--space-extra-large) var(--space-xl);
+  background: var(--surface);
 }
 
 .menuWrap {
@@ -104,7 +115,7 @@
   gap: var(--space-medium);
   min-height: 88px;
   padding: var(--space-medium) var(--space-large);
-  background: var(--surface);
+  background: var(--surface-muted);
   border: 1px solid var(--border);
   border-radius: var(--radius-small);
 }
@@ -155,6 +166,7 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--space-medium);
+  padding: var(--space-large) var(--space-large) 0;
 }
 
 .cardTitle {
@@ -190,6 +202,7 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-small);
+  padding: var(--space-medium) var(--space-large) var(--space-large);
 }
 
 .dateRow,
@@ -353,10 +366,9 @@
   grid-template-columns: 240px 1px 1fr;
   gap: var(--space-extra-large);
   align-items: start;
-  padding: var(--space-medium) var(--space-large);
+  padding: var(--space-extra-large) var(--space-xl);
   background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-small);
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 .profile h2,
@@ -407,6 +419,13 @@
   background: transparent;
   color: var(--primary);
   cursor: pointer;
+}
+
+.composer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-extra-large);
+  padding: 0 var(--space-xl);
 }
 
 .editorTitleRow,
@@ -610,6 +629,7 @@
   justify-content: center;
   gap: var(--space-large);
   min-height: 640px;
+  margin: 0 var(--space-xl);
   padding: var(--space-xxl);
   background: var(--surface);
   border: 1px solid var(--border);

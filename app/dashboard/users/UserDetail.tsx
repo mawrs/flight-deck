@@ -44,8 +44,8 @@ export function UserDetail({ username }: { username: string }) {
   if (!isNew && !existing) {
     if (removed) return <Page />;
     return (
-      <Page>
-        <PageHeader eyebrow={<Link href="/dashboard/users">Manage Users</Link>} title="User not found" />
+      <Page flush>
+        <PageHeader className={styles.pageHeader} eyebrow={<Link href="/dashboard/users">Manage Users</Link>} title="User not found" />
         <p className={styles.missing}>That user is no longer in the list.</p>
       </Page>
     );
@@ -91,8 +91,9 @@ export function UserDetail({ username }: { username: string }) {
   }
 
   return (
-    <Page>
+    <Page flush>
       <PageHeader
+        className={styles.pageHeader}
         eyebrow={
           <>
             <Link href="/dashboard/users">Manage Users</Link> &gt; {isNew ? "Create User" : existing?.fullName}
@@ -100,7 +101,7 @@ export function UserDetail({ username }: { username: string }) {
         }
         title={isNew ? "Create User" : existing?.fullName}
       />
-      <form className={`${styles.card} ${styles.form}`} onSubmit={save}>
+      <form className={styles.form} onSubmit={save}>
         <div className={styles.grid}>
           <TextField showLabel label="Username" name="username" value={draft.username} onChange={(event) => update({ username: event.target.value })} />
           <TextField showLabel label="Email" name="email" type="email" value={draft.email} onChange={(event) => update({ email: event.target.value })} />

@@ -140,9 +140,7 @@ export function ConsoleShell({ children, initialExpanded = false }: { children: 
           <span className={styles.rule} role="separator" />
           <div className={styles.menu}>
             {NAV.map((item) => {
-              const emailsActive =
-                item.id === "emails" && (selected === "emails" || EMAIL_TABS.some((tab) => tab.id === selected));
-              const active = item.id === "emails" ? emailsActive : selected === item.id;
+              const active = selected === item.id;
               const iconClass =
                 active && !item.light ? styles.iconLight : !active && item.light ? styles.iconMute : undefined;
               return (

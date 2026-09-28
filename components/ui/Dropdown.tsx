@@ -20,6 +20,7 @@ import {
 import { createPortal } from "react-dom";
 import { FloatInput } from "@/components/ui/FloatInput";
 import type { SearchChoice } from "@/lib/search";
+import "./dropdown.css";
 
 export type SelectOption = { id: string; label: string; disabled?: boolean };
 
@@ -143,6 +144,7 @@ const triggerClass: Record<SelectVariant, string> = {
 export function DropdownItem({
   children,
   onClick,
+  onMouseEnter,
   disabled,
   selected,
   active,
@@ -151,6 +153,7 @@ export function DropdownItem({
 }: {
   children: ReactNode;
   onClick: () => void;
+  onMouseEnter?: () => void;
   disabled?: boolean;
   selected?: boolean;
   active?: boolean;
@@ -167,9 +170,10 @@ export function DropdownItem({
       data-active={active ? "true" : undefined}
       className="uw-dropdown-item"
       onMouseDown={(event) => event.preventDefault()}
+      onMouseEnter={onMouseEnter}
       onClick={onClick}
     >
-      <span className="min-w-0 flex-1 py-[6px] break-words">{children}</span>
+      <span className="min-w-0 flex-1 break-words">{children}</span>
       {selected != null ? (
         <span className="flex size-5 shrink-0 items-center justify-center">
           {selected ? <CheckCircleIcon /> : null}
@@ -529,7 +533,7 @@ export function ComboSearch<T extends string>({
                   </DropdownItem>
                 ))}
                 {matches.length === 0 ? (
-                  <p className="flex min-h-[48px] items-center px-md py-sm text-sm text-gray-medium">
+                  <p className="flex items-center px-md py-sm text-sm text-gray-medium">
                     {needle ? "No matches" : emptyPrompt}
                   </p>
                 ) : null}
@@ -653,7 +657,7 @@ export function Combobox({
               </DropdownItem>
             ))}
             {matches.length === 0 ? (
-              <p className="flex min-h-[48px] items-center px-md py-sm text-sm text-gray-medium">
+              <p className="flex items-center px-md py-sm text-sm text-gray-medium">
                 {needle ? "No matches" : `Search ${label.toLowerCase()}`}
               </p>
             ) : null}

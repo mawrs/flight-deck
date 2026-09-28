@@ -101,8 +101,9 @@ export function SuppressionList() {
 
   return (
     <>
-    <Page>
+    <Page flush>
       <PageHeader
+        className={styles.pageHeader}
         eyebrow={
           <>
             <Link href="/dashboard/emails">Emails</Link> &gt; Suppression List
@@ -112,7 +113,7 @@ export function SuppressionList() {
         subtitle="Contacts that have unsubscribed, bounced, blocked or reported emails as spam"
       />
 
-      <DataTableCard className={styles.paddedCard}>
+      <DataTableCard rules>
         <div className={styles.cardHead}>
           <div>
             <h2 className={styles.cardTitle}>Suppression List</h2>

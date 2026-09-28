@@ -127,6 +127,7 @@ export function SingleSend() {
             </section>
           ) : null}
 
+          <div className={styles.composer}>
           <div className={mode === "preview" ? styles.previewTitle : styles.editorTitleRow}>
             <h2 className={styles.editorTitle}>{mode === "preview" ? "General Rejection Template" : "General Rejection V2"}</h2>
             {mode === "preview" ? (
@@ -330,6 +331,7 @@ export function SingleSend() {
               </div>
             </section>
           )}
+          </div>
         </>
       ) : (
         <section className={styles.confirm}>

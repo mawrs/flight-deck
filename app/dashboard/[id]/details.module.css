@@ -12,7 +12,7 @@
 .profile {
   display: flex;
   gap: var(--space-xl);
-  padding: var(--space-medium) var(--space-large);
+  padding: var(--space-extra-large) var(--space-xl);
   border-bottom: 1px solid var(--color-neutral-gray-light);
 }
 
@@ -38,12 +38,15 @@
   gap: var(--space-medium);
 }
 
-.identityTop h1,
-.identityTop h2 {
+.identityTop h4 {
   margin: 0;
-  font-size: var(--font-size-body-large);
-  font-weight: var(--font-weight-regular);
-  line-height: var(--line-height-body-large);
+  font-size: var(--font-size-heading-h4);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-heading-h4);
+}
+
+.headerAction {
+  height: var(--height-control-small);
 }
 
 .notesButton {
@@ -76,7 +79,7 @@
   margin: 0;
 }
 
-.facts div {
+.facts > div {
   display: flex;
   flex-direction: column;
   gap: var(--space-extra-small);
@@ -181,11 +184,14 @@
   height: 10px;
 }
 
-.assign {
+.assignWrap {
+  position: relative;
+}
+
+.assign.assign {
   height: auto;
   padding: 0;
   color: var(--primary);
-  font-size: var(--font-size-body-small);
   text-decoration: underline;
 }
 

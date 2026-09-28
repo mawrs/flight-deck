@@ -46,8 +46,9 @@ export function EmailDashboard() {
   }, [query]);
 
   return (
-    <Page>
+    <Page flush>
       <PageHeader
+        className={styles.pageHeader}
         title="Dashboard"
         subtitle="Last updated Sep 14, 2026 8:05am"
         actions={
@@ -69,14 +70,16 @@ export function EmailDashboard() {
         }
       />
 
-      <section className={styles.stats} aria-label="Email stats">
-        <Stat label="Emails Sent" value="24,190" />
-        <Stat label="Delivery Rates" value="97%" />
-        <Stat label="Open Rate" value="4.3%" />
-        <Stat label="Unsubscribes" value="33" />
-      </section>
+      <div className={styles.statsBand}>
+        <section className={styles.stats} aria-label="Email stats">
+          <Stat label="Emails Sent" value="24,190" />
+          <Stat label="Delivery Rates" value="97%" />
+          <Stat label="Open Rate" value="4.3%" />
+          <Stat label="Unsubscribes" value="33" />
+        </section>
+      </div>
 
-      <DataTableCard>
+      <DataTableCard rules>
         <div className={styles.emailActivityHead}>
           <h2 className={styles.cardTitle}>Email Activity</h2>
         </div>

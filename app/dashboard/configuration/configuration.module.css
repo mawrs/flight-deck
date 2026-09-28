@@ -139,12 +139,25 @@
   cursor: pointer;
 }
 
+.pageHeader {
+  padding: var(--space-extra-large) var(--space-xl);
+  background: var(--surface);
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-medium);
+  padding: var(--space-extra-large) var(--space-xl);
+  background: var(--surface);
+}
+
 .list {
   display: flex;
   flex-direction: column;
   background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-small);
+  border-top: var(--border-width) solid var(--border-subtle);
+  border-bottom: var(--border-width) solid var(--border-subtle);
 }
 
 .row {

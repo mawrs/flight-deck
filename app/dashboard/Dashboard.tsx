@@ -152,17 +152,9 @@ export function Dashboard() {
 
   return (
     <>
-        <Page>
-          <PageHeader
-            eyebrow="Flight Deck"
-            title="Welcome back, Aniko"
-            actions={
-              <Button variant="secondary" size="small" disabled>
-                Open New Account
-              </Button>
-            }
-          />
-          <DataTableCard aria-label="Account requests">
+        <Page flush>
+          <PageHeader className={styles.pageHeader} title="Welcome back, John" />
+          <DataTableCard rules aria-label="Account requests">
             <DataTableToolbar>
               <SearchField label="Search account requests" value={query} onChange={(event) => setQuery(event.target.value)} />
               <Button

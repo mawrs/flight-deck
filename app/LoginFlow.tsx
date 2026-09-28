@@ -40,7 +40,7 @@ export function LoginFlow() {
             <h1 className={styles.title}>Secure login</h1>
             <LoginForm onSubmit={sendPasscode} sending={sending} />
           </Card>
-          <Button variant="text" size="small" href="#signup">
+          <Button variant="link" size="small" href="#signup">
             New to SouthEast Bank? Sign up
           </Button>
         </div>

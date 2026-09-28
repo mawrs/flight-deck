@@ -60,8 +60,9 @@ export function SystemConfigurations() {
   const affected = pendingDelete ? items.filter((item) => item.tags.includes(pendingDelete.tag)).map((item) => item.name) : [];
 
   return (
-    <Page>
+    <Page flush>
       <PageHeader
+        className={styles.pageHeader}
         eyebrow="System Configurations"
         title="System Configurations"
         actions={
@@ -87,6 +88,7 @@ export function SystemConfigurations() {
           )
         }
       />
+      <div className={styles.body}>
       <SearchField
         label="Search configuration items"
         value={query}
@@ -107,6 +109,7 @@ export function SystemConfigurations() {
             </button>
           </span>
         ))}
+      </div>
       </div>
       <div className={styles.list}>
         {visible.map((item) => (

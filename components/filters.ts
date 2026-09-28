@@ -1,9 +1,20 @@
+export type CustomFilter = {
+  id: string;
+  label: string;
+  selected: string[];
+  createdFrom: string;
+  createdTo: string;
+  updatedFrom: string;
+  updatedTo: string;
+};
+
 export type FilterState = {
   selected: string[];
   createdFrom: string;
   createdTo: string;
   updatedFrom: string;
   updatedTo: string;
+  customs: CustomFilter[];
 };
 
 export const emptyFilters: FilterState = {
@@ -12,11 +23,13 @@ export const emptyFilters: FilterState = {
   createdTo: "",
   updatedFrom: "",
   updatedTo: "",
+  customs: [],
 };
 
 export type FilterTag = {
   id: string;
   label: string;
+  details?: string[];
 };
 
 type Leaf = { id: string; label: string };
@@ -110,6 +123,61 @@ export function customFilters() {
   return CUSTOM;
 }
 
+const BUILTIN_CUSTOM_IDS = ["custom:incomplete", "custom:deposits"];
+
+export function hasGroupableFilters(state: FilterState) {
+  return state.selected.length > 0 || Boolean(state.createdFrom || state.createdTo || state.updatedFrom || state.updatedTo);
+}
+
+function snapshotFilters(state: FilterState): Omit<CustomFilter, "id" | "label"> {
+  const selected = new Set<string>();
+  state.selected.forEach((id) => {
+    if (!id.startsWith("custom:") || BUILTIN_CUSTOM_IDS.includes(id)) selected.add(id);
+  });
+
+  let createdFrom = state.createdFrom;
+  let createdTo = state.createdTo;
+  let updatedFrom = state.updatedFrom;
+  let updatedTo = state.updatedTo;
+
+  state.customs.forEach((custom) => {
+    if (!state.selected.includes(optionId("custom", custom.id))) return;
+    custom.selected.forEach((id) => selected.add(id));
+    if (!createdFrom && !createdTo) {
+      createdFrom = custom.createdFrom;
+      createdTo = custom.createdTo;
+    }
+    if (!updatedFrom && !updatedTo) {
+      updatedFrom = custom.updatedFrom;
+      updatedTo = custom.updatedTo;
+    }
+  });
+
+  return { selected: [...selected], createdFrom, createdTo, updatedFrom, updatedTo };
+}
+
+export function customChips(custom: Pick<CustomFilter, "selected" | "createdFrom" | "createdTo" | "updatedFrom" | "updatedTo">) {
+  return filterTags({ ...custom, customs: [] }).map((tag) => tag.label);
+}
+
+export function groupedChips(state: FilterState) {
+  return customChips(snapshotFilters(state));
+}
+
+export function saveCustomFilter(state: FilterState, label: string): FilterState {
+  const name = label.trim();
+  const snapshot = snapshotFilters(state);
+  const id = `user-${Date.now().toString(36)}`;
+  return {
+    customs: [...state.customs, { id, label: name, ...snapshot }],
+    selected: [optionId("custom", id)],
+    createdFrom: "",
+    createdTo: "",
+    updatedFrom: "",
+    updatedTo: "",
+  };
+}
+
 export function flatOptions(section: string) {
   return FLAT[section] ?? [];
 }
@@ -143,7 +211,12 @@ export function filterTags(state: FilterState): FilterTag[] {
 
   CUSTOM.forEach((custom) => {
     const id = optionId("custom", custom.id);
-    if (has(state.selected, id)) tags.push({ id, label: custom.label });
+    if (has(state.selected, id)) tags.push({ id, label: custom.label, details: [...custom.chips] });
+  });
+
+  state.customs.forEach((custom) => {
+    const id = optionId("custom", custom.id);
+    if (has(state.selected, id)) tags.push({ id, label: custom.label, details: customChips(custom) });
   });
 
   ASSIGNEES.forEach((name) => {
@@ -284,17 +357,28 @@ export function requestMatches(row: FilterableRequest, state: FilterState) {
 
   if (has(state.selected, optionId("custom", "incomplete")) && !matchesIncomplete(row)) return false;
   if (has(state.selected, optionId("custom", "deposits")) && !matchesDeposits(row)) return false;
+
+  for (const custom of state.customs) {
+    if (!has(state.selected, optionId("custom", custom.id))) continue;
+    if (!requestMatches(row, { ...custom, customs: [] })) return false;
+  }
+
   if (!inRange(row.created, state.createdFrom, state.createdTo)) return false;
   if (!inRange(row.updated, state.updatedFrom, state.updatedTo)) return false;
   return true;
 }
 
-export function sectionMatches(section: FilterSectionId, query: string) {
+export function sectionMatches(section: FilterSectionId, query: string, customs: readonly CustomFilter[] = []) {
   const needle = query.trim().toLowerCase();
   if (!needle) return true;
   const title = FILTER_SECTIONS.find((item) => item.id === section)?.label.toLowerCase() ?? "";
   if (title.includes(needle)) return true;
-  if (section === "custom") return CUSTOM.some((item) => item.label.toLowerCase().includes(needle) || item.chips.some((chip) => chip.toLowerCase().includes(needle)));
+  if (section === "custom") {
+    const saved = customs.map((item) => ({ label: item.label, chips: customChips(item) }));
+    return [...CUSTOM, ...saved].some(
+      (item) => item.label.toLowerCase().includes(needle) || item.chips.some((chip) => chip.toLowerCase().includes(needle)),
+    );
+  }
   if (section === "product") {
     return PRODUCT_GROUPS.some(
       (group) => group.label.toLowerCase().includes(needle) || group.children.some((leaf) => leaf.label.toLowerCase().includes(needle)),

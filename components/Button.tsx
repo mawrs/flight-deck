@@ -2,7 +2,7 @@ import type { ButtonHTMLAttributes, ReactNode } from "react";
 import { Loader } from "./Loader";
 import styles from "./Button.module.css";
 
-export type ButtonVariant = "primary" | "secondary" | "outline" | "warning" | "danger" | "text";
+export type ButtonVariant = "primary" | "secondary" | "outline" | "warning" | "danger" | "text" | "link";
 export type ButtonSize = "base" | "small";
 
 type ButtonProps = {

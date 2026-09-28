@@ -14,10 +14,11 @@ function classes(...values: Array<string | undefined | false>) {
 export function DataTableCard({
   children,
   className,
+  rules = false,
   ...props
-}: HTMLAttributes<HTMLElement>) {
+}: HTMLAttributes<HTMLElement> & { rules?: boolean }) {
   return (
-    <section className={classes(styles.card, className)} {...props}>
+    <section className={classes(styles.card, rules && styles.rules, className)} {...props}>
       {children}
     </section>
   );

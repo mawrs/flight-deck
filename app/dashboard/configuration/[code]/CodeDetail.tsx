@@ -40,8 +40,9 @@ export function CodeDetail({ name }: { name: string }) {
   }
 
   return (
-    <Page>
+    <Page flush>
       <PageHeader
+        className={styles.pageHeader}
         eyebrow={
           <>
             <Link href="/dashboard/configuration">System Configurations</Link> &gt; {title}
@@ -49,7 +50,7 @@ export function CodeDetail({ name }: { name: string }) {
         }
         title={title}
       />
-      <DataTableCard>
+      <DataTableCard rules>
         <DataTableToolbar>
           <SearchField
             value={query}

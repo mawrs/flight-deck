@@ -282,6 +282,37 @@
   padding: var(--space-medium) var(--space-xl) var(--space-xl);
 }
 
+.uw-list-page-flush {
+  gap: 0;
+  padding-top: 0;
+  padding-right: 0;
+  padding-left: 0;
+}
+
+.uw-list-page-flush .uw-list-header {
+  padding: var(--space-extra-large) var(--space-xl);
+  background: var(--surface);
+}
+
+.uw-list-page-flush .uw-view-select {
+  font-size: var(--font-size-heading-h3);
+  line-height: var(--line-height-heading-h3);
+}
+
+.uw-list-page-flush .uw-list-empty {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.uw-list-toolbar {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  gap: var(--space-small);
+  padding: var(--space-large);
+}
+
 .uw-list-header {
   display: flex;
   flex: none;
@@ -755,7 +786,7 @@
   .uw-dropdown {
     display: flex;
     flex-direction: column;
-    gap: var(--space-small-medium);
+    gap: var(--space-extra-small);
     overflow: auto;
     border: 1px solid var(--color-gray-light);
     border-radius: var(--radius-xs);
@@ -766,17 +797,22 @@
 
   .uw-dropdown-item {
     display: flex;
-    min-height: 48px;
     width: 100%;
     align-items: center;
     justify-content: space-between;
-    gap: var(--spacing-sm);
+    gap: var(--space-small);
+    margin: 0;
+    border: 0;
     border-radius: var(--radius-xs);
-    padding: var(--spacing-sm) var(--spacing-md);
+    background: transparent;
+    padding: var(--space-small) var(--space-medium);
     text-align: left;
+    font: inherit;
     font-size: var(--text-sm);
     line-height: 1.42;
     color: var(--color-charcoal);
+    appearance: none;
+    cursor: pointer;
     outline: none;
   }
 

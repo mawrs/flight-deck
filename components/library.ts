@@ -61,6 +61,12 @@ export const componentLibrary = [
     firstSeen: "Flight Deck",
   },
   {
+    name: "DecisionPanel",
+    figma: "Application Decision",
+    variants: ["default"],
+    firstSeen: "Flight Deck",
+  },
+  {
     name: "PasscodeField",
     figma: "Number Indicator",
     variants: ["6-digit"],

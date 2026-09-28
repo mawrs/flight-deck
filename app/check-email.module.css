@@ -12,16 +12,21 @@
 }
 
 .title {
-  font-size: var(--font-size-heading-h2);
+  font-size: var(--font-size-heading-h4);
   font-weight: var(--font-weight-semibold);
-  line-height: var(--line-height-heading-h2);
+  line-height: var(--line-height-heading-h4);
 }
 
-.intro p,
-.prompt {
+.intro p {
   color: var(--foreground-muted);
   font-size: var(--font-size-body-base);
   line-height: var(--line-height-body-base);
+}
+
+.prompt {
+  color: var(--foreground-muted);
+  font-size: var(--font-size-body-small);
+  line-height: var(--line-height-body-small);
 }
 
 .form {

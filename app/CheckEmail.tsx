@@ -66,11 +66,11 @@ export function CheckEmail({ email, onBack }: CheckEmailProps) {
       <div className={styles.prompts}>
         <p className={styles.prompt}>
           <span>Didn’t get it?</span>
-          <Button variant="text" size="small">Request a new passcode</Button>
+          <Button variant="link" size="small">Request a new passcode</Button>
         </p>
         <p className={styles.prompt}>
           <span>Not the right email?</span>
-          <Button variant="text" size="small" onClick={onBack}>
+          <Button variant="link" size="small" onClick={onBack}>
             Back to Login
           </Button>
         </p>

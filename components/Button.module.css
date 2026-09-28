@@ -7,16 +7,17 @@
   border-radius: var(--radius-extra-small);
   padding: var(--space-small) var(--space-extra-large);
   font-family: inherit;
-  font-size: var(--font-size-body-large);
+  font-size: var(--font-size-body-base);
   font-weight: var(--font-weight-semibold);
-  line-height: var(--line-height-body-large);
+  line-height: var(--line-height-body-base);
   text-decoration: none;
   cursor: pointer;
   background: transparent;
   transition:
     background var(--transition-fast),
     border-color var(--transition-fast),
-    color var(--transition-fast);
+    color var(--transition-fast),
+    text-decoration-color var(--transition-fast);
 }
 
 .button:focus-visible {
@@ -117,4 +118,16 @@
 
 .text:hover {
   color: var(--foreground);
+}
+
+.link {
+  height: auto;
+  padding: var(--space-small) var(--space-extra-small);
+  color: var(--foreground-muted);
+  text-decoration: none;
+}
+
+.link:hover {
+  color: var(--primary);
+  text-decoration: underline;
 }

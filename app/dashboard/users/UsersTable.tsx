@@ -54,16 +54,10 @@ export function UsersTable() {
   }
 
   return (
-    <Page>
-      <PageHeader title="Manage Users" />
-      <DataTableCard>
+    <Page flush>
+      <PageHeader className={styles.pageHeader} title="Manage Users" />
+      <DataTableCard rules>
         <DataTableToolbar>
-          <Button size="small" icon={<Plus />} onClick={() => router.push("/dashboard/users/new")}>
-            Create User
-          </Button>
-          <Button size="small" onClick={() => setSynced(true)}>
-            Sync User Emails
-          </Button>
           <SearchField
             containerClassName={styles.userSearch}
             label="Search users"
@@ -73,6 +67,14 @@ export function UsersTable() {
               setPage(1);
             }}
           />
+          <div className={styles.toolbarActions}>
+            <Button size="small" icon={<Plus />} onClick={() => router.push("/dashboard/users/new")}>
+              Create User
+            </Button>
+            <Button variant="outline" size="small" onClick={() => setSynced(true)}>
+              Sync User Emails
+            </Button>
+          </div>
         </DataTableToolbar>
         {synced ? <p className={styles.notice}>User emails synced.</p> : null}
         <DataTableScroll>

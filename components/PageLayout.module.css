@@ -36,9 +36,9 @@
 
 .title {
   color: var(--foreground);
-  font-size: var(--font-size-heading-h2);
+  font-size: var(--font-size-heading-h3);
   font-weight: var(--font-weight-bold);
-  line-height: var(--line-height-heading-h2);
+  line-height: var(--line-height-heading-h3);
 }
 
 .subtitle {
@@ -56,10 +56,22 @@
   gap: var(--space-small);
 }
 
+.page.flush {
+  gap: 0;
+  padding-top: 0;
+  padding-right: 0;
+  padding-left: 0;
+}
+
 @media (max-width: 720px) {
   .page {
     padding-right: var(--space-medium);
     padding-left: var(--space-medium);
+  }
+
+  .page.flush {
+    padding-right: 0;
+    padding-left: 0;
   }
 
   .header {

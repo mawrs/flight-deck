@@ -232,9 +232,9 @@
 .submenu {
   display: flex;
   flex-direction: column;
-  gap: var(--space-extra-small);
+  gap: var(--space-small);
   width: 100%;
-  padding-left: var(--space-medium);
+  padding: var(--space-extra-small) 0 var(--space-extra-small) var(--space-medium);
 }
 
 .subitem {
@@ -327,6 +327,11 @@
   justify-content: space-between;
   flex-wrap: wrap;
   gap: var(--space-medium);
+}
+
+.pageHeader {
+  padding: var(--space-extra-large) var(--space-xl);
+  background: var(--surface);
 }
 
 .title {
@@ -538,7 +543,7 @@
   cursor: pointer;
 }
 
-.noteTd {
+.requestTable td.noteTd {
   padding: 0;
 }
 
@@ -554,6 +559,17 @@
   font: inherit;
   text-align: left;
   cursor: pointer;
+}
+
+.noteCell:hover,
+.noteCell:hover .note,
+.noteCell:hover .meta,
+.noteCell:hover .noteButton {
+  color: var(--primary);
+}
+
+.noteCell:hover .noteButton {
+  border-color: var(--primary);
 }
 
 .noteCell:focus-visible {

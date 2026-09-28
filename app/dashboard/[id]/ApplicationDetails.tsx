@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
-import { Button, NotesPanel, type PanelNote } from "@/components";
+import { useCallback, useEffect, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
+import { AssignMenu, Button, DECISIONS, DecisionPanel, NotesPanel, type DecisionId, type PanelNote } from "@/components";
 import shell from "../dashboard.module.css";
 import type { RequestRow } from "../requests";
 import { ActivityPanel, ApplicantPanel, ApplicationPanel, OverviewPanel, RiskPanel } from "./TabPanels";
@@ -33,20 +33,41 @@ export function ApplicationDetails({ request }: { request: RequestRow }) {
   const [tab, setTab] = useState<(typeof TABS)[number]["id"]>("overview");
   const [ssnVisible, setSsnVisible] = useState(false);
   const [notesOpen, setNotesOpen] = useState(false);
+  const [decisionOpen, setDecisionOpen] = useState(false);
   const [notes, setNotes] = useState<PanelNote[]>(request.notes);
+  const [assignee, setAssignee] = useState(request.id === "john-smith" ? "Unassigned" : request.assignee);
+  const [assignOpen, setAssignOpen] = useState(false);
+  const [status, setStatus] = useState(request.status);
+  const [statusLabel, setStatusLabel] = useState(request.statusLabel);
 
   useEffect(() => {
-    if (!notesOpen) return;
+    if (!notesOpen && !decisionOpen) return;
     function closeOnEscape(event: KeyboardEvent) {
-      if (event.key === "Escape") setNotesOpen(false);
+      if (event.key !== "Escape") return;
+      setNotesOpen(false);
+      setDecisionOpen(false);
     }
     document.addEventListener("keydown", closeOnEscape);
     return () => document.removeEventListener("keydown", closeOnEscape);
-  }, [notesOpen]);
+  }, [notesOpen, decisionOpen]);
+
+  function submitDecision(id: DecisionId, body: string) {
+    const choice = DECISIONS.find((item) => item.id === id);
+    if (!choice) return;
+    setStatus(choice.status);
+    setStatusLabel(choice.statusLabel);
+    if (body) {
+      setNotes((current) => [{ author: "Aniko Brewer", at: noteStamp(new Date()), body }, ...current]);
+    }
+  }
+
+  const finishDecision = useCallback(() => {
+    setTab("overview");
+    setDecisionOpen(false);
+  }, []);
 
   const lastFour = request.id === "john-smith" ? "7291" : request.account === "N/A" ? "4820" : request.account.slice(-4);
   const ssn = ssnVisible ? `123 - 45 - ${lastFour}` : `*** - ** - ${lastFour}`;
-  const assigned = request.id === "john-smith" ? "Unassigned" : request.assignee;
   const applicationNumber = request.id === "john-smith" ? "138701283" : request.account;
   const noteCount = request.id === "john-smith" ? Math.max(3, notes.length) : notes.length;
 
@@ -67,8 +88,17 @@ export function ApplicationDetails({ request }: { request: RequestRow }) {
         <header className={styles.profile}>
           <div className={styles.identity}>
             <div className={styles.identityTop}>
-              <h1>{request.customer}</h1>
-              <Button variant="outline" size="small" className={styles.notesButton} onClick={() => setNotesOpen(true)}>
+              <h4>{request.customer}</h4>
+              <Button
+                variant="outline"
+                size="small"
+                className={`${styles.headerAction} ${styles.notesButton}`}
+                aria-expanded={notesOpen}
+                onClick={() => {
+                  setDecisionOpen(false);
+                  setNotesOpen(true);
+                }}
+              >
                 Notes
                 {noteCount > 0 ? <span className={styles.noteBadge}>{noteCount}</span> : null}
               </Button>
@@ -118,8 +148,18 @@ export function ApplicationDetails({ request }: { request: RequestRow }) {
           </div>
           <div className={styles.product}>
             <div className={styles.identityTop}>
-              <h2>{request.product}</h2>
-              <Button size="small">Application Decision</Button>
+              <h4>{request.product}</h4>
+              <Button
+                size="small"
+                className={styles.headerAction}
+                aria-expanded={decisionOpen}
+                onClick={() => {
+                  setNotesOpen(false);
+                  setDecisionOpen((open) => !open);
+                }}
+              >
+                Application Decision
+              </Button>
             </div>
             <dl className={styles.facts}>
               <div>
@@ -134,17 +174,37 @@ export function ApplicationDetails({ request }: { request: RequestRow }) {
                 <dt>Status</dt>
                 <dd>
                   <span className={styles.status}>
-                    <span className={styles[request.status]} />
-                    {request.statusLabel}
+                    <span className={styles[status]} />
+                    {statusLabel}
                   </span>
                 </dd>
               </div>
               <div>
                 <dt>Assigned to</dt>
                 <dd>
-                  <Button variant="text" size="small" className={styles.assign}>
-                    {assigned}
-                  </Button>
+                  <span className={styles.assignWrap}>
+                    <Button
+                      variant="link"
+                      size="small"
+                      className={styles.assign}
+                      data-assign-trigger=""
+                      aria-expanded={assignOpen}
+                      aria-haspopup="dialog"
+                      onClick={() => setAssignOpen((open) => !open)}
+                    >
+                      {assignee}
+                    </Button>
+                    {assignOpen ? (
+                      <AssignMenu
+                        value={assignee}
+                        onCancel={() => setAssignOpen(false)}
+                        onAssign={(name) => {
+                          setAssignee(name);
+                          setAssignOpen(false);
+                        }}
+                      />
+                    ) : null}
+                  </span>
                 </dd>
               </div>
             </dl>
@@ -192,19 +252,23 @@ export function ApplicationDetails({ request }: { request: RequestRow }) {
           {tab === "activity" ? <ActivityPanel /> : null}
         </div>
       </main>
-      {notesOpen ? (
+      {notesOpen || decisionOpen ? (
         <div className={shell.sideSlot}>
-          <NotesPanel
-            requestType={request.type}
-            created={request.created}
-            customer={request.customer}
-            notes={notes}
-            onClose={() => setNotesOpen(false)}
-            onAdd={(body) => {
-              const note: PanelNote = { author: "Aniko Brewer", at: noteStamp(new Date()), body };
-              setNotes((current) => [note, ...current]);
-            }}
-          />
+          {decisionOpen ? (
+            <DecisionPanel onClose={() => setDecisionOpen(false)} onSubmit={submitDecision} onRedirect={finishDecision} />
+          ) : (
+            <NotesPanel
+              requestType={request.type}
+              created={request.created}
+              customer={request.customer}
+              notes={notes}
+              onClose={() => setNotesOpen(false)}
+              onAdd={(body) => {
+                const note: PanelNote = { author: "Aniko Brewer", at: noteStamp(new Date()), body };
+                setNotes((current) => [note, ...current]);
+              }}
+            />
+          )}
         </div>
       ) : null}
     </>

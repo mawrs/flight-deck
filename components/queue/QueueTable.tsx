@@ -220,12 +220,12 @@ export function QueueTable() {
   }
 
   return (
-    <div className="uw-list-page">
+    <div className="uw-list-page uw-list-page-flush">
       <div className="uw-list-header">
-        <div className="uw-list-title group">
-          <p>Opportunities</p>
-          <QueueViewSelect value={view.id} />
-        </div>
+        <QueueViewSelect value={view.id} />
+      </div>
+      <DataTableCard rules className="uw-list-card">
+        <div className="uw-list-toolbar">
         <div className="uw-filter-grid uw-filter-grid-queue">
           <ComboSearch
             value={query}
@@ -276,14 +276,14 @@ export function QueueTable() {
           />
         </div>
         <FilterBadges chips={chips} onClearAll={clearAllFilters} />
-      </div>
+        </div>
 
       {rows.length === 0 ? (
         <p className="uw-list-empty">
           {filtered ? "No files match those criteria." : view.empty}
         </p>
       ) : (
-        <DataTableCard className="uw-list-card">
+        <>
           <DataTableScroll className="uw-list-scroll">
           <DataTable density="compact" className="uw-list-table uw-opp-table">
             <thead className="sticky top-0 z-10">
@@ -334,8 +334,9 @@ export function QueueTable() {
           </DataTable>
           </DataTableScroll>
           <ListPagination count={count} page={page} pageSize={pageSize} onPageChange={setPage} />
-        </DataTableCard>
+        </>
       )}
+      </DataTableCard>
     </div>
   );
 }

@@ -6,6 +6,47 @@
   min-width: 0;
 }
 
+.tagWrap {
+  position: relative;
+  max-width: 100%;
+}
+
+.details {
+  position: absolute;
+  top: calc(100% + var(--space-small));
+  left: 0;
+  z-index: 5;
+  display: none;
+  flex-wrap: wrap;
+  gap: var(--space-small);
+  width: max-content;
+  max-width: 280px;
+  padding: var(--space-small);
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius-small);
+  background: var(--surface);
+  box-shadow: var(--shadow-popover);
+}
+
+.tagWrap:hover .details,
+.tagWrap:focus-within .details {
+  display: flex;
+}
+
+.detail {
+  display: inline-flex;
+  align-items: center;
+  height: 28px;
+  padding: 0 var(--space-small-medium);
+  border: var(--border-width) solid var(--foreground);
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  color: var(--foreground);
+  font-size: var(--font-size-body-extra-small);
+  font-weight: var(--font-weight-semibold);
+  line-height: 1;
+}
+
 .tag {
   display: inline-flex;
   align-items: center;

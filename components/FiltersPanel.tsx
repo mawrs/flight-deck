@@ -1,14 +1,19 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
 import { Button } from "./Button";
 import { SearchField } from "./SearchField";
 import {
   FILTER_SECTIONS,
+  emptyFilters,
   type FilterSectionId,
   type FilterState,
+  customChips,
   customFilters,
+  groupedChips,
   flatOptions,
+  hasGroupableFilters,
+  saveCustomFilter,
   optionId,
   productGroups,
   productLeafIds,
@@ -32,7 +37,7 @@ export function FiltersPanel({ filters, onChange, onClose, options }: FiltersPan
   const searching = query.trim().length > 0;
 
   function expanded(id: FilterSectionId) {
-    return searching ? sectionMatches(id, query) : open === id;
+    return searching ? sectionMatches(id, query, filters.customs) : open === id;
   }
 
   return (
@@ -71,7 +76,7 @@ export function FiltersPanel({ filters, onChange, onClose, options }: FiltersPan
         )}
         {options ? null : (
         <div className={styles.sections}>
-          {FILTER_SECTIONS.filter((section) => sectionMatches(section.id, query)).map((section) => (
+          {FILTER_SECTIONS.filter((section) => sectionMatches(section.id, query, filters.customs)).map((section) => (
             <section key={section.id}>
               <button
                 className={styles.section}
@@ -99,7 +104,7 @@ export function FiltersPanel({ filters, onChange, onClose, options }: FiltersPan
         )}
       </div>
       <footer className={styles.footer}>
-        <Button variant="text" size="small" onClick={() => onChange({ selected: [], createdFrom: "", createdTo: "", updatedFrom: "", updatedTo: "" })}>
+        <Button variant="text" size="small" onClick={() => onChange({ ...emptyFilters, customs: filters.customs })}>
           Clear
         </Button>
         <Button size="small" onClick={onClose}>
@@ -223,17 +228,92 @@ function CustomSection({
   filters: FilterState;
   onChange: (filters: FilterState) => void;
 }) {
+  const [naming, setNaming] = useState(false);
+  const [name, setName] = useState("");
+  const [notice, setNotice] = useState("");
   const needle = query.trim().toLowerCase();
-  const cards = customFilters().filter(
+  const saved = filters.customs.map((card) => ({
+    id: card.id,
+    label: card.label,
+    chips: customChips(card),
+  }));
+  const cards = [...customFilters(), ...saved].filter(
     (card) => !needle || card.label.toLowerCase().includes(needle) || card.chips.some((chip) => chip.toLowerCase().includes(needle)),
   );
+  const preview = groupedChips(filters);
+
+  function startNaming() {
+    if (!hasGroupableFilters(filters)) {
+      setNaming(false);
+      setNotice("Select filters to group first.");
+      return;
+    }
+    setNotice("");
+    setNaming(true);
+  }
+
+  function cancelNaming() {
+    setNaming(false);
+    setName("");
+    setNotice("");
+  }
+
+  function saveNamed(event: FormEvent) {
+    event.preventDefault();
+    const label = name.trim();
+    if (!label || !hasGroupableFilters(filters)) return;
+    onChange(saveCustomFilter(filters, label));
+    setName("");
+    setNaming(false);
+    setNotice("");
+  }
 
   return (
     <div className={styles.custom}>
-      <button className={styles.newCustom} type="button">
-        New Custom Filter
-        <span aria-hidden="true">+</span>
-      </button>
+      {naming ? (
+        <form className={styles.nameForm} onSubmit={saveNamed}>
+          <input
+            className={styles.nameInput}
+            autoFocus
+            aria-label="Custom filter name"
+            placeholder="Name this filter"
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key !== "Escape") return;
+              event.stopPropagation();
+              cancelNaming();
+            }}
+          />
+          {preview.length > 0 ? (
+            <span className={styles.chips}>
+              {preview.map((chip) => (
+                <span key={chip} className={styles.chip}>
+                  {chip}
+                </span>
+              ))}
+            </span>
+          ) : null}
+          <div className={styles.nameActions}>
+            <Button type="button" variant="text" size="small" onClick={cancelNaming}>
+              Cancel
+            </Button>
+            <Button type="submit" size="small" disabled={!name.trim()}>
+              Save
+            </Button>
+          </div>
+        </form>
+      ) : (
+        <button className={styles.newCustom} type="button" onClick={startNaming}>
+          New Custom Filter
+          <span aria-hidden="true">+</span>
+        </button>
+      )}
+      {notice ? (
+        <p className={styles.nameHint} role="status">
+          {notice}
+        </p>
+      ) : null}
       {cards.map((card) => {
         const id = optionId("custom", card.id);
         const active = filters.selected.includes(id);
@@ -243,7 +323,10 @@ function CustomSection({
             className={active ? styles.customCardActive : styles.customCard}
             type="button"
             aria-pressed={active}
-            onClick={() => onChange(toggleValue(filters, id))}
+            onClick={() => {
+              setNotice("");
+              onChange(toggleValue(filters, id));
+            }}
           >
             <span className={styles.customTitle}>{card.label}</span>
             <span className={styles.chips}>

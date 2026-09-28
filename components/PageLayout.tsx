@@ -8,10 +8,11 @@ function classes(...values: Array<string | undefined | false>) {
 export function Page({
   children,
   className,
+  flush = false,
   ...props
-}: HTMLAttributes<HTMLElement>) {
+}: HTMLAttributes<HTMLElement> & { flush?: boolean }) {
   return (
-    <main className={classes(styles.page, className)} {...props}>
+    <main className={classes(styles.page, flush && styles.flush, className)} {...props}>
       {children}
     </main>
   );
