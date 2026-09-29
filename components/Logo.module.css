@@ -1,4 +1,22 @@
+.wrapper {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+}
+
 .logo {
   width: 265px;
   height: auto;
+}
+
+.badge {
+  margin-top: 14px;
+  padding: 6px 16px;
+  border-radius: 4px;
+  background: #0f3d66;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  line-height: 1;
 }
