@@ -8,16 +8,21 @@ import {
   emptyFilters,
   type FilterSectionId,
   type FilterState,
+  createCustomFilter,
+  deleteCustomFilter,
   customChips,
+  customDraft,
   customFilters,
-  groupedChips,
+  filterTags,
   flatOptions,
   hasGroupableFilters,
-  saveCustomFilter,
   optionId,
   productGroups,
   productLeafIds,
+  removeTag,
   sectionMatches,
+  sectionSelectionCount,
+  updateCustomFilter,
   toggleMany,
   toggleValue,
   visibleLeaves,
@@ -31,27 +36,125 @@ type FiltersPanelProps = {
   options?: readonly string[];
 };
 
+const EDITOR_SECTIONS = FILTER_SECTIONS.filter((section) => section.id !== "custom");
+
 export function FiltersPanel({ filters, onChange, onClose, options }: FiltersPanelProps) {
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState<FilterSectionId | null>(null);
+  const [editor, setEditor] = useState<FilterState | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [name, setName] = useState("");
   const searching = query.trim().length > 0;
+  const editing = editor !== null;
+  const view = editor ?? filters;
+  const draftTags = editing ? selectionTags(view) : [];
+  const canSave = name.trim().length > 0 && hasGroupableFilters(view);
 
   function expanded(id: FilterSectionId) {
+    if (editing) return open === id;
     return searching ? sectionMatches(id, query, filters.customs) : open === id;
   }
 
+  function startEditor() {
+    setEditingId(null);
+    setName("");
+    setEditor({ ...emptyFilters });
+    setOpen(null);
+  }
+
+  function editCustom(id: string) {
+    const current = customDraft(filters, id);
+    if (!current) return;
+    setEditingId(id);
+    setName(current.label);
+    setEditor(current.draft);
+    setOpen(null);
+  }
+
+  function closeEditor() {
+    setEditor(null);
+    setEditingId(null);
+    setName("");
+    setOpen("custom");
+  }
+
+  function saveEditor(event: FormEvent) {
+    event.preventDefault();
+    if (!editor || !canSave) return;
+    onChange(editingId ? updateCustomFilter(filters, editingId, editor, name) : createCustomFilter(filters, editor, name));
+    closeEditor();
+  }
+
+  function deleteEditor() {
+    if (editingId) onChange(deleteCustomFilter(filters, editingId));
+    closeEditor();
+  }
+
+  const sections = (editing ? EDITOR_SECTIONS : FILTER_SECTIONS).filter((section) =>
+    editing ? true : sectionMatches(section.id, query, filters.customs),
+  );
+
   return (
-    <aside className={styles.panel} aria-label="Filters">
+    <aside className={styles.panel} aria-label={editing ? "Edit custom filter" : "Filters"}>
       <div className={styles.content}>
         <header className={styles.header}>
-          <h2>Filters</h2>
-          <button className={styles.close} type="button" aria-label="Close filters" onClick={onClose}>
+          <h2>{editing ? "Edit Custom Filter" : "Filters"}</h2>
+          <button
+            className={styles.close}
+            type="button"
+            aria-label={editing ? "Back to filters" : "Close filters"}
+            onClick={editing ? closeEditor : onClose}
+          >
             <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
               <path d="M3.5 3.5l9 9M12.5 3.5l-9 9" stroke="currentColor" strokeWidth="1.5" />
             </svg>
           </button>
         </header>
-        {options ? (
+        {editing ? (
+          <form className={styles.editorCard} onSubmit={saveEditor}>
+            <input
+              className={styles.nameInput}
+              autoFocus
+              aria-label="Custom filter name"
+              placeholder="Name this filter"
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key !== "Escape") return;
+                event.stopPropagation();
+                closeEditor();
+              }}
+            />
+            {draftTags.length > 0 ? (
+              <span className={styles.chips}>
+                {draftTags.map((tag) => (
+                  <span key={tag.id} className={`${styles.chip} ${styles.chipRemovable}`}>
+                    {tag.label}
+                    <button
+                      className={styles.chipRemove}
+                      type="button"
+                      aria-label={`Remove ${tag.label}`}
+                      onClick={() => setEditor(removeTag(view, tag.id))}
+                    >
+                      <svg width="12" height="12" viewBox="0 0 16 16" aria-hidden="true">
+                        <path d="M3.5 3.5l9 9M12.5 3.5l-9 9" stroke="currentColor" strokeWidth="1.5" />
+                      </svg>
+                    </button>
+                  </span>
+                ))}
+              </span>
+            ) : null}
+            <hr className={styles.editorDivider} />
+            <div className={styles.editorActions}>
+              <Button type="button" variant="outline" size="small" onClick={closeEditor}>
+                Cancel Changes
+              </Button>
+              <Button type="submit" size="small" disabled={!canSave}>
+                Save Filter
+              </Button>
+            </div>
+          </form>
+        ) : options ? (
           <div className={styles.plainOptions}>
             {options.map((label) => {
               const id = optionId("option", label);
@@ -74,9 +177,11 @@ export function FiltersPanel({ filters, onChange, onClose, options }: FiltersPan
             onChange={(event) => setQuery(event.target.value)}
           />
         )}
-        {options ? null : (
+        {options && !editing ? null : (
         <div className={styles.sections}>
-          {FILTER_SECTIONS.filter((section) => sectionMatches(section.id, query, filters.customs)).map((section) => (
+          {sections.map((section) => {
+            const count = editing ? sectionSelectionCount(section.id, view) : 0;
+            return (
             <section key={section.id}>
               <button
                 className={styles.section}
@@ -84,7 +189,14 @@ export function FiltersPanel({ filters, onChange, onClose, options }: FiltersPan
                 aria-expanded={expanded(section.id)}
                 onClick={() => setOpen((current) => (current === section.id ? null : section.id))}
               >
-                {section.label}
+                <span className={styles.sectionTitle}>
+                  {section.label}
+                  {count > 0 ? (
+                    <span className={styles.count} aria-label={`${count} selected`}>
+                      {count}
+                    </span>
+                  ) : null}
+                </span>
                 <img
                   className={expanded(section.id) ? styles.chevronOpen : styles.chevron}
                   src="/dashboard/angle-right.svg"
@@ -95,52 +207,97 @@ export function FiltersPanel({ filters, onChange, onClose, options }: FiltersPan
               </button>
               {expanded(section.id) ? (
                 <div className={styles.options}>
-                  <SectionBody section={section.id} query={query} filters={filters} onChange={onChange} />
+                  <SectionBody
+                    section={section.id}
+                    query={editing ? "" : query}
+                    filters={view}
+                    marked={editing}
+                    onChange={editing ? setEditor : onChange}
+                    onCreate={startEditor}
+                    onEdit={editCustom}
+                  />
                 </div>
               ) : null}
             </section>
-          ))}
+            );
+          })}
         </div>
         )}
       </div>
-      <footer className={styles.footer}>
-        <Button variant="text" size="small" onClick={() => onChange({ ...emptyFilters, customs: filters.customs })}>
-          Clear
-        </Button>
-        <Button size="small" onClick={onClose}>
-          Apply Filters
-        </Button>
+      <footer className={editing ? styles.deleteFooter : styles.footer}>
+        {editing ? (
+          <Button type="button" variant="error" fullWidth onClick={deleteEditor}>
+            Delete Custom Filter
+          </Button>
+        ) : (
+          <>
+            <Button variant="text" size="small" onClick={() => onChange({ ...emptyFilters, customs: filters.customs, hidden: filters.hidden })}>
+              Clear
+            </Button>
+            <Button size="small" onClick={onClose}>
+              Apply Filters
+            </Button>
+          </>
+        )}
       </footer>
     </aside>
   );
+}
+
+function selectionTags(state: FilterState) {
+  const tags: { id: string; label: string }[] = [];
+  productGroups().forEach((group) => {
+    group.children.forEach((leaf) => {
+      const id = optionId("product", leaf.id);
+      if (state.selected.includes(id)) tags.push({ id, label: leaf.label });
+    });
+  });
+  for (const section of ["assignee", "request", "status", "kyc", "task", "kycTag", "branch"] as const) {
+    flatOptions(section).forEach((label) => {
+      const id = optionId(section, label);
+      if (state.selected.includes(id)) tags.push({ id, label });
+    });
+  }
+  filterTags(state)
+    .filter((tag) => tag.id.startsWith("date:"))
+    .forEach((tag) => tags.push(tag));
+  return tags;
 }
 
 function SectionBody({
   section,
   query,
   filters,
+  marked,
   onChange,
+  onCreate,
+  onEdit,
 }: {
   section: FilterSectionId;
   query: string;
   filters: FilterState;
+  marked?: boolean;
   onChange: (filters: FilterState) => void;
+  onCreate: () => void;
+  onEdit: (id: string) => void;
 }) {
-  if (section === "custom") return <CustomSection query={query} filters={filters} onChange={onChange} />;
-  if (section === "product") return <ProductSection query={query} filters={filters} onChange={onChange} />;
+  if (section === "custom") return <CustomSection query={query} filters={filters} onChange={onChange} onCreate={onCreate} onEdit={onEdit} />;
+  if (section === "product") return <ProductSection query={query} filters={filters} marked={marked} onChange={onChange} />;
   if (section === "created" || section === "updated") return <DateSection section={section} filters={filters} onChange={onChange} />;
-  return <Checklist section={section} query={query} filters={filters} onChange={onChange} />;
+  return <Checklist section={section} query={query} filters={filters} marked={marked} onChange={onChange} />;
 }
 
 function Checklist({
   section,
   query,
   filters,
+  marked,
   onChange,
 }: {
   section: string;
   query: string;
   filters: FilterState;
+  marked?: boolean;
   onChange: (filters: FilterState) => void;
 }) {
   const needle = query.trim().toLowerCase();
@@ -161,6 +318,7 @@ function Checklist({
           <Check
             key={id}
             label={label}
+            picked={marked && filters.selected.includes(id)}
             checked={filters.selected.includes(id)}
             onChange={() => onChange(toggleValue(filters, id))}
           />
@@ -173,10 +331,12 @@ function Checklist({
 function ProductSection({
   query,
   filters,
+  marked,
   onChange,
 }: {
   query: string;
   filters: FilterState;
+  marked?: boolean;
   onChange: (filters: FilterState) => void;
 }) {
   const ids = productLeafIds();
@@ -196,6 +356,7 @@ function ProductSection({
           <div key={group.id}>
             <Check
               label={group.label}
+              picked={marked && selectedCount === childIds.length}
               checked={selectedCount === childIds.length}
               indeterminate={selectedCount > 0 && selectedCount < childIds.length}
               onChange={() => onChange(toggleMany(filters, childIds, selectedCount !== childIds.length))}
@@ -207,6 +368,7 @@ function ProductSection({
                   key={id}
                   nested
                   label={leaf.label}
+                  picked={marked && filters.selected.includes(id)}
                   checked={filters.selected.includes(id)}
                   onChange={() => onChange(toggleValue(filters, id))}
                 />
@@ -223,120 +385,56 @@ function CustomSection({
   query,
   filters,
   onChange,
+  onCreate,
+  onEdit,
 }: {
   query: string;
   filters: FilterState;
   onChange: (filters: FilterState) => void;
+  onCreate: () => void;
+  onEdit: (id: string) => void;
 }) {
-  const [naming, setNaming] = useState(false);
-  const [name, setName] = useState("");
-  const [notice, setNotice] = useState("");
   const needle = query.trim().toLowerCase();
-  const saved = filters.customs.map((card) => ({
-    id: card.id,
-    label: card.label,
-    chips: customChips(card),
-  }));
-  const cards = [...customFilters(), ...saved].filter(
+  const savedIds = new Set(filters.customs.map((card) => card.id));
+  const saved = filters.customs
+    .filter((card) => !filters.hidden.includes(card.id))
+    .map((card) => ({
+      id: card.id,
+      label: card.label,
+      chips: customChips(card),
+    }));
+  const presets = customFilters()
+    .filter((card) => !filters.hidden.includes(card.id) && !savedIds.has(card.id))
+    .map((card) => ({ id: card.id, label: card.label, chips: [...card.chips] }));
+  const cards = [...presets, ...saved].filter(
     (card) => !needle || card.label.toLowerCase().includes(needle) || card.chips.some((chip) => chip.toLowerCase().includes(needle)),
   );
-  const preview = groupedChips(filters);
-
-  function startNaming() {
-    if (!hasGroupableFilters(filters)) {
-      setNaming(false);
-      setNotice("Select filters to group first.");
-      return;
-    }
-    setNotice("");
-    setNaming(true);
-  }
-
-  function cancelNaming() {
-    setNaming(false);
-    setName("");
-    setNotice("");
-  }
-
-  function saveNamed(event: FormEvent) {
-    event.preventDefault();
-    const label = name.trim();
-    if (!label || !hasGroupableFilters(filters)) return;
-    onChange(saveCustomFilter(filters, label));
-    setName("");
-    setNaming(false);
-    setNotice("");
-  }
 
   return (
     <div className={styles.custom}>
-      {naming ? (
-        <form className={styles.nameForm} onSubmit={saveNamed}>
-          <input
-            className={styles.nameInput}
-            autoFocus
-            aria-label="Custom filter name"
-            placeholder="Name this filter"
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key !== "Escape") return;
-              event.stopPropagation();
-              cancelNaming();
-            }}
-          />
-          {preview.length > 0 ? (
-            <span className={styles.chips}>
-              {preview.map((chip) => (
-                <span key={chip} className={styles.chip}>
-                  {chip}
-                </span>
-              ))}
-            </span>
-          ) : null}
-          <div className={styles.nameActions}>
-            <Button type="button" variant="text" size="small" onClick={cancelNaming}>
-              Cancel
-            </Button>
-            <Button type="submit" size="small" disabled={!name.trim()}>
-              Save
-            </Button>
-          </div>
-        </form>
-      ) : (
-        <button className={styles.newCustom} type="button" onClick={startNaming}>
-          New Custom Filter
-          <span aria-hidden="true">+</span>
-        </button>
-      )}
-      {notice ? (
-        <p className={styles.nameHint} role="status">
-          {notice}
-        </p>
-      ) : null}
+      <button className={styles.newCustom} type="button" onClick={onCreate}>
+        New Custom Filter
+        <span aria-hidden="true">+</span>
+      </button>
       {cards.map((card) => {
         const id = optionId("custom", card.id);
         const active = filters.selected.includes(id);
         return (
-          <button
-            key={card.id}
-            className={active ? styles.customCardActive : styles.customCard}
-            type="button"
-            aria-pressed={active}
-            onClick={() => {
-              setNotice("");
-              onChange(toggleValue(filters, id));
-            }}
-          >
-            <span className={styles.customTitle}>{card.label}</span>
-            <span className={styles.chips}>
-              {card.chips.map((chip) => (
-                <span key={chip} className={styles.chip}>
-                  {chip}
-                </span>
-              ))}
-            </span>
-          </button>
+          <div key={card.id} className={`${active ? styles.customCardActive : styles.customCard} ${styles.customOwned}`}>
+            <button className={styles.customBody} type="button" aria-pressed={active} onClick={() => onChange(toggleValue(filters, id))}>
+              <span className={styles.customTitle}>{card.label}</span>
+              <span className={styles.chips}>
+                {card.chips.map((chip) => (
+                  <span key={chip} className={styles.chip}>
+                    {chip}
+                  </span>
+                ))}
+              </span>
+            </button>
+            <button className={styles.customEdit} type="button" onClick={() => onEdit(card.id)}>
+              Edit
+            </button>
+          </div>
         );
       })}
     </div>
@@ -406,6 +504,7 @@ function Check({
   nested,
   accent,
   end,
+  picked,
   onChange,
 }: {
   label: string;
@@ -414,10 +513,12 @@ function Check({
   nested?: boolean;
   accent?: boolean;
   end?: boolean;
+  picked?: boolean;
   onChange: () => void;
 }) {
+  const row = end ? styles.checkEnd : nested ? styles.checkNested : styles.check;
   return (
-    <label className={end ? styles.checkEnd : nested ? styles.checkNested : styles.check}>
+    <label className={picked ? `${row} ${styles.picked}` : row}>
       <input
         type="checkbox"
         checked={checked}

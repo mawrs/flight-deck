@@ -101,6 +101,18 @@
   color: var(--primary-foreground);
 }
 
+.error {
+  border-color: var(--error);
+  background: var(--error-background);
+  color: var(--error);
+}
+
+.error:hover {
+  border-color: var(--error-hover);
+  background: var(--error-background);
+  color: var(--error-hover);
+}
+
 .danger {
   background: var(--error);
   color: var(--primary-foreground);

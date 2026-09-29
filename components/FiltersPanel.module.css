@@ -110,10 +110,32 @@
 .close:focus-visible,
 .check input:focus-visible + .box,
 .newCustom:focus-visible,
-.customCard:focus-visible,
-.customCardActive:focus-visible {
+.customBody:focus-visible,
+.customEdit:focus-visible,
+.chipRemove:focus-visible {
   outline: 2px solid var(--primary);
   outline-offset: 2px;
+}
+
+.sectionTitle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-small);
+  min-width: 0;
+}
+
+.count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: var(--radius-pill);
+  background: var(--success);
+  color: var(--primary-foreground);
+  font-size: 9px;
+  font-weight: var(--font-weight-bold);
+  line-height: 1;
 }
 
 .chevron,
@@ -242,6 +264,25 @@
   background-color: var(--primary-hover);
 }
 
+.picked {
+  background: var(--success-background);
+}
+
+.picked:hover {
+  background: var(--success-background);
+}
+
+.picked input:checked + .box,
+.picked:hover input:checked + .box {
+  border-color: var(--success);
+  background-color: var(--success);
+}
+
+.picked:hover input:checked + .box {
+  border-color: var(--success-hover);
+  background-color: var(--success-hover);
+}
+
 .accent {
   color: var(--primary);
   font-weight: var(--font-weight-semibold);
@@ -297,14 +338,31 @@
   line-height: 1;
 }
 
-.nameForm {
+.editorCard {
   display: flex;
   flex-direction: column;
   gap: var(--space-small);
-  padding: var(--space-small) var(--space-medium);
-  border: 1px dashed var(--foreground-subtle);
+  padding: var(--space-medium);
+  border: 1px solid var(--foreground-subtle);
   border-radius: var(--radius-small);
   background: var(--surface);
+}
+
+.editorDivider {
+  width: 100%;
+  height: 1px;
+  margin: 0;
+  border: 0;
+  background: var(--border);
+}
+
+.editorActions {
+  display: flex;
+  gap: var(--space-small);
+}
+
+.editorActions > * {
+  flex: 1;
 }
 
 .nameInput {
@@ -324,25 +382,48 @@
   outline-offset: var(--focus-ring-offset);
 }
 
-.nameActions {
-  display: flex;
-  justify-content: flex-end;
-  gap: var(--space-small);
-}
-
-.nameHint {
-  margin: 0;
-  color: var(--foreground-muted);
-  font-size: var(--font-size-body-extra-small);
-  line-height: var(--line-height-body-extra-small);
-}
-
 .customCard,
 .customCardActive {
+  position: relative;
   flex-direction: column;
   align-items: flex-start;
   gap: var(--space-small);
   border: 1px solid var(--border);
+  cursor: default;
+}
+
+.customBody {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-small);
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.customEdit {
+  position: absolute;
+  top: var(--space-small);
+  right: var(--space-medium);
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--primary);
+  font: inherit;
+  font-size: var(--font-size-body-extra-small);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+}
+
+.customEdit:hover {
+  color: var(--primary-hover);
 }
 
 .customCardActive {
@@ -352,6 +433,10 @@
 
 .customTitle {
   font-weight: var(--font-weight-semibold);
+}
+
+.customOwned .customTitle {
+  padding-right: 40px;
 }
 
 .chips {
@@ -367,9 +452,23 @@
   padding: 0 10px;
   border: 1px solid var(--foreground);
   border-radius: var(--radius-pill);
-  background: var(--surface);
+  background: var(--surface-muted);
   font-size: var(--font-size-body-extra-small);
   line-height: 1;
+}
+
+.chipRemovable {
+  gap: var(--space-small);
+  padding: 0 10px 0 13px;
+}
+
+.chipRemove {
+  display: inline-flex;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--foreground);
+  cursor: pointer;
 }
 
 .dates {
@@ -409,10 +508,15 @@
   cursor: pointer;
 }
 
-.footer {
+.footer,
+.deleteFooter {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: var(--space-large) var(--space-medium);
   border-top: 1px solid var(--border);
+}
+
+.deleteFooter {
+  display: block;
 }

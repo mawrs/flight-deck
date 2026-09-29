@@ -15,6 +15,7 @@ export type FilterState = {
   updatedFrom: string;
   updatedTo: string;
   customs: CustomFilter[];
+  hidden: string[];
 };
 
 export const emptyFilters: FilterState = {
@@ -24,6 +25,7 @@ export const emptyFilters: FilterState = {
   updatedFrom: "",
   updatedTo: "",
   customs: [],
+  hidden: [],
 };
 
 export type FilterTag = {
@@ -64,7 +66,7 @@ const ASSIGNEES = ["Kate Hendrickson", "Caleb", "Aniko Brewer"];
 const REQUESTS = ["New Account", "Add Joint", "Add Beneficiary", "Overdraft Opt In"];
 const STATUSES = ["Pending", "Approved", "Declined", "In Review", "Withdrawn", "Expired"];
 const KYC = ["Pass", "Fail", "Review", "Pending", "Not Started"];
-const TASKS = ["Information Required", "Attestations Required", "Documents Required", "Missing Initial Deposit"];
+const TASKS = ["Information Required", "Attestations Required", "Documents Required", "Signatures Required", "Missing Initial Deposit"];
 const KYC_TAGS = [
   "Any Account in Account History",
   "Core Person Flag: Decline",
@@ -157,7 +159,7 @@ function snapshotFilters(state: FilterState): Omit<CustomFilter, "id" | "label">
 }
 
 export function customChips(custom: Pick<CustomFilter, "selected" | "createdFrom" | "createdTo" | "updatedFrom" | "updatedTo">) {
-  return filterTags({ ...custom, customs: [] }).map((tag) => tag.label);
+  return filterTags({ ...custom, customs: [], hidden: [] }).map((tag) => tag.label);
 }
 
 export function groupedChips(state: FilterState) {
@@ -175,7 +177,89 @@ export function saveCustomFilter(state: FilterState, label: string): FilterState
     createdTo: "",
     updatedFrom: "",
     updatedTo: "",
+    hidden: state.hidden,
   };
+}
+
+export function createCustomFilter(state: FilterState, draft: FilterState, label: string): FilterState {
+  const name = label.trim();
+  const id = `user-${Date.now().toString(36)}`;
+  const customId = optionId("custom", id);
+  return {
+    ...state,
+    customs: [
+      ...state.customs,
+      {
+        id,
+        label: name,
+        selected: draft.selected.filter((item) => !item.startsWith("custom:")),
+        createdFrom: draft.createdFrom,
+        createdTo: draft.createdTo,
+        updatedFrom: draft.updatedFrom,
+        updatedTo: draft.updatedTo,
+      },
+    ],
+    selected: state.selected.includes(customId) ? state.selected : [...state.selected, customId],
+  };
+}
+
+function selectionSnapshot(draft: FilterState, id: string, label: string): CustomFilter {
+  return {
+    id,
+    label,
+    selected: draft.selected.filter((item) => !item.startsWith("custom:")),
+    createdFrom: draft.createdFrom,
+    createdTo: draft.createdTo,
+    updatedFrom: draft.updatedFrom,
+    updatedTo: draft.updatedTo,
+  };
+}
+
+export function updateCustomFilter(state: FilterState, id: string, draft: FilterState, label: string): FilterState {
+  const next = selectionSnapshot(draft, id, label.trim());
+  const exists = state.customs.some((custom) => custom.id === id);
+  return {
+    ...state,
+    customs: exists ? state.customs.map((custom) => (custom.id === id ? next : custom)) : [...state.customs, next],
+  };
+}
+
+export function deleteCustomFilter(state: FilterState, id: string): FilterState {
+  const customId = optionId("custom", id);
+  const builtin = CUSTOM.some((item) => item.id === id);
+  return {
+    ...state,
+    customs: state.customs.filter((custom) => custom.id !== id),
+    selected: state.selected.filter((item) => item !== customId),
+    hidden: builtin && !state.hidden.includes(id) ? [...state.hidden, id] : state.hidden,
+  };
+}
+
+export function customDraft(state: FilterState, id: string) {
+  const saved = state.customs.find((custom) => custom.id === id);
+  if (saved) {
+    return {
+      label: saved.label,
+      draft: {
+        ...emptyFilters,
+        selected: [...saved.selected],
+        createdFrom: saved.createdFrom,
+        createdTo: saved.createdTo,
+        updatedFrom: saved.updatedFrom,
+        updatedTo: saved.updatedTo,
+      },
+    };
+  }
+  const builtin = CUSTOM.find((item) => item.id === id);
+  if (!builtin || state.hidden.includes(id)) return null;
+  return { label: builtin.label, draft: { ...emptyFilters, selected: labelsToIds(builtin.chips) } };
+}
+
+export function sectionSelectionCount(section: FilterSectionId, state: FilterState) {
+  if (section === "created") return state.createdFrom || state.createdTo ? 1 : 0;
+  if (section === "updated") return state.updatedFrom || state.updatedTo ? 1 : 0;
+  if (section === "product") return productLeafIds().filter((id) => state.selected.includes(id)).length;
+  return flatOptions(section).filter((label) => state.selected.includes(optionId(section, label))).length;
 }
 
 export function flatOptions(section: string) {
@@ -184,6 +268,29 @@ export function flatOptions(section: string) {
 
 export function optionId(group: string, value: string) {
   return `${group}:${value}`;
+}
+
+function labelsToIds(labels: readonly string[]) {
+  const selected: string[] = [];
+  labels.forEach((label) => {
+    const group = PRODUCT_GROUPS.find((item) => item.label === label);
+    if (group) {
+      group.children.forEach((leaf) => selected.push(optionId("product", leaf.id)));
+      return;
+    }
+    const leaf = PRODUCT_LEAVES.find((item) => item.label === label);
+    if (leaf) {
+      selected.push(optionId("product", leaf.id));
+      return;
+    }
+    for (const section of Object.keys(FLAT)) {
+      if (FLAT[section].includes(label)) {
+        selected.push(optionId(section, label));
+        return;
+      }
+    }
+  });
+  return selected;
 }
 
 function has(selected: string[], id: string) {
@@ -355,12 +462,12 @@ export function requestMatches(row: FilterableRequest, state: FilterState) {
     if (picked.length && !picked.some((value) => values.includes(value))) return false;
   }
 
-  if (has(state.selected, optionId("custom", "incomplete")) && !matchesIncomplete(row)) return false;
-  if (has(state.selected, optionId("custom", "deposits")) && !matchesDeposits(row)) return false;
+  if (has(state.selected, optionId("custom", "incomplete")) && !state.customs.some((custom) => custom.id === "incomplete") && !matchesIncomplete(row)) return false;
+  if (has(state.selected, optionId("custom", "deposits")) && !state.customs.some((custom) => custom.id === "deposits") && !matchesDeposits(row)) return false;
 
   for (const custom of state.customs) {
     if (!has(state.selected, optionId("custom", custom.id))) continue;
-    if (!requestMatches(row, { ...custom, customs: [] })) return false;
+    if (!requestMatches(row, { ...custom, customs: [], hidden: [] })) return false;
   }
 
   if (!inRange(row.created, state.createdFrom, state.createdTo)) return false;

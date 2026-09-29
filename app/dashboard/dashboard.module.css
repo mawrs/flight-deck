@@ -469,6 +469,22 @@
   gap: var(--space-extra-small);
 }
 
+.sortButton {
+  display: inline-flex;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.sortButton:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
 .table td {
   height: 82px;
   padding: var(--space-small) var(--space-large);

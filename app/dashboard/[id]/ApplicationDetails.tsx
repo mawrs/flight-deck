@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState, type KeyboardEvent as ReactKeyboardEv
 import { AssignMenu, Button, DECISIONS, DecisionPanel, NotesPanel, type DecisionId, type PanelNote } from "@/components";
 import shell from "../dashboard.module.css";
 import type { RequestRow } from "../requests";
-import { ActivityPanel, ApplicantPanel, ApplicationPanel, OverviewPanel, RiskPanel } from "./TabPanels";
+import { ActivityPanel, ApplicantPanel, ApplicationPanel, HISTORY_APPLICATIONS, OverviewPanel, RiskPanel } from "./TabPanels";
 import styles from "./details.module.css";
 
 const TABS = [
@@ -31,6 +31,7 @@ function noteStamp(date: Date) {
 
 export function ApplicationDetails({ request }: { request: RequestRow }) {
   const [tab, setTab] = useState<(typeof TABS)[number]["id"]>("overview");
+  const [applicantSection, setApplicantSection] = useState<string | null>(null);
   const [ssnVisible, setSsnVisible] = useState(false);
   const [notesOpen, setNotesOpen] = useState(false);
   const [decisionOpen, setDecisionOpen] = useState(false);
@@ -39,6 +40,22 @@ export function ApplicationDetails({ request }: { request: RequestRow }) {
   const [assignOpen, setAssignOpen] = useState(false);
   const [status, setStatus] = useState(request.status);
   const [statusLabel, setStatusLabel] = useState(request.statusLabel);
+  const [historyId, setHistoryId] = useState<string | null>(null);
+  const [productLoading, setProductLoading] = useState(false);
+
+  useEffect(() => {
+    if (!productLoading) return;
+    const timer = window.setTimeout(() => setProductLoading(false), 1500);
+    return () => window.clearTimeout(timer);
+  }, [productLoading, historyId]);
+
+  function openHistory(id: string) {
+    if (id === historyId) return;
+    setHistoryId(id);
+    setProductLoading(true);
+    setDecisionOpen(false);
+    setAssignOpen(false);
+  }
 
   useEffect(() => {
     if (!notesOpen && !decisionOpen) return;
@@ -70,6 +87,13 @@ export function ApplicationDetails({ request }: { request: RequestRow }) {
   const ssn = ssnVisible ? `123 - 45 - ${lastFour}` : `*** - ** - ${lastFour}`;
   const applicationNumber = request.id === "john-smith" ? "138701283" : request.account;
   const noteCount = request.id === "john-smith" ? Math.max(3, notes.length) : notes.length;
+  const historyApplication = HISTORY_APPLICATIONS.find((item) => item.id === historyId);
+  const productName = historyApplication?.name ?? request.product;
+  const deposit = historyApplication?.deposit ?? "$10,000.00";
+  const shownApplicationNumber = historyApplication?.applicationNumber ?? applicationNumber;
+  const shownStatus = historyApplication?.status ?? status;
+  const shownStatusLabel = historyApplication?.statusLabel ?? statusLabel;
+  const overviewCount = historyApplication?.overviewCount ?? 3;
 
   function moveTab(event: ReactKeyboardEvent<HTMLButtonElement>, index: number) {
     if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
@@ -146,65 +170,77 @@ export function ApplicationDetails({ request }: { request: RequestRow }) {
               </div>
             </dl>
           </div>
-          <div className={styles.product}>
+          <div className={styles.product} aria-busy={productLoading}>
             <div className={styles.identityTop}>
-              <h4>{request.product}</h4>
-              <Button
-                size="small"
-                className={styles.headerAction}
-                aria-expanded={decisionOpen}
-                onClick={() => {
-                  setNotesOpen(false);
-                  setDecisionOpen((open) => !open);
-                }}
-              >
-                Application Decision
-              </Button>
+              {productLoading ? <span className={`${styles.skeleton} ${styles.skeletonTitle}`} /> : <h4>{productName}</h4>}
+              {productLoading ? (
+                <span className={`${styles.skeleton} ${styles.skeletonAction}`} />
+              ) : (
+                <Button
+                  size="small"
+                  className={styles.headerAction}
+                  aria-expanded={decisionOpen}
+                  onClick={() => {
+                    setNotesOpen(false);
+                    setDecisionOpen((open) => !open);
+                  }}
+                >
+                  Application Decision
+                </Button>
+              )}
             </div>
             <dl className={styles.facts}>
               <div>
                 <dt>Initial Deposit</dt>
-                <dd>$10,000.00</dd>
+                <dd>{productLoading ? <span className={`${styles.skeleton} ${styles.skeletonValue}`} /> : deposit}</dd>
               </div>
               <div>
                 <dt>Application Number</dt>
-                <dd>{applicationNumber}</dd>
+                <dd>{productLoading ? <span className={`${styles.skeleton} ${styles.skeletonValue}`} /> : shownApplicationNumber}</dd>
               </div>
               <div>
                 <dt>Status</dt>
                 <dd>
-                  <span className={styles.status}>
-                    <span className={styles[status]} />
-                    {statusLabel}
-                  </span>
+                  {productLoading ? (
+                    <span className={`${styles.skeleton} ${styles.skeletonStatus}`} />
+                  ) : (
+                    <span className={styles.status}>
+                      <span className={styles[shownStatus]} />
+                      {shownStatusLabel}
+                    </span>
+                  )}
                 </dd>
               </div>
               <div>
                 <dt>Assigned to</dt>
                 <dd>
-                  <span className={styles.assignWrap}>
-                    <Button
-                      variant="link"
-                      size="small"
-                      className={styles.assign}
-                      data-assign-trigger=""
-                      aria-expanded={assignOpen}
-                      aria-haspopup="dialog"
-                      onClick={() => setAssignOpen((open) => !open)}
-                    >
-                      {assignee}
-                    </Button>
-                    {assignOpen ? (
-                      <AssignMenu
-                        value={assignee}
-                        onCancel={() => setAssignOpen(false)}
-                        onAssign={(name) => {
-                          setAssignee(name);
-                          setAssignOpen(false);
-                        }}
-                      />
-                    ) : null}
-                  </span>
+                  {productLoading ? (
+                    <span className={`${styles.skeleton} ${styles.skeletonAssign}`} />
+                  ) : (
+                    <span className={styles.assignWrap}>
+                      <Button
+                        variant="link"
+                        size="small"
+                        className={styles.assign}
+                        data-assign-trigger=""
+                        aria-expanded={assignOpen}
+                        aria-haspopup="dialog"
+                        onClick={() => setAssignOpen((open) => !open)}
+                      >
+                        {assignee}
+                      </Button>
+                      {assignOpen ? (
+                        <AssignMenu
+                          value={assignee}
+                          onCancel={() => setAssignOpen(false)}
+                          onAssign={(name) => {
+                            setAssignee(name);
+                            setAssignOpen(false);
+                          }}
+                        />
+                      ) : null}
+                    </span>
+                  )}
                 </dd>
               </div>
             </dl>
@@ -234,7 +270,7 @@ export function ApplicationDetails({ request }: { request: RequestRow }) {
                   height={item.height}
                 />
                 {item.label}
-                {item.id === "overview" ? <span className={styles.tabBadge}>3</span> : null}
+                {item.id === "overview" && overviewCount > 0 ? <span className={styles.tabBadge}>{overviewCount}</span> : null}
               </button>
             );
           })}
@@ -245,9 +281,24 @@ export function ApplicationDetails({ request }: { request: RequestRow }) {
           id={`application-panel-${tab}`}
           aria-labelledby={`application-tab-${tab}`}
         >
-          {tab === "overview" ? <OverviewPanel /> : null}
+          {tab === "overview" ? (
+            <OverviewPanel
+              pending={overviewCount > 0}
+              onViewDna={() => {
+                setApplicantSection("dna");
+                setTab("applicant");
+              }}
+            />
+          ) : null}
           {tab === "risk" ? <RiskPanel /> : null}
-          {tab === "applicant" ? <ApplicantPanel /> : null}
+          {tab === "applicant" ? (
+            <ApplicantPanel
+              selected={applicantSection}
+              onSelect={setApplicantSection}
+              applicationId={historyId}
+              onOpenApplication={openHistory}
+            />
+          ) : null}
           {tab === "application" ? <ApplicationPanel /> : null}
           {tab === "activity" ? <ActivityPanel /> : null}
         </div>

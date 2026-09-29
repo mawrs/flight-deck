@@ -24,7 +24,7 @@ import {
   type FilterState,
   type PanelNote,
 } from "@/components";
-import { REQUESTS } from "./requests";
+import { REQUESTS, type RequestRow } from "./requests";
 import styles from "./dashboard.module.css";
 
 function FilterIcon() {
@@ -48,6 +48,24 @@ function noteStamp(date: Date) {
 }
 
 const PAGES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+
+const SORT_COLUMNS = [
+  { key: "type", label: "Account Request Type" },
+  { key: "customer", label: "Customer Name" },
+  { key: "assignee", label: "Assignee" },
+  { key: "account", label: "Account Number" },
+  { key: "product", label: "Product Name" },
+  { key: "status", label: "Status" },
+] as const;
+
+type SortKey = (typeof SORT_COLUMNS)[number]["key"];
+
+const STATUS_ORDER: RequestRow["status"][] = ["review", "booked", "canceled", "rejected"];
+
+function compareRows(a: RequestRow, b: RequestRow, key: SortKey) {
+  if (key === "status") return STATUS_ORDER.indexOf(a.status) - STATUS_ORDER.indexOf(b.status);
+  return a[key].localeCompare(b[key], undefined, { numeric: true, sensitivity: "base" });
+}
 
 const ROW_FILTERS: Record<string, { kyc: string; tasks: string[]; kycTags: string[]; branch: string }> = {
   "john-smith": {
@@ -108,6 +126,7 @@ export function Dashboard() {
   const [notesRowId, setNotesRowId] = useState<string | null>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [filterState, setFilterState] = useState<FilterState>(emptyFilters);
+  const [sort, setSort] = useState<{ key: SortKey; direction: "asc" | "desc" } | null>(null);
 
   useEffect(() => {
     if (!notesRowId && !filtersOpen) return;
@@ -124,7 +143,7 @@ export function Dashboard() {
 
   const rows = useMemo(() => {
     const needle = query.trim().toLowerCase();
-    return requests.filter((row) => {
+    const matched = requests.filter((row) => {
       const extra = ROW_FILTERS[row.id] ?? { kyc: "Not Started", tasks: [], kycTags: [], branch: "Online" };
       if (!requestMatches({ ...row, ...extra }, filterState)) return false;
       if (!needle) return true;
@@ -133,7 +152,12 @@ export function Dashboard() {
         .toLowerCase()
         .includes(needle);
     });
-  }, [query, requests, filterState]);
+    if (!sort) return matched;
+    return [...matched].sort((a, b) => {
+      const result = compareRows(a, b, sort.key);
+      return sort.direction === "asc" ? result : -result;
+    });
+  }, [query, requests, filterState, sort]);
 
   const notesRow = requests.find((row) => row.id === notesRowId) ?? null;
 
@@ -146,6 +170,13 @@ export function Dashboard() {
   }
 
   const narrowed = query.trim().length > 0 || tags.length > 0;
+
+  function toggleSort(key: SortKey) {
+    setSort((current) => {
+      if (current?.key !== key) return { key, direction: "asc" };
+      return { key, direction: current.direction === "asc" ? "desc" : "asc" };
+    });
+  }
   const rangeStart = rows.length === 0 ? 0 : narrowed ? 1 : (page - 1) * 5 + 1;
   const rangeEnd = narrowed ? rows.length : page * 5;
   const total = narrowed ? rows.length : 100;
@@ -182,13 +213,20 @@ export function Dashboard() {
               <DataTable className={styles.requestTable}>
                 <thead>
                   <tr>
-                    {["Account Request Type", "Customer Name", "Assignee", "Account Number", "Product Name", "Status", "Notes"].map(
-                      (label) => (
-                        <th key={label} scope="col">
-                          <SortLabel sortable={label !== "Notes"}>{label}</SortLabel>
-                        </th>
-                      ),
-                    )}
+                    {SORT_COLUMNS.map((column) => (
+                      <th
+                        key={column.key}
+                        scope="col"
+                        aria-sort={sort?.key === column.key ? (sort.direction === "asc" ? "ascending" : "descending") : "none"}
+                      >
+                        <button className={styles.sortButton} type="button" onClick={() => toggleSort(column.key)}>
+                          <SortLabel>{column.label}</SortLabel>
+                        </button>
+                      </th>
+                    ))}
+                    <th scope="col">
+                      <SortLabel sortable={false}>Notes</SortLabel>
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
