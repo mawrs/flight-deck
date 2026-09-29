@@ -1,6 +1,7 @@
 import { calculate } from "@/lib/calculations";
 import { RATE_TERMS, rateFor, type RateTerm } from "@/lib/calculations/rates";
 import { money, percent } from "@/lib/format";
+import { loansForPayoff } from "@/lib/payoffs";
 import type { Application, FileReview, Person } from "@/lib/types";
 
 export const FILE_REVIEW_OWNER = "Casey Morrow";
@@ -85,7 +86,8 @@ function qualifiedRate(application: Application) {
 }
 
 function suggestedServicer(application: Application) {
-  const selected = application.payoffs.find((item) => item.selected) ?? application.payoffs[0];
+  const payoffLoans = loansForPayoff(application);
+  const selected = payoffLoans.find((item) => item.selected) ?? payoffLoans[0];
   const lender = selected?.adjCreditorName || selected?.lender || "";
   if (/pheaa/i.test(lender)) return "PHEAA";
   if (/mohela/i.test(lender)) return "MOHELA";

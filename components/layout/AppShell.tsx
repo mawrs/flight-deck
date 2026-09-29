@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { FileActions } from "@/components/application/FileActions";
-import { StagePath } from "@/components/application/StagePath";
 import { LOAN_HOME, fileRoute } from "@/lib/loan-routes";
 import { useApplication } from "@/lib/store";
 
@@ -41,26 +40,23 @@ function FileHeader({ id }: { id: string }) {
   }
 
   return (
-    <div>
-      <div className="uw-file-header-row">
-        <Link
-          href={LOAN_HOME}
-          aria-label="Back to opportunities"
-          className="uw-file-back group"
-        >
-          <span className="uw-file-back-icon">
-            <BackIcon />
-          </span>
-          <div className="uw-file-title">
-            <span>Opportunity</span>
-            <p>
-              {application.borrower.fullName} - {application.id}
-            </p>
-          </div>
-        </Link>
-        <FileActions id={id} />
-      </div>
-      <StagePath id={id} />
+    <div className="uw-file-header-row">
+      <Link
+        href={LOAN_HOME}
+        aria-label="Back to opportunities"
+        className="uw-file-back group"
+      >
+        <span className="uw-file-back-icon">
+          <BackIcon />
+        </span>
+        <div className="uw-file-title">
+          <span>Opportunity</span>
+          <p>
+            {application.borrower.fullName} - {application.id}
+          </p>
+        </div>
+      </Link>
+      <FileActions id={id} />
     </div>
   );
 }

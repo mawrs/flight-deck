@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type FocusEvent, type KeyboardEvent } from "react";
+import "./float-input.css";
 
 export function FloatInput({
   label,
@@ -8,6 +9,7 @@ export function FloatInput({
   onChange,
   readOnly,
   autoFocus,
+  type = "text",
   onKeyDown,
   onFocus,
   onBlur,
@@ -17,6 +19,7 @@ export function FloatInput({
   onChange?: (value: string) => void;
   readOnly?: boolean;
   autoFocus?: boolean;
+  type?: string;
   onKeyDown?: (event: KeyboardEvent<HTMLInputElement>) => void;
   onFocus?: (event: FocusEvent<HTMLInputElement>) => void;
   onBlur?: (event: FocusEvent<HTMLInputElement>) => void;
@@ -28,6 +31,7 @@ export function FloatInput({
     <label className="uw-float-field">
       <input
         aria-label={label}
+        type={type}
         value={value}
         readOnly={readOnly}
         autoFocus={autoFocus}

@@ -1,7 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import Link from "next/link";
+import { Fragment, useMemo, useState } from "react";
 import {
   Button,
   DataTable,
@@ -13,16 +12,20 @@ import {
   PageHeader,
   SearchField,
 } from "@/components";
-import { ORGANIZATION_TYPES, codeTitle, type CodeRow } from "../codes";
+import { codeTitle, codesFor, type CodeRow } from "../codes";
 import styles from "../configuration.module.css";
 
 export function CodeDetail({ name }: { name: string }) {
   const title = codeTitle(name);
-  const [rows, setRows] = useState<CodeRow[]>(() => (name === "Organization Type Codes" ? ORGANIZATION_TYPES : []));
+  const [rows, setRows] = useState<CodeRow[]>(() => codesFor(name));
   const [query, setQuery] = useState("");
   const [adding, setAdding] = useState(false);
   const [code, setCode] = useState("");
   const [description, setDescription] = useState("");
+  const [editingCode, setEditingCode] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState("");
+  const [editDescription, setEditDescription] = useState("");
+  const [editError, setEditError] = useState("");
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return rows;
@@ -41,15 +44,7 @@ export function CodeDetail({ name }: { name: string }) {
 
   return (
     <Page flush>
-      <PageHeader
-        className={styles.pageHeader}
-        eyebrow={
-          <>
-            <Link href="/dashboard/configuration">System Configurations</Link> &gt; {title}
-          </>
-        }
-        title={title}
-      />
+      <PageHeader className={styles.pageHeader} title={title} />
       <DataTableCard rules>
         <DataTableToolbar>
           <SearchField
@@ -90,27 +85,101 @@ export function CodeDetail({ name }: { name: string }) {
               <tr>
                 <th>{title} Code</th>
                 <th>Description</th>
-                <th />
+                <th className={styles.rowActions} aria-label="Actions" />
               </tr>
             </thead>
             <tbody>
               {visible.map((row) => (
-                <tr key={row.code}>
-                  <td>{row.code}</td>
-                  <td>{row.description}</td>
+                <Fragment key={row.code}>
+                <tr>
                   <td>
+                    {editingCode === row.code ? (
+                      <input
+                        className={styles.cellInput}
+                        aria-label={`${row.code} code`}
+                        value={editValue}
+                        onChange={(event) => {
+                          setEditValue(event.target.value);
+                          setEditError("");
+                        }}
+                      />
+                    ) : (
+                      row.code
+                    )}
+                  </td>
+                  <td>
+                    {editingCode === row.code ? (
+                      <input
+                        className={styles.cellInput}
+                        aria-label={`${row.code} description`}
+                        value={editDescription}
+                        onChange={(event) => setEditDescription(event.target.value)}
+                      />
+                    ) : (
+                      row.description
+                    )}
+                  </td>
+                  <td className={styles.rowActions}>
+                    {editingCode === row.code ? (
+                      <button
+                        className={styles.editLink}
+                        type="button"
+                        onClick={() => {
+                          const nextCode = editValue.trim().toUpperCase();
+                          if (!nextCode) {
+                            setEditError("Code is required.");
+                            return;
+                          }
+                          const taken = rows.some((item) => item.code !== row.code && item.code.toUpperCase() === nextCode);
+                          if (taken) {
+                            setEditError("That code is already in use.");
+                            return;
+                          }
+                          setRows((current) =>
+                            current.map((item) =>
+                              item.code === row.code ? { code: nextCode, description: editDescription.trim() } : item,
+                            ),
+                          );
+                          setEditingCode(null);
+                          setEditError("");
+                        }}
+                      >
+                        Save
+                      </button>
+                    ) : (
+                      <button
+                        className={styles.editLink}
+                        type="button"
+                        onClick={() => {
+                          setEditingCode(row.code);
+                          setEditValue(row.code);
+                          setEditDescription(row.description);
+                          setEditError("");
+                        }}
+                      >
+                        Edit
+                      </button>
+                    )}
                     <button className={styles.deleteLink} type="button" onClick={() => setRows((current) => current.filter((item) => item.code !== row.code))}>
                       Delete
                     </button>
                   </td>
                 </tr>
+                {editingCode === row.code && editError ? (
+                  <tr>
+                    <td className={styles.editError} colSpan={3}>
+                      {editError}
+                    </td>
+                  </tr>
+                ) : null}
+                </Fragment>
               ))}
             </tbody>
           </DataTable>
         </DataTableScroll>
         <DataTableFooter>
           <span>
-            {visible.length === 0 ? "0" : `1-${visible.length}`} of {query ? visible.length : Math.max(visible.length, 100)}
+            {visible.length === 0 ? "0" : `1-${visible.length}`} of {rows.length}
           </span>
           <span>Rows per page 10</span>
         </DataTableFooter>

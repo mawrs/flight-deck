@@ -551,60 +551,26 @@
     outline-offset: 1px;
   }
 
-  .uw-float-field {
-    position: relative;
-    display: block;
-    width: 100%;
-    min-width: 0;
-    flex: 1;
+  .uw-input.uw-calc-entry {
+    background: var(--color-status-warning-background);
   }
 
-  .uw-float-input {
-    width: 100%;
-    height: 60px;
-    padding: 22px var(--space-medium) var(--space-small);
-    border: var(--border-width) solid var(--border);
-    border-radius: var(--radius-extra-small);
-    background: var(--surface);
-    color: var(--foreground);
-    font-size: var(--font-size-body-base);
-    line-height: var(--line-height-body-base);
-    transition:
-      border-color var(--transition-fast),
-      background var(--transition-fast);
+  .uw-input.uw-calc-money {
+    padding-left: 22px;
   }
 
-  .uw-float-input:hover {
-    border-color: var(--foreground-subtle);
+  .uw-input.uw-calc-empty {
+    color: var(--color-gray-medium);
   }
 
-  .uw-float-input:focus {
-    border-color: var(--primary);
+  .uw-input.uw-calc-mid {
+    background: var(--color-status-error-background);
+    color: var(--color-gray-dark);
   }
 
-  .uw-float-input:read-only {
-    background: var(--surface-sunken);
-  }
-
-  .uw-float-label {
-    position: absolute;
-    top: 18px;
-    left: var(--space-medium);
-    color: var(--foreground-muted);
-    font-size: var(--font-size-body-base);
-    line-height: var(--line-height-body-base);
-    pointer-events: none;
-    transition:
-      top var(--transition-fast),
-      font-size var(--transition-fast),
-      line-height var(--transition-fast);
-    white-space: nowrap;
-  }
-
-  .uw-float-label-active {
-    top: var(--space-extra-small);
-    font-size: var(--font-size-body-extra-small);
-    line-height: var(--line-height-body-extra-small);
+  .uw-input.uw-calc-final {
+    background: var(--color-primary-blue-background-dev);
+    color: var(--color-primary);
   }
 
   .uw-editor {
@@ -896,6 +862,13 @@
     font-size: var(--font-size-body-small);
     color: var(--color-gray-dark);
     white-space: nowrap;
+  }
+
+  .uw-data-table td.uw-list-td-wrap {
+    height: auto;
+    min-height: var(--height-table-row-compact);
+    overflow-wrap: break-word;
+    white-space: normal;
   }
 
   .uw-list-row {

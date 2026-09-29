@@ -170,7 +170,7 @@ export function ConsoleShell({ children, initialExpanded = false }: { children: 
                       if (item.id === "users" && pathname !== "/dashboard/users") {
                         router.push("/dashboard/users");
                       }
-                      if (item.id === "settings" && !pathname.startsWith("/dashboard/configuration")) {
+                      if (item.id === "settings" && pathname !== "/dashboard/configuration") {
                         router.push("/dashboard/configuration");
                       }
                       if (item.id === "flight-deck" && pathname !== "/dashboard") router.push("/dashboard");

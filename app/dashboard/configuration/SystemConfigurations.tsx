@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button, Page, PageHeader, SearchField } from "@/components";
 import { CODE_NAMES, codeSlug } from "./codes";
@@ -63,7 +64,6 @@ export function SystemConfigurations() {
     <Page flush>
       <PageHeader
         className={styles.pageHeader}
-        eyebrow="System Configurations"
         title="System Configurations"
         actions={
           editing ? (
@@ -113,12 +113,19 @@ export function SystemConfigurations() {
       </div>
       <div className={styles.list}>
         {visible.map((item) => (
-          <div className={styles.row} key={item.name}>
-            <button className={styles.rowName} type="button" onClick={() => router.push(`/dashboard/configuration/${codeSlug(item.name)}`)}>
-              <Bars />
+          <div
+            className={styles.row}
+            key={item.name}
+            onClick={(event) => {
+              const target = event.target as HTMLElement;
+              if (target.closest("a, button, input, form")) return;
+              router.push(`/dashboard/configuration/${codeSlug(item.name)}`);
+            }}
+          >
+            <Link className={styles.rowName} href={`/dashboard/configuration/${codeSlug(item.name)}`}>
               {item.name}
-            </button>
-            <div className={styles.rowTags}>
+            </Link>
+            <div className={styles.rowTags} onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()}>
               {item.tags.map((tag) => (
                 <span className={styles.tag} key={tag}>
                   {tag}
@@ -132,7 +139,7 @@ export function SystemConfigurations() {
               </button>
             </div>
             {openTag === item.name ? (
-              <div className={styles.popover}>
+              <div className={styles.popover} onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()}>
                 {tags.filter((tag) => !item.tags.includes(tag)).length === 0 ? <p>No tags available.</p> : null}
                 {tags
                   .filter((tag) => !item.tags.includes(tag))
@@ -204,12 +211,4 @@ export function SystemConfigurations() {
 
 function codeTitle(name: string) {
   return name.replace(/ Codes$/, "");
-}
-
-function Bars() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true">
-      <path d="M2 3.5h10M2 7h10M2 10.5h10" stroke="currentColor" strokeWidth="1.4" />
-    </svg>
-  );
 }

@@ -130,17 +130,28 @@
   white-space: nowrap;
 }
 
-.row {
-  cursor: pointer;
+.actions {
+  width: 1%;
+  text-align: right;
+  white-space: nowrap;
 }
 
-.row:focus-visible {
-  outline: 2px solid var(--primary);
-  outline-offset: -2px;
+.rowOpen td {
+  background: var(--surface-muted);
 }
 
-.table tbody tr:hover td {
-  background: var(--color-neutral-gray-extra-light);
+.expandCell {
+  height: auto !important;
+  padding: var(--space-medium) var(--space-large) var(--space-large) !important;
+  background: var(--color-neutral-gray-extra-light) !important;
+  white-space: normal;
+  vertical-align: top;
+}
+
+.inlineForm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-large);
 }
 
 .strong {
@@ -246,24 +257,9 @@
 
 .grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr)) max-content;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--space-medium) var(--space-large);
   align-items: start;
-}
-
-.sideActions {
-  grid-column: 4;
-  grid-row: 1 / span 2;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: var(--space-extra-small);
-  padding-top: 22px;
-  white-space: nowrap;
-}
-
-.danger {
-  color: var(--error) !important;
 }
 
 .dangerOutline {
@@ -273,17 +269,8 @@
 
 .roles {
   position: relative;
-  display: flex;
-  flex-direction: column;
-  max-width: 640px;
-}
-
-.fieldLabel {
-  margin-bottom: var(--space-extra-small);
-  color: var(--primary);
-  font-size: var(--font-size-body-small);
-  font-weight: var(--font-weight-semibold);
-  line-height: var(--line-height-body-small);
+  grid-column: 1 / span 3;
+  min-width: 0;
 }
 
 .roleBox {
@@ -291,9 +278,10 @@
   align-items: center;
   flex-wrap: wrap;
   gap: var(--space-small);
-  min-height: 48px;
-  padding: var(--space-small) var(--space-medium);
-  border: 1px solid var(--border);
+  width: 100%;
+  min-height: 60px;
+  padding: 22px var(--space-medium) var(--space-small);
+  border: var(--border-width) solid var(--border);
   border-radius: var(--radius-extra-small);
   background: var(--surface);
 }
@@ -362,15 +350,10 @@
   background: var(--color-neutral-gray-extra-light);
 }
 
-.pair {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 280px));
-  gap: var(--space-large);
-}
-
 .formFooter {
   display: flex;
   justify-content: flex-end;
+  flex-wrap: wrap;
   gap: var(--space-small);
 }
 
@@ -430,16 +413,12 @@
 }
 
 @media (max-width: 1100px) {
-  .grid,
-  .pair {
+  .grid {
     grid-template-columns: 1fr;
   }
 
-  .sideActions {
-    grid-column: 1;
-    grid-row: auto;
-    align-items: flex-start;
-    padding-top: 0;
+  .roles {
+    grid-column: auto;
   }
 
   .search {

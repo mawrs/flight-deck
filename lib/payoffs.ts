@@ -1,4 +1,4 @@
-import type { Liability } from "./types";
+import type { Application, ApplicationPatch, DebtTrade, Liability } from "./types";
 
 const LENDER_ADDRESSES: Record<string, string[]> = {
   "SALLIE MAE": [
@@ -48,6 +48,75 @@ export function normalizeLiability(item: Liability): Liability {
     lenderAddresses: addresses,
     selectedAddress: item.selectedAddress || addresses[0] || "",
   };
+}
+
+export function loansForPayoff(application: Application): Liability[] {
+  const saved = new Map((application.payoffs ?? []).map((item) => [item.id, item]));
+  const credit = application.debtTrades
+    .filter((trade) => trade.includeInDti)
+    .map((trade) => payoffFromTrade(trade, saved.get(trade.id)));
+  const student = application.liabilities
+    .filter((item) => isStudentLoan(item) && item.selected)
+    .map(normalizeLiability);
+  return [...credit, ...student];
+}
+
+export function patchPayoffLoan(
+  application: Application,
+  loanId: string,
+  patch: Partial<Liability>,
+): ApplicationPatch {
+  const trade = application.debtTrades.find((item) => item.id === loanId);
+  if (trade) {
+    if (patch.selected === false) {
+      return {
+        debtTrades: application.debtTrades.map((item) =>
+          item.id === loanId ? { ...item, includeInDti: false } : item,
+        ),
+        payoffs: (application.payoffs ?? []).filter((item) => item.id !== loanId),
+      };
+    }
+    const current = payoffFromTrade(
+      trade,
+      (application.payoffs ?? []).find((item) => item.id === loanId),
+    );
+    const next = normalizeLiability({ ...current, ...patch, id: loanId, selected: true });
+    return {
+      payoffs: [...(application.payoffs ?? []).filter((item) => item.id !== loanId), next],
+    };
+  }
+
+  return {
+    liabilities: application.liabilities.map((item) =>
+      item.id === loanId ? normalizeLiability({ ...item, ...patch }) : item,
+    ),
+  };
+}
+
+function payoffFromTrade(trade: DebtTrade, saved?: Liability): Liability {
+  return normalizeLiability({
+    id: trade.id,
+    lender: trade.lender,
+    accountNumber: trade.accountNumber,
+    loanIdentifier: saved?.loanIdentifier ?? "",
+    category: trade.category,
+    accountType: trade.accountType,
+    highCredit: trade.highCredit,
+    balance: trade.balance,
+    payment: trade.payment,
+    selected: true,
+    payoffType: saved?.payoffType ?? "full",
+    adjCreditorName: saved?.adjCreditorName ?? "",
+    adjAccountNumber: saved?.adjAccountNumber ?? "",
+    adjLoanIdentifier: saved?.adjLoanIdentifier ?? "",
+    adjBalance: saved?.adjBalance ?? 0,
+    source: "credit-report",
+    confirmed: saved?.confirmed ?? false,
+    lenderAddresses: saved?.lenderAddresses?.length
+      ? saved.lenderAddresses
+      : defaultLenderAddresses(trade.lender),
+    selectedAddress: saved?.selectedAddress ?? "",
+  });
 }
 
 export function emptyStudentLoan(): Liability {

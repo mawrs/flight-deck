@@ -1,0 +1,55 @@
+.uw-float-field {
+  position: relative;
+  display: block;
+  width: 100%;
+  min-width: 0;
+  flex: 1;
+}
+
+.uw-float-input {
+  width: 100%;
+  height: 60px;
+  padding: 22px var(--space-medium) var(--space-small);
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius-extra-small);
+  background: var(--surface);
+  color: var(--foreground);
+  font-size: var(--font-size-body-base);
+  line-height: var(--line-height-body-base);
+  transition:
+    border-color var(--transition-fast),
+    background var(--transition-fast);
+}
+
+.uw-float-input:hover {
+  border-color: var(--foreground-subtle);
+}
+
+.uw-float-input:focus {
+  border-color: var(--primary);
+}
+
+.uw-float-input:read-only {
+  background: var(--surface-sunken);
+}
+
+.uw-float-label {
+  position: absolute;
+  top: 18px;
+  left: var(--space-medium);
+  color: var(--foreground-muted);
+  font-size: var(--font-size-body-base);
+  line-height: var(--line-height-body-base);
+  pointer-events: none;
+  transition:
+    top var(--transition-fast),
+    font-size var(--transition-fast),
+    line-height var(--transition-fast);
+  white-space: nowrap;
+}
+
+.uw-float-label-active {
+  top: var(--space-extra-small);
+  font-size: var(--font-size-body-extra-small);
+  line-height: var(--line-height-body-extra-small);
+}

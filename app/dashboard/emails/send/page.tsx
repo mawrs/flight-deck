@@ -1,5 +1,5 @@
-import { SingleSend } from "../SingleSend";
+import { SendHome } from "../SendHome";
 
 export default function SingleSendPage() {
-  return <SingleSend />;
+  return <SendHome />;
 }

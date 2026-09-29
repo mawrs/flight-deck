@@ -1,14 +1,25 @@
 "use client";
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Button, Divider, Page, PageHeader, TextField } from "@/components";
+import { Button, Page, PageHeader } from "@/components";
+import { FloatInput } from "@/components/ui/FloatInput";
 import { ROLES, blankUser, consumeNotice, deleteUser, saveUser, useUsers, type UserRecord } from "./users";
 import styles from "./users.module.css";
 
-export function UserDetail({ username }: { username: string }) {
-  const router = useRouter();
+export function UserForm({
+  username,
+  className,
+  onCancel,
+  onDeleted,
+  onRenamed,
+}: {
+  username: string;
+  className?: string;
+  onCancel: () => void;
+  onDeleted: () => void;
+  onRenamed: (username: string) => void;
+}) {
   const users = useUsers();
   const isNew = username === "new";
   const existing = isNew ? null : users.find((record) => record.username === username);
@@ -17,7 +28,6 @@ export function UserDetail({ username }: { username: string }) {
   const [notice, setNotice] = useState("");
   const [rolesOpen, setRolesOpen] = useState(false);
   const [confirming, setConfirming] = useState(false);
-  const [removed, setRemoved] = useState(false);
   const rolesRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -42,13 +52,7 @@ export function UserDetail({ username }: { username: string }) {
   }, [rolesOpen]);
 
   if (!isNew && !existing) {
-    if (removed) return <Page />;
-    return (
-      <Page flush>
-        <PageHeader className={styles.pageHeader} eyebrow={<Link href="/dashboard/users">Manage Users</Link>} title="User not found" />
-        <p className={styles.missing}>That user is no longer in the list.</p>
-      </Page>
-    );
+    return <p className={styles.missing}>That user is no longer in the list.</p>;
   }
 
   const available = ROLES.filter((role) => !draft.roles.includes(role));
@@ -83,7 +87,7 @@ export function UserDetail({ username }: { username: string }) {
     }
     saveUser(isNew ? null : username, next);
     if (isNew || next.username !== username) {
-      router.replace(`/dashboard/users/${encodeURIComponent(next.username)}`);
+      onRenamed(next.username);
       return;
     }
     setNotice(consumeNotice());
@@ -91,97 +95,73 @@ export function UserDetail({ username }: { username: string }) {
   }
 
   return (
-    <Page flush>
-      <PageHeader
-        className={styles.pageHeader}
-        eyebrow={
-          <>
-            <Link href="/dashboard/users">Manage Users</Link> &gt; {isNew ? "Create User" : existing?.fullName}
-          </>
-        }
-        title={isNew ? "Create User" : existing?.fullName}
-      />
-      <form className={styles.form} onSubmit={save}>
+    <>
+      <form className={className ?? styles.form} onSubmit={save}>
         <div className={styles.grid}>
-          <TextField showLabel label="Username" name="username" value={draft.username} onChange={(event) => update({ username: event.target.value })} />
-          <TextField showLabel label="Email" name="email" type="email" value={draft.email} onChange={(event) => update({ email: event.target.value })} />
-          <TextField
-            showLabel
-            label="Person Number"
-            name="personNumber"
-            value={draft.personNumber}
-            onChange={(event) => update({ personNumber: event.target.value })}
-          />
-          {isNew ? null : (
-            <div className={styles.sideActions}>
-              <Button className={styles.danger} variant="text" size="small" onClick={() => setConfirming(true)}>
-                Delete User
-              </Button>
-              <Button variant="text" size="small" onClick={() => setNotice(`Password reset email sent to ${draft.email}.`)}>
-                Reset Password
-              </Button>
-              <Button variant="text" size="small" onClick={() => setNotice(`Confirmation email sent to ${draft.email}.`)}>
-                Resend Email Confirmation
-              </Button>
-            </div>
-          )}
-          <TextField showLabel label="Full Name" name="fullName" value={draft.fullName} onChange={(event) => update({ fullName: event.target.value })} />
-        </div>
-        <Divider />
-        <div className={styles.roles} ref={rolesRef}>
-          <span className={styles.fieldLabel} id="roles-label">
-            Roles
-          </span>
-          <div className={styles.roleBox}>
-            {draft.roles.map((role) => (
-              <span key={role} className={styles.tag}>
-                {role}
-                <button type="button" aria-label={`Remove ${role}`} onClick={() => update({ roles: draft.roles.filter((item) => item !== role) })}>
+          <FloatInput label="Username" value={draft.username} onChange={(value) => update({ username: value })} />
+          <FloatInput label="Email" type="email" value={draft.email} onChange={(value) => update({ email: value })} />
+          <FloatInput label="Person Number" value={draft.personNumber} onChange={(value) => update({ personNumber: value })} />
+          <FloatInput label="Full Name" value={draft.fullName} onChange={(value) => update({ fullName: value })} />
+          <FloatInput label="DNA Person Number" value={draft.dnaPersonNumber} onChange={(value) => update({ dnaPersonNumber: value })} />
+          <FloatInput label="NMLS Id (Optional)" value={draft.nmlsId} onChange={(value) => update({ nmlsId: value })} />
+          <div className={`uw-float-field ${styles.roles}`} ref={rolesRef}>
+            <div className={styles.roleBox}>
+              {draft.roles.map((role) => (
+                <span key={role} className={styles.tag}>
+                  {role}
+                  <button type="button" aria-label={`Remove ${role}`} onClick={() => update({ roles: draft.roles.filter((item) => item !== role) })}>
+                    ×
+                  </button>
+                </span>
+              ))}
+              <button className={styles.addRole} type="button" aria-expanded={rolesOpen} onClick={() => setRolesOpen((open) => !open)}>
+                Add role
+              </button>
+              {draft.roles.length > 0 ? (
+                <button className={styles.clearRoles} type="button" aria-label="Clear roles" onClick={() => update({ roles: [] })}>
                   ×
                 </button>
-              </span>
-            ))}
-            <button className={styles.addRole} type="button" aria-expanded={rolesOpen} onClick={() => setRolesOpen((open) => !open)}>
-              Add role
-            </button>
-            {draft.roles.length > 0 ? (
-              <button className={styles.clearRoles} type="button" aria-label="Clear roles" onClick={() => update({ roles: [] })}>
-                ×
-              </button>
+              ) : null}
+            </div>
+            <span className="uw-float-label uw-float-label-active" id={`roles-label-${username}`}>
+              Roles
+            </span>
+            {rolesOpen ? (
+              <div className={styles.popover} role="listbox" aria-labelledby={`roles-label-${username}`}>
+                {available.length === 0 ? <p className={styles.missing}>All roles are assigned.</p> : null}
+                {available.map((role) => (
+                  <button
+                    key={role}
+                    type="button"
+                    onClick={() => {
+                      update({ roles: [...draft.roles, role] });
+                      setRolesOpen(false);
+                    }}
+                  >
+                    {role}
+                  </button>
+                ))}
+              </div>
             ) : null}
           </div>
-          {rolesOpen ? (
-            <div className={styles.popover} role="listbox" aria-labelledby="roles-label">
-              {available.length === 0 ? <p className={styles.missing}>All roles are assigned.</p> : null}
-              {available.map((role) => (
-                <button
-                  key={role}
-                  type="button"
-                  onClick={() => {
-                    update({ roles: [...draft.roles, role] });
-                    setRolesOpen(false);
-                  }}
-                >
-                  {role}
-                </button>
-              ))}
-            </div>
-          ) : null}
-        </div>
-        <div className={styles.pair}>
-          <TextField
-            showLabel
-            label="DNA Person Number"
-            name="dnaPersonNumber"
-            value={draft.dnaPersonNumber}
-            onChange={(event) => update({ dnaPersonNumber: event.target.value })}
-          />
-          <TextField showLabel label="NMLS Id (Optional)" name="nmlsId" value={draft.nmlsId} onChange={(event) => update({ nmlsId: event.target.value })} />
         </div>
         {error ? <p className={styles.error}>{error}</p> : null}
         {notice ? <p className={styles.saved}>{notice}</p> : null}
         <div className={styles.formFooter}>
-          <Button variant="outline" size="small" onClick={() => router.push("/dashboard/users")}>
+          {isNew ? null : (
+            <>
+              <Button variant="danger" size="small" onClick={() => setConfirming(true)}>
+                Delete User
+              </Button>
+              <Button variant="outline" size="small" onClick={() => setNotice(`Password reset email sent to ${draft.email}.`)}>
+                Reset Password
+              </Button>
+              <Button variant="outline" size="small" onClick={() => setNotice(`Confirmation email sent to ${draft.email}.`)}>
+                Resend Email Confirmation
+              </Button>
+            </>
+          )}
+          <Button variant="outline" size="small" onClick={onCancel}>
             Cancel
           </Button>
           <Button size="small" type="submit">
@@ -202,9 +182,8 @@ export function UserDetail({ username }: { username: string }) {
                 variant="danger"
                 size="small"
                 onClick={() => {
-                  setRemoved(true);
                   deleteUser(existing.username);
-                  router.push("/dashboard/users");
+                  onDeleted();
                 }}
               >
                 Delete
@@ -213,6 +192,35 @@ export function UserDetail({ username }: { username: string }) {
           </div>
         </div>
       ) : null}
+    </>
+  );
+}
+
+export function UserDetail({ username }: { username: string }) {
+  const router = useRouter();
+  const users = useUsers();
+  const isNew = username === "new";
+  const existing = isNew ? null : users.find((record) => record.username === username);
+
+  if (!isNew && !existing) {
+    return (
+      <Page flush>
+        <PageHeader className={styles.pageHeader} title="User not found" />
+        <p className={styles.missing}>That user is no longer in the list.</p>
+      </Page>
+    );
+  }
+
+  return (
+    <Page flush>
+      <PageHeader className={styles.pageHeader} title={isNew ? "Create User" : existing?.fullName} />
+      <UserForm
+        key={username}
+        username={username}
+        onCancel={() => router.push("/dashboard/users")}
+        onDeleted={() => router.push("/dashboard/users")}
+        onRenamed={(next) => router.replace(`/dashboard/users/${encodeURIComponent(next)}`)}
+      />
     </Page>
   );
 }

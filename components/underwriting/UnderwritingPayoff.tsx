@@ -2,7 +2,7 @@
 
 import { LoanCard } from "@/components/payoffs/LoanCard";
 import { money } from "@/lib/format";
-import { normalizeLiability } from "@/lib/payoffs";
+import { loansForPayoff, patchPayoffLoan } from "@/lib/payoffs";
 import type { Application, ApplicationPatch, Liability } from "@/lib/types";
 
 export function UnderwritingPayoff({
@@ -14,15 +14,11 @@ export function UnderwritingPayoff({
   readOnly: boolean;
   onChange: (patch: ApplicationPatch) => void;
 }) {
-  const loans = (application.payoffs ?? []).map(normalizeLiability);
+  const loans = loansForPayoff(application);
   const selected = loans.filter((item) => item.selected);
 
-  function setPayoffs(next: Liability[]) {
-    onChange({ payoffs: next.map(normalizeLiability) });
-  }
-
   function update(loanId: string, patch: Partial<Liability>) {
-    setPayoffs(loans.map((item) => (item.id === loanId ? { ...item, ...patch } : item)));
+    onChange(patchPayoffLoan(application, loanId, patch));
   }
 
   return (

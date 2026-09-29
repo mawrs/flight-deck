@@ -40,6 +40,9 @@ export function SingleSend({
   readOnly = false,
   body,
   sentLabel,
+  applicantName,
+  applicantEmail,
+  productName,
 }: {
   embedded?: boolean;
   templateTitle?: string;
@@ -47,6 +50,9 @@ export function SingleSend({
   readOnly?: boolean;
   body?: string;
   sentLabel?: string;
+  applicantName?: string;
+  applicantEmail?: string;
+  productName?: string;
 } = {}) {
   const router = useRouter();
   const queryTemplate = useSearchParams().get("template");
@@ -120,13 +126,13 @@ export function SingleSend({
           {!embedded && mode === "edit" ? (
             <section className={styles.profile}>
               <div>
-                <h2>John Smith</h2>
+                <h2>{applicantName ?? "John Smith"}</h2>
                 <p>Email</p>
-                <strong>jsmith@email.com</strong>
+                <strong>{applicantEmail ?? "jsmith@email.com"}</strong>
               </div>
               <span className={styles.rule} />
               <div>
-                <h2>6-Month CD</h2>
+                <h2>{productName ?? "6-Month CD"}</h2>
                 <div className={styles.facts}>
                   <div>
                     <p>Initial Deposit</p>

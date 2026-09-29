@@ -42,7 +42,6 @@
 }
 
 .subtitle {
-  max-width: 560px;
   color: var(--foreground-muted);
   font-size: var(--font-size-body-base);
   font-weight: var(--font-weight-regular);

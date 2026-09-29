@@ -267,7 +267,11 @@ function InputCell({
       <span className="text-xs whitespace-nowrap text-gray-medium">{label}</span>
       <span className="relative block">
         {moneyPrefix ? (
-          <span className="pointer-events-none absolute inset-y-0 left-sm flex items-center text-base text-gray-medium">
+          <span
+            className={`pointer-events-none absolute inset-y-0 left-sm flex items-center text-base ${
+              !focused && empty ? "text-gray-medium" : "text-gray-dark"
+            }`}
+          >
             $
           </span>
         ) : null}
@@ -275,9 +279,9 @@ function InputCell({
           type="text"
           inputMode="decimal"
           aria-label={label}
-          className={`uw-input w-[140px] rounded-xs text-base ${moneyPrefix ? "pl-lg" : ""} ${
-            !focused && empty ? "text-gray-medium" : ""
-          }`}
+          className={`uw-input uw-calc-entry w-[140px] rounded-xs text-base ${
+            moneyPrefix ? "uw-calc-money" : ""
+          } ${!focused && empty ? "uw-calc-empty" : ""}`}
           value={display}
           onFocus={() => {
             setFocused(true);
@@ -331,7 +335,7 @@ function ResultCell({ value, tone }: { value: number | null; tone: "mid" | "fina
       readOnly
       tabIndex={-1}
       className={`uw-input w-[128px] rounded-xs text-right text-base font-semibold ${
-        tone === "final" ? "border-primary bg-primary-bg text-primary" : "bg-gray-lightest"
+        tone === "final" ? "uw-calc-final" : "uw-calc-mid"
       }`}
       value={dashed ? "—" : money(value)}
     />

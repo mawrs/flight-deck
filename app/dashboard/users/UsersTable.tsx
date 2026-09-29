@@ -1,7 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import {
   Button,
   DataTable,
@@ -14,6 +13,7 @@ import {
   Pagination,
   SearchField,
 } from "@/components";
+import { UserForm } from "./UserDetail";
 import { useUsers } from "./users";
 import styles from "./users.module.css";
 
@@ -27,13 +27,26 @@ function Plus() {
   );
 }
 
+function Pencil() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <path d="M11.2 2.8l2 2-8.4 8.4H2.8v-2L11.2 2.8z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
+      <path d="M10 4l2 2" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+const COLUMNS = 7;
+
 export function UsersTable() {
-  const router = useRouter();
   const users = useUsers();
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [synced, setSynced] = useState(false);
+  const [editing, setEditing] = useState<string | null>(null);
+  const filteredRef = useRef<typeof users>([]);
+  const pageSizeRef = useRef(pageSize);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -48,9 +61,18 @@ export function UsersTable() {
   const current = Math.min(page, pageCount);
   const start = filtered.length === 0 ? 0 : (current - 1) * pageSize;
   const visible = filtered.slice(start, start + pageSize);
+  filteredRef.current = filtered;
+  pageSizeRef.current = pageSize;
 
-  function openUser(username: string) {
-    router.push(`/dashboard/users/${encodeURIComponent(username)}`);
+  useEffect(() => {
+    if (!editing || editing === "new") return;
+    const index = filteredRef.current.findIndex((row) => row.username === editing);
+    if (index < 0) return;
+    setPage(Math.floor(index / pageSizeRef.current) + 1);
+  }, [editing]);
+
+  function toggleEdit(username: string) {
+    setEditing((currentId) => (currentId === username ? null : username));
   }
 
   return (
@@ -68,7 +90,7 @@ export function UsersTable() {
             }}
           />
           <div className={styles.toolbarActions}>
-            <Button size="small" icon={<Plus />} onClick={() => router.push("/dashboard/users/new")}>
+            <Button size="small" icon={<Plus />} aria-expanded={editing === "new"} onClick={() => toggleEdit("new")}>
               Create User
             </Button>
             <Button variant="outline" size="small" onClick={() => setSynced(true)}>
@@ -87,34 +109,65 @@ export function UsersTable() {
                 <th>Person Number</th>
                 <th>Verified Email</th>
                 <th>Locked Out</th>
+                <th aria-label="Actions" />
               </tr>
             </thead>
             <tbody>
+              {editing === "new" ? (
+                <tr className={styles.expandRow}>
+                  <td className={styles.expandCell} colSpan={COLUMNS}>
+                    <UserForm
+                      key="new"
+                      username="new"
+                      className={styles.inlineForm}
+                      onCancel={() => setEditing(null)}
+                      onDeleted={() => setEditing(null)}
+                      onRenamed={setEditing}
+                    />
+                  </td>
+                </tr>
+              ) : null}
               {visible.length === 0 ? (
                 <tr>
-                  <td className={styles.empty} colSpan={6}>
+                  <td className={styles.empty} colSpan={COLUMNS}>
                     No matching users
                   </td>
                 </tr>
               ) : (
-                visible.map((row) => (
-                  <tr
-                    key={row.username}
-                    className={styles.row}
-                    tabIndex={0}
-                    onClick={() => openUser(row.username)}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter" && event.target === event.currentTarget) openUser(row.username);
-                    }}
-                  >
-                    <td className={styles.strong}>{row.username}</td>
-                    <td>{row.email}</td>
-                    <td>{row.fullName}</td>
-                    <td>{row.personNumber}</td>
-                    <td>{row.verifiedEmail ? "True" : "False"}</td>
-                    <td>{row.lockedOut ? "True" : "False"}</td>
-                  </tr>
-                ))
+                visible.map((row) => {
+                  const open = editing === row.username;
+                  return (
+                    <Fragment key={row.username}>
+                      <tr className={open ? styles.rowOpen : undefined}>
+                        <td className={styles.strong}>{row.username}</td>
+                        <td>{row.email}</td>
+                        <td>{row.fullName}</td>
+                        <td>{row.personNumber}</td>
+                        <td>{row.verifiedEmail ? "True" : "False"}</td>
+                        <td>{row.lockedOut ? "True" : "False"}</td>
+                        <td className={styles.actions}>
+                          <Button variant="link" size="small" icon={<Pencil />} aria-expanded={open} onClick={() => toggleEdit(row.username)}>
+                            Edit
+                          </Button>
+                        </td>
+                      </tr>
+                      {open ? (
+                        <tr className={styles.expandRow}>
+                          <td className={styles.expandCell} colSpan={COLUMNS}>
+                            <UserForm
+                              key={row.username}
+                              username={row.username}
+                              className={styles.inlineForm}
+                              onCancel={() => setEditing(null)}
+                              onDeleted={() => setEditing(null)}
+                              onRenamed={setEditing}
+                            />
+                          </td>
+                        </tr>
+                      ) : null}
+                    </Fragment>
+                  );
+                })
               )}
             </tbody>
           </DataTable>

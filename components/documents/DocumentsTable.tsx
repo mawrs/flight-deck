@@ -79,7 +79,7 @@ export function DocumentsTable({
               <CheckBox checked={allSelected} onChange={toggleAll} label="Select all documents" />
             </th>
             <th className="uw-list-th w-[240px]">Document Name</th>
-            <th className="uw-list-th w-[160px]">Document Type</th>
+            <th className="uw-list-th w-[220px]">Document Type</th>
             <th className="uw-list-th">Description</th>
             <th className="uw-list-th w-[260px]">Doc Uploaded</th>
             <th className="uw-list-th w-[160px]">Doc Uploaded (EST)</th>
@@ -104,10 +104,10 @@ export function DocumentsTable({
                     label={`Select ${doc.name}`}
                   />
                 </td>
-                <td className="uw-list-td whitespace-normal">{doc.name}</td>
-                <td className="uw-list-td whitespace-normal">{doc.typeLabel}</td>
-                <td className="uw-list-td whitespace-normal">{doc.description}</td>
-                <td className="uw-list-td whitespace-normal">
+                <td className="uw-list-td uw-list-td-wrap">{doc.name}</td>
+                <td className="uw-list-td uw-list-td-wrap">{doc.typeLabel}</td>
+                <td className="uw-list-td uw-list-td-wrap">{doc.description}</td>
+                <td className="uw-list-td uw-list-td-wrap">
                   <span>
                     <a
                       href={sampleDocumentHref(doc.fileName)}

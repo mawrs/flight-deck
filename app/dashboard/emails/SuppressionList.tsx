@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import Link from "next/link";
 import {
   Badge,
   Button,
@@ -104,11 +103,6 @@ export function SuppressionList() {
     <Page flush>
       <PageHeader
         className={styles.pageHeader}
-        eyebrow={
-          <>
-            <Link href="/dashboard/emails">Emails</Link> &gt; Suppression List
-          </>
-        }
         title="Email Suppression List"
         subtitle="Contacts that have unsubscribed, bounced, blocked or reported emails as spam"
       />

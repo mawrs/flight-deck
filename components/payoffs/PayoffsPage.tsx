@@ -1,18 +1,30 @@
 "use client";
 
-import type { ReactNode } from "react";
+import Link from "next/link";
+import { useState, type ReactNode } from "react";
 import { useFileWorkspace } from "@/components/application/file-context";
 import { LOAN_ROW_GRID, LoanCard } from "@/components/payoffs/LoanCard";
+import { Button, buttonClass } from "@/components/ui/Button";
 import { UnderwritingLiabilities } from "@/components/underwriting/UnderwritingLiabilities";
 import { selectedPayoffTotal } from "@/lib/calculations";
+import { sampleDocumentHref } from "@/lib/documents";
+import { exportLiabilities } from "@/lib/export/xlsx";
 import { money } from "@/lib/format";
-import { isStudentLoan, normalizeLiability } from "@/lib/payoffs";
+import { isStudentLoan, loansForPayoff, normalizeLiability, patchPayoffLoan } from "@/lib/payoffs";
 import { useApplication } from "@/lib/store";
-import type { Liability } from "@/lib/types";
+import type { Application, Liability } from "@/lib/types";
+
+const LIABILITY_PANELS = [
+  { id: "credit", label: "Credit Report Liabilities" },
+  { id: "student", label: "Student Loan Liabilities" },
+] as const;
+
+type LiabilityPanel = (typeof LIABILITY_PANELS)[number]["id"];
 
 export function PayoffsPage({ mode = "all" }: { mode?: "all" | "payoff" }) {
   const { id, readOnly, basePath } = useFileWorkspace();
   const { application, updateApplication } = useApplication(id);
+  const [panel, setPanel] = useState<LiabilityPanel>("credit");
   if (!application) return null;
   const file = application;
 
@@ -20,56 +32,117 @@ export function PayoffsPage({ mode = "all" }: { mode?: "all" | "payoff" }) {
     .map(normalizeLiability)
     .filter(isStudentLoan)
     .filter((item) => item.lender || item.accountNumber || item.balance);
-  const payoffLoans = (file.payoffs ?? []).map(normalizeLiability);
   const liabilities = mode === "all";
-  const loans = liabilities ? studentLoans : payoffLoans;
+  const loans = liabilities ? studentLoans : loansForPayoff(file);
   const selected = loans.filter((item) => item.selected);
 
-  function setLoans(next: Liability[]) {
+  function update(loanId: string, patch: Partial<Liability>) {
     if (liabilities) {
       const others = file.liabilities.filter((item) => !isStudentLoan(item));
+      const next = loans.map((item) => (item.id === loanId ? { ...item, ...patch } : item));
       updateApplication(id, { liabilities: [...others, ...next.map(normalizeLiability)] });
       return;
     }
-    updateApplication(id, { payoffs: next.map(normalizeLiability) });
+    updateApplication(id, patchPayoffLoan(file, loanId, patch));
   }
 
-  function update(loanId: string, patch: Partial<Liability>) {
-    setLoans(loans.map((item) => (item.id === loanId ? { ...item, ...patch } : item)));
-  }
-
-  return (
-    <div className="flex flex-col bg-white">
-      {liabilities ? (
-        <div className="border-b border-gray-light">
+  if (liabilities) {
+    return (
+      <div className="flex flex-col bg-white">
+        <div className="uw-card-header">
+          <h1 className="text-lg text-black">Liabilities</h1>
+          {panel === "credit" ? (
+            <CreditReportActions application={file} basePath={basePath} />
+          ) : (
+            <PromptLine prompt="Not seeing your loan?">
+              <span className="uw-btn-link pointer-events-none cursor-default">
+                Add another student loan
+              </span>
+            </PromptLine>
+          )}
+        </div>
+        <nav className="uw-section-tabs" aria-label="Liabilities sections">
+          {LIABILITY_PANELS.map((item) => {
+            const active = item.id === panel;
+            return (
+              <button
+                key={item.id}
+                type="button"
+                aria-current={active ? "page" : undefined}
+                onClick={() => setPanel(item.id)}
+                className="uw-section-tab"
+              >
+                {item.label}
+              </button>
+            );
+          })}
+        </nav>
+        {panel === "credit" ? (
           <UnderwritingLiabilities
             application={file}
             readOnly={readOnly}
             basePath={basePath}
-            showHeader
             onChange={(patch) => updateApplication(id, patch)}
           />
-        </div>
-      ) : null}
+        ) : (
+          <StudentLoans
+            loans={loans}
+            selected={selected}
+            onChange={(loanId, patch) => update(loanId, patch)}
+          />
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col bg-white">
       <div className="uw-card-header">
-        <h1 className="text-lg text-black">
-          {liabilities ? "Student Loan Liabilities" : "Loan Payoff"}
-        </h1>
-        {liabilities ? (
-          <PromptLine prompt="Not seeing your loan?">
-            <span className="uw-btn-link pointer-events-none cursor-default">
-              Add another student loan
-            </span>
-          </PromptLine>
-        ) : null}
+        <h1 className="text-lg text-black">Loan Payoff</h1>
       </div>
 
       <div className="flex flex-col">
         {loans.length === 0 ? (
-          <p className="px-xl py-lg text-sm text-gray-medium">
-            {liabilities ? "No student loans are on this file." : "No loans are on this payoff list."}
-          </p>
-        ) : liabilities ? (
+          <p className="px-xl py-lg text-sm text-gray-medium">No loans are on this payoff list.</p>
+        ) : (
+          <div className="flex flex-col gap-lg bg-white px-xl py-lg">
+            {loans.map((item, index) => (
+              <LoanCard
+                key={item.id}
+                item={item}
+                variant="payoff"
+                index={index + 1}
+                readOnly={readOnly}
+                onChange={(patch) => update(item.id, patch)}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+
+      <PayoffTotal
+        amount={selected.reduce((sum, item) => sum + (item.adjBalance || item.balance), 0)}
+        count={selected.length}
+      />
+    </div>
+  );
+}
+
+function StudentLoans({
+  loans,
+  selected,
+  onChange,
+}: {
+  loans: Liability[];
+  selected: Liability[];
+  onChange: (loanId: string, patch: Partial<Liability>) => void;
+}) {
+  return (
+    <>
+      <div className="flex flex-col">
+        {loans.length === 0 ? (
+          <p className="px-xl py-lg text-sm text-gray-medium">No student loans are on this file.</p>
+        ) : (
           <div>
             <div
               className={`${LOAN_ROW_GRID} h-11 border-b border-gray-light bg-gray-lightest px-xl text-sm font-semibold whitespace-nowrap text-black`}
@@ -88,37 +161,47 @@ export function PayoffsPage({ mode = "all" }: { mode?: "all" | "payoff" }) {
                 variant="all"
                 last={index === loans.length - 1}
                 readOnly={false}
-                onChange={(patch) => update(item.id, patch)}
-              />
-            ))}
-          </div>
-        ) : (
-          <div className="flex flex-col gap-lg bg-white px-xl py-lg">
-            {loans.map((item, index) => (
-              <LoanCard
-                key={item.id}
-                item={item}
-                variant="payoff"
-                index={index + 1}
-                readOnly={readOnly}
-                onChange={(patch) => update(item.id, patch)}
+                onChange={(patch) => onChange(item.id, patch)}
               />
             ))}
           </div>
         )}
       </div>
+      <PayoffTotal amount={selectedPayoffTotal(selected)} count={selected.length} />
+    </>
+  );
+}
 
-      <div className="flex items-center justify-between gap-md border-t border-gray-light bg-gray-lightest px-xl py-lg">
-        <div>
-          <p className="text-sm text-gray-dark">Total amount to be paid off</p>
-          <p className="text-xl font-semibold text-black">
-            {money(liabilities ? selectedPayoffTotal(selected) : selected.reduce((sum, item) => sum + (item.adjBalance || item.balance), 0))}
-          </p>
-        </div>
-        <p className="text-xs text-gray-dark">
-          {selected.length === 1 ? "1 loan selected" : `${selected.length} loans selected`}
-        </p>
+function PayoffTotal({ amount, count }: { amount: number; count: number }) {
+  return (
+    <div className="flex items-center justify-between gap-md border-t border-gray-light bg-gray-lightest px-xl py-lg">
+      <div>
+        <p className="text-sm text-gray-dark">Total amount to be paid off</p>
+        <p className="text-xl font-semibold text-black">{money(amount)}</p>
       </div>
+      <p className="text-xs text-gray-dark">{count === 1 ? "1 loan selected" : `${count} loans selected`}</p>
+    </div>
+  );
+}
+
+function CreditReportActions({
+  application,
+  basePath,
+}: {
+  application: Application;
+  basePath: string;
+}) {
+  const creditDoc = application.documents.find((item) => item.kind === "credit-report");
+  const reportHref = creditDoc ? sampleDocumentHref(creditDoc.fileName) : `${basePath}/documents`;
+
+  return (
+    <div className="flex shrink-0 items-center gap-sm">
+      <Button variant="secondary" className="h-[31px]" onClick={() => exportLiabilities(application)}>
+        Export to Excel
+      </Button>
+      <Link href={reportHref} className={buttonClass("primary")}>
+        View Credit Report
+      </Link>
     </div>
   );
 }
