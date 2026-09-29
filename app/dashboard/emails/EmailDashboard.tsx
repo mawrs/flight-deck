@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   Badge,
   Button,
@@ -15,6 +15,7 @@ import {
   SearchField,
 } from "@/components";
 import { CONFIGURE, EMAIL_ACTIVITY, type EmailStatus } from "./activity";
+import { SingleSend } from "./SingleSend";
 import styles from "./emails.module.css";
 
 const STATUS_TONE: Record<EmailStatus, "warning" | "success" | "error"> = {
@@ -35,8 +36,10 @@ function Chevron() {
 
 export function EmailDashboard() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [query, setQuery] = useState("");
   const [configureOpen, setConfigureOpen] = useState(false);
+  const preview = EMAIL_ACTIVITY.find((row) => row.id === searchParams.get("preview"));
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return EMAIL_ACTIVITY;
@@ -44,6 +47,19 @@ export function EmailDashboard() {
       [row.template, row.subject, row.email, row.customer, row.status].join(" ").toLowerCase().includes(q),
     );
   }, [query]);
+
+  if (preview) {
+    return (
+      <SingleSend
+        readOnly
+        templateTitle={preview.template}
+        applicantName={preview.customer}
+        applicantEmail={preview.email}
+        sentLabel={preview.sent}
+        onCancel={() => router.push("/dashboard/emails")}
+      />
+    );
+  }
 
   return (
     <Page flush>
@@ -109,7 +125,7 @@ export function EmailDashboard() {
               {rows.map((row) => (
                 <tr key={row.id}>
                   <td>
-                    <button className={styles.link} type="button" onClick={() => router.push("/dashboard/emails/send")}>
+                    <button className={styles.link} type="button" onClick={() => router.push(`/dashboard/emails?preview=${row.id}`)}>
                       {row.template}
                     </button>
                     <p className={styles.templateSub}>{row.subject}</p>

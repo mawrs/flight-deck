@@ -58,7 +58,7 @@ export function SingleSend({
   const queryTemplate = useSearchParams().get("template");
   const templateName = templateTitle ?? queryTemplate;
   const matched = EMAIL_ACTIVITY.find((row) => row.template === templateName);
-  const startingBody = body ?? INITIAL_HTML;
+  const startingBody = body ?? (readOnly && applicantName ? INITIAL_HTML.replace("John Smith", applicantName) : INITIAL_HTML);
   const editorRef = useRef<HTMLDivElement>(null);
   const bodyRef = useRef(startingBody);
   const [mode, setMode] = useState<Mode>("edit");
