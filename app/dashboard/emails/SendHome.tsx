@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Page, PageHeader } from "@/components";
+import { Button, Page, PageHeader, SearchField } from "@/components";
 import { DropdownItem } from "@/components/ui/Dropdown";
 import { SingleSend } from "./SingleSend";
 import styles from "./emails.module.css";
@@ -45,6 +45,14 @@ function Chevron({ direction }: { direction: "down" | "right" }) {
   return <img src={src} alt="" width={16} height={16} />;
 }
 
+function ChevronRight() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
+      <path d="M5 4.06 8.9 8 5 11.94 6.05 13 11 8 6.05 3 5 4.06Z" fill="currentColor" />
+    </svg>
+  );
+}
+
 export function SendHome() {
   const [query, setQuery] = useState("");
   const [pickedId, setPickedId] = useState<string | null>(null);
@@ -52,20 +60,26 @@ export function SendHome() {
   const [category, setCategory] = useState<(typeof CATEGORIES)[number]>("Rejection/Decline");
   const [template, setTemplate] = useState("");
   const [menu, setMenu] = useState<null | "category" | "template">(null);
+  const [resultsOpen, setResultsOpen] = useState(false);
   const [draft, setDraft] = useState<{ name: string; email: string; product: string; template: string } | null>(null);
   const stepsRef = useRef<HTMLDivElement>(null);
+  const searchRef = useRef<HTMLDivElement>(null);
 
   const matches = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return [];
-    const tokens = q.split(/\s+/);
+    const tokens = q ? q.split(/\s+/) : [];
     return APPLICANTS.filter((person) => {
+      if (!tokens.length) return true;
       const haystack = [person.name, person.email, person.id, person.alias, `#${person.id}`, `#${person.alias}`].join(" ").toLowerCase();
       return tokens.every((token) => haystack.includes(token));
     });
   }, [query]);
 
-  const applicant = matches.length === 1 ? matches[0] : matches.find((person) => person.id === pickedId) ?? null;
+  const applicant = pickedId
+    ? (APPLICANTS.find((person) => person.id === pickedId) ?? null)
+    : query.trim() && matches.length === 1
+      ? matches[0]
+      : null;
 
   useEffect(() => {
     setProduct(applicant?.applications[0] ?? "");
@@ -74,12 +88,16 @@ export function SendHome() {
   }, [applicant?.id]);
 
   useEffect(() => {
-    if (!menu) return;
+    if (!menu && !resultsOpen) return;
     function closeOnOutside(event: PointerEvent) {
-      if (!stepsRef.current?.contains(event.target as Node)) setMenu(null);
+      const target = event.target as Node;
+      if (menu && !stepsRef.current?.contains(target)) setMenu(null);
+      if (resultsOpen && !searchRef.current?.contains(target)) setResultsOpen(false);
     }
     function closeOnEscape(event: KeyboardEvent) {
-      if (event.key === "Escape") setMenu(null);
+      if (event.key !== "Escape") return;
+      setMenu(null);
+      setResultsOpen(false);
     }
     document.addEventListener("pointerdown", closeOnOutside);
     document.addEventListener("keydown", closeOnEscape);
@@ -87,7 +105,7 @@ export function SendHome() {
       document.removeEventListener("pointerdown", closeOnOutside);
       document.removeEventListener("keydown", closeOnEscape);
     };
-  }, [menu]);
+  }, [menu, resultsOpen]);
 
   if (draft) {
     return (
@@ -102,6 +120,7 @@ export function SendHome() {
   }
 
   const templates = TEMPLATES[category];
+  const ready = Boolean(applicant && template);
 
   return (
     <Page flush className={styles.homePage}>
@@ -109,48 +128,66 @@ export function SendHome() {
         className={styles.pageHeader}
         title="Single Email Send"
         actions={
-          <button
-            className={template ? styles.chooseReady : styles.chooseIdle}
-            type="button"
-            disabled={!template || !applicant}
-            onClick={() => {
-              if (!applicant || !template) return;
-              setDraft({ name: applicant.name, email: applicant.email, product, template });
-            }}
-          >
-            Choose this template
-            <Chevron direction="right" />
-          </button>
+          ready ? (
+            <Button
+              size="small"
+              onClick={() => {
+                if (!applicant || !template) return;
+                setDraft({ name: applicant.name, email: applicant.email, product, template });
+              }}
+            >
+              Choose this template
+              <ChevronRight />
+            </Button>
+          ) : (
+            <button className={styles.chooseIdle} type="button" disabled>
+              Choose this template
+              <Chevron direction="right" />
+            </button>
+          )
         }
       />
       <div className={styles.homeBody}>
-      <div className={styles.homeSearchWrap}>
-      <label className={styles.homeSearch}>
-        <img src="/dashboard/search.svg" alt="" width={12} height={12} />
-        <input
-          type="search"
-          aria-label="Search applicants"
+      <div className={styles.homeSearchWrap} ref={searchRef}>
+        <SearchField
+          label="Search applicants"
           placeholder="Search applicants"
           value={query}
+          onFocus={() => setResultsOpen(true)}
+          onBlur={(event) => {
+            const next = event.relatedTarget;
+            if (next instanceof Node && searchRef.current?.contains(next)) return;
+            setResultsOpen(false);
+          }}
           onChange={(event) => {
             setQuery(event.target.value);
             setPickedId(null);
+            setResultsOpen(true);
           }}
         />
-      </label>
-      {query.trim() && matches.length === 0 ? <p className={styles.homeEmpty}>No matching applicants.</p> : null}
-      {matches.length > 1 && !applicant ? (
-        <div className={`uw-dropdown ${styles.homeResults}`} role="listbox" aria-label="Matching applicants">
-          {matches.map((person) => (
-            <DropdownItem key={person.id} role="option" onClick={() => setPickedId(person.id)}>
-              <span className={styles.homeResultLabel}>
-                {person.name}
-                <span>ID #{person.id}</span>
-              </span>
-            </DropdownItem>
-          ))}
-        </div>
-      ) : null}
+        {resultsOpen ? (
+          <div className={`uw-dropdown ${styles.homeResults}`} role="listbox" aria-label="Matching applicants">
+            {matches.length === 0 ? (
+              <p className={styles.homeEmpty}>No matching applicants.</p>
+            ) : (
+              matches.map((person) => (
+                <DropdownItem
+                  key={person.id}
+                  role="option"
+                  onClick={() => {
+                    setPickedId(person.id);
+                    setResultsOpen(false);
+                  }}
+                >
+                  <span className={styles.homeResultLabel}>
+                    {person.name}
+                    <span>ID #{person.id}</span>
+                  </span>
+                </DropdownItem>
+              ))
+            )}
+          </div>
+        ) : null}
       </div>
       <section className={styles.homeCard}>
           <div className={styles.homeApps}>
