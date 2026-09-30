@@ -12,6 +12,9 @@
   --color-secondary-lightyellow: #E0E17C;
   --color-secondary-lightyellow-hover: #D3D475;
   --color-secondary-lightyellow-background: #E5E5CF;
+  --color-input-field-yellow: rgb(255 236 64 / 0.55);
+  --color-input-field-pink: #FDE7E9;
+  --color-input-field-blue: #DEECF9;
   --color-secondary-orange: #D75F00;
   --color-secondary-orange-hover: #BF5500;
   --color-secondary-orange-background: #E5D2C3;
@@ -135,6 +138,9 @@
   --secondary-lightyellow: var(--color-secondary-lightyellow);
   --secondary-lightyellow-hover: var(--color-secondary-lightyellow-hover);
   --secondary-lightyellow-background: var(--color-secondary-lightyellow-background);
+  --input-field-yellow: var(--color-input-field-yellow);
+  --input-field-pink: var(--color-input-field-pink);
+  --input-field-blue: var(--color-input-field-blue);
   --secondary-orange: var(--color-secondary-orange);
   --secondary-orange-hover: var(--color-secondary-orange-hover);
   --secondary-orange-background: var(--color-secondary-orange-background);

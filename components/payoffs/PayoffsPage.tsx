@@ -3,13 +3,12 @@
 import Link from "next/link";
 import { useState, type ReactNode } from "react";
 import { useFileWorkspace } from "@/components/application/file-context";
-import { LOAN_ROW_GRID, LoanCard } from "@/components/payoffs/LoanCard";
+import { LoanCard } from "@/components/payoffs/LoanCard";
+import { PayoffTotal, StudentLoans } from "@/components/payoffs/StudentLoans";
 import { Button, buttonClass } from "@/components/ui/Button";
 import { UnderwritingLiabilities } from "@/components/underwriting/UnderwritingLiabilities";
-import { selectedPayoffTotal } from "@/lib/calculations";
 import { sampleDocumentHref } from "@/lib/documents";
 import { exportLiabilities } from "@/lib/export/xlsx";
-import { money } from "@/lib/format";
 import { isStudentLoan, loansForPayoff, normalizeLiability, patchPayoffLoan } from "@/lib/payoffs";
 import { useApplication } from "@/lib/store";
 import type { Application, Liability } from "@/lib/types";
@@ -88,6 +87,7 @@ export function PayoffsPage({ mode = "all" }: { mode?: "all" | "payoff" }) {
           <StudentLoans
             loans={loans}
             selected={selected}
+            readOnly={readOnly}
             onChange={(loanId, patch) => update(loanId, patch)}
           />
         )}
@@ -124,62 +124,6 @@ export function PayoffsPage({ mode = "all" }: { mode?: "all" | "payoff" }) {
         amount={selected.reduce((sum, item) => sum + (item.adjBalance || item.balance), 0)}
         count={selected.length}
       />
-    </div>
-  );
-}
-
-function StudentLoans({
-  loans,
-  selected,
-  onChange,
-}: {
-  loans: Liability[];
-  selected: Liability[];
-  onChange: (loanId: string, patch: Partial<Liability>) => void;
-}) {
-  return (
-    <>
-      <div className="flex flex-col">
-        {loans.length === 0 ? (
-          <p className="px-xl py-lg text-sm text-gray-medium">No student loans are on this file.</p>
-        ) : (
-          <div>
-            <div
-              className={`${LOAN_ROW_GRID} h-11 border-b border-gray-light bg-gray-lightest px-xl text-sm font-semibold whitespace-nowrap text-black`}
-            >
-              <div className="flex items-center gap-lg">
-                <span className="size-[21px] shrink-0" aria-hidden />
-                <span>Loan Amount</span>
-              </div>
-              <span>Account Number</span>
-              <span>Monthly Payment</span>
-            </div>
-            {loans.map((item, index) => (
-              <LoanCard
-                key={item.id}
-                item={item}
-                variant="all"
-                last={index === loans.length - 1}
-                readOnly={false}
-                onChange={(patch) => onChange(item.id, patch)}
-              />
-            ))}
-          </div>
-        )}
-      </div>
-      <PayoffTotal amount={selectedPayoffTotal(selected)} count={selected.length} />
-    </>
-  );
-}
-
-function PayoffTotal({ amount, count }: { amount: number; count: number }) {
-  return (
-    <div className="flex items-center justify-between gap-md border-t border-gray-light bg-gray-lightest px-xl py-lg">
-      <div>
-        <p className="text-sm text-gray-dark">Total amount to be paid off</p>
-        <p className="text-xl font-semibold text-black">{money(amount)}</p>
-      </div>
-      <p className="text-xs text-gray-dark">{count === 1 ? "1 loan selected" : `${count} loans selected`}</p>
     </div>
   );
 }

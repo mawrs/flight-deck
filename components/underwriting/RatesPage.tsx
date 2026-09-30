@@ -30,7 +30,7 @@ export function RatesPage() {
         <div className="uw-card-header">
           <h1 className="text-lg text-black">Rates</h1>
           <p className="flex items-center gap-sm text-sm text-gray-dark">
-            <span className="size-[14px] rounded-xs bg-yellow" aria-hidden />
+            <span className="size-[14px] rounded-xs bg-input-yellow" aria-hidden />
             Color = selected
           </p>
         </div>

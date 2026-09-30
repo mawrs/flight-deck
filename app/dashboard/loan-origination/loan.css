@@ -72,6 +72,9 @@
   --color-yellow: var(--color-secondary-lightyellow);
   --color-yellow-hover: var(--color-secondary-lightyellow-hover);
   --color-yellow-bg: var(--color-secondary-lightyellow-background);
+  --color-input-yellow: var(--color-input-field-yellow);
+  --color-input-pink: var(--color-input-field-pink);
+  --color-input-blue: var(--color-input-field-blue);
   --color-orange: var(--color-secondary-orange);
   --color-orange-hover: var(--color-secondary-orange-hover);
   --color-orange-bg: var(--color-secondary-orange-background);
@@ -552,7 +555,7 @@
   }
 
   .uw-input.uw-calc-entry {
-    background: var(--color-status-warning-background);
+    background: var(--color-input-field-yellow);
   }
 
   .uw-input.uw-calc-money {
@@ -564,12 +567,12 @@
   }
 
   .uw-input.uw-calc-mid {
-    background: var(--color-status-error-background);
+    background: var(--color-input-field-pink);
     color: var(--color-gray-dark);
   }
 
   .uw-input.uw-calc-final {
-    background: var(--color-primary-blue-background-dev);
+    background: var(--color-input-field-blue);
     color: var(--color-primary);
   }
 

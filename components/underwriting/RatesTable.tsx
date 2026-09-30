@@ -123,7 +123,7 @@ function RateRow({
                 <button
                   type="button"
                   onClick={() => onSelect(kind, term)}
-                  className="rounded-xs bg-yellow px-[12px] py-xs text-base text-gray-dark"
+                  className="rounded-xs bg-input-yellow px-[12px] py-xs text-base text-gray-dark"
                 >
                   {rateLabel}
                 </button>

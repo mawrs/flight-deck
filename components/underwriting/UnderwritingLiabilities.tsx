@@ -161,7 +161,7 @@ export function UnderwritingLiabilities({
 }
 
 const YELLOW_VALUE =
-  "ml-auto block w-[105px] rounded-xs bg-yellow px-3 py-xs text-right text-base text-gray-dark";
+  "ml-auto block w-[105px] rounded-xs bg-input-yellow px-3 py-xs text-right text-base text-gray-dark";
 
 function HousingExpenseInput({
   value,

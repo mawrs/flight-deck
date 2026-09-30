@@ -129,6 +129,41 @@ export interface IncomeCalculator {
   yearPrior: number;
 }
 
+export interface NursingCalculator {
+  hospitalYtd: number;
+  hospitalYtdMonths: number;
+  hospitalPriorYear: number;
+  hospitalIncluded: boolean;
+  agencyYtd: number;
+  agencyYtdMonths: number;
+  agencyPriorYear: number;
+  agencyIncluded: boolean;
+  prnYtd: number;
+  prnYtdMonths: number;
+  prnPriorYear: number;
+  prnIncluded: boolean;
+  stipendYtd: number;
+  stipendYtdMonths: number;
+}
+
+export interface SelfEmployedCalculator {
+  currentNet: number;
+  currentDepreciation: number;
+  currentHomeUse: number;
+  currentDepletionAmortization: number;
+  currentOtherAddbacks: number;
+  currentNonRecurringIncome: number;
+  priorNet: number;
+  priorDepreciation: number;
+  priorHomeUse: number;
+  priorDepletionAmortization: number;
+  priorOtherAddbacks: number;
+  priorNonRecurringIncome: number;
+  ytdNet: number;
+  ytdAddbacks: number;
+  ytdMonths: number;
+}
+
 export interface IncomeWorksheet {
   selectedFrequency: IncomeFrequency;
   grossPay: number;
@@ -140,6 +175,8 @@ export interface IncomeWorksheet {
   housingPayment: number;
   estimatedNewPayment: number;
   calculator?: IncomeCalculator;
+  nursing?: NursingCalculator;
+  selfEmployed?: SelfEmployedCalculator;
 }
 
 export interface DebtTrade {

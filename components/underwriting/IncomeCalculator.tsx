@@ -1,8 +1,7 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { CalcRow, ConstCell, InputCell, Operator, ResultCell } from "@/components/underwriting/calc-fields";
 import { hydrateCalculator } from "@/lib/calculations/income";
-import { money } from "@/lib/format";
 import type { Application, ApplicationPatch, IncomeCalculator, IncomeWorksheet } from "@/lib/types";
 
 type CalcRow = keyof IncomeCalculator;
@@ -237,107 +236,3 @@ function syncWorksheet(
   }
 }
 
-function CalcRow({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <div className="flex items-end gap-md border-b border-gray-light px-xl py-md">
-      <p className="w-[200px] shrink-0 pb-[7px] text-sm font-semibold whitespace-nowrap text-black">{label}</p>
-      <div className="flex items-end gap-3">{children}</div>
-    </div>
-  );
-}
-
-function InputCell({
-  label,
-  value,
-  moneyPrefix = false,
-  onChange,
-}: {
-  label: string;
-  value: number;
-  moneyPrefix?: boolean;
-  onChange: (value: number) => void;
-}) {
-  const [focused, setFocused] = useState(false);
-  const [draft, setDraft] = useState("");
-  const empty = !value;
-  const display = focused ? draft : value.toFixed(2);
-
-  return (
-    <label className="flex min-w-[128px] flex-col items-start gap-xs">
-      <span className="text-xs whitespace-nowrap text-gray-medium">{label}</span>
-      <span className="relative block">
-        {moneyPrefix ? (
-          <span
-            className={`pointer-events-none absolute inset-y-0 left-sm flex items-center text-base ${
-              !focused && empty ? "text-gray-medium" : "text-gray-dark"
-            }`}
-          >
-            $
-          </span>
-        ) : null}
-        <input
-          type="text"
-          inputMode="decimal"
-          aria-label={label}
-          className={`uw-input uw-calc-entry w-[140px] rounded-xs text-base ${
-            moneyPrefix ? "uw-calc-money" : ""
-          } ${!focused && empty ? "uw-calc-empty" : ""}`}
-          value={display}
-          onFocus={() => {
-            setFocused(true);
-            setDraft(empty ? "" : String(value));
-          }}
-          onBlur={() => {
-            setFocused(false);
-            const parsed = Number.parseFloat(draft);
-            onChange(Number.isFinite(parsed) ? parsed : 0);
-          }}
-          onChange={(event) => {
-            const next = event.target.value;
-            if (next !== "" && !/^\d*\.?\d*$/.test(next)) return;
-            setDraft(next);
-            const parsed = Number.parseFloat(next);
-            onChange(Number.isFinite(parsed) ? parsed : 0);
-          }}
-        />
-      </span>
-    </label>
-  );
-}
-
-function Operator({ symbol }: { symbol: string }) {
-  return (
-    <span className="flex min-h-[34px] w-5 shrink-0 items-center justify-center text-base font-semibold text-gray-dark">
-      {symbol}
-    </span>
-  );
-}
-
-function ConstCell({ label, value }: { label?: string; value: string }) {
-  return (
-    <div className="flex min-w-[92px] flex-col items-start gap-xs">
-      {label ? <p className="text-xs whitespace-nowrap text-gray-medium">{label}</p> : null}
-      <input
-        readOnly
-        tabIndex={-1}
-        aria-label={label || value}
-        className="uw-input w-[92px] rounded-xs bg-gray-lightest text-center text-base font-semibold"
-        value={value}
-      />
-    </div>
-  );
-}
-
-function ResultCell({ value, tone }: { value: number | null; tone: "mid" | "final" }) {
-  const dashed = value == null;
-  return (
-    <input
-      readOnly
-      tabIndex={-1}
-      className={`uw-input w-[128px] rounded-xs text-right text-base font-semibold ${
-        tone === "final" ? "uw-calc-final" : "uw-calc-mid"
-      }`}
-      value={dashed ? "—" : money(value)}
-    />
-  );
-}

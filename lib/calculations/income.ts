@@ -1,4 +1,10 @@
-import type { IncomeCalculator, IncomeFrequency, IncomeWorksheet } from "../types";
+import type {
+  IncomeCalculator,
+  IncomeFrequency,
+  IncomeWorksheet,
+  NursingCalculator,
+  SelfEmployedCalculator,
+} from "../types";
 
 export function emptyCalculator(): IncomeCalculator {
   return {
@@ -102,6 +108,148 @@ export function monthlyIncome(income: IncomeWorksheet): {
     : 0;
   const total = base + variable;
   return { base, variable, total, annualized: total * 12 };
+}
+
+export function emptyNursing(): NursingCalculator {
+  return {
+    hospitalYtd: 0,
+    hospitalYtdMonths: 0,
+    hospitalPriorYear: 0,
+    hospitalIncluded: false,
+    agencyYtd: 0,
+    agencyYtdMonths: 0,
+    agencyPriorYear: 0,
+    agencyIncluded: false,
+    prnYtd: 0,
+    prnYtdMonths: 0,
+    prnPriorYear: 0,
+    prnIncluded: false,
+    stipendYtd: 0,
+    stipendYtdMonths: 0,
+  };
+}
+
+export function hydrateNursing(income: IncomeWorksheet): NursingCalculator {
+  return { ...emptyNursing(), ...income.nursing };
+}
+
+export interface NursingSource {
+  priorMonthly: number;
+  ytdMonthly: number | null;
+  qualifyingMonthly: number;
+}
+
+function nursingSource(ytd: number, ytdMonths: number, priorYear: number): NursingSource {
+  const priorMonthly = priorYear / 12;
+  const ytdMonthly = ytdMonths > 0 ? ytd / ytdMonths : null;
+  const qualifyingMonthly =
+    ytdMonthly == null ? priorMonthly : priorMonthly ? Math.min(priorMonthly, ytdMonthly) : ytdMonthly;
+  return { priorMonthly, ytdMonthly, qualifyingMonthly };
+}
+
+export interface NursingBreakdown {
+  hospital: NursingSource;
+  agency: NursingSource;
+  prn: NursingSource;
+  stipendMonthly: number | null;
+  qualifyingMonthly: number;
+}
+
+export function nursingBreakdown(calc: NursingCalculator): NursingBreakdown {
+  const hospital = nursingSource(calc.hospitalYtd, calc.hospitalYtdMonths, calc.hospitalPriorYear);
+  const agency = nursingSource(calc.agencyYtd, calc.agencyYtdMonths, calc.agencyPriorYear);
+  const prn = nursingSource(calc.prnYtd, calc.prnYtdMonths, calc.prnPriorYear);
+  const stipendMonthly = calc.stipendYtdMonths > 0 ? calc.stipendYtd / calc.stipendYtdMonths : null;
+  const qualifyingMonthly =
+    (calc.hospitalIncluded ? hospital.qualifyingMonthly : 0) +
+    (calc.agencyIncluded ? agency.qualifyingMonthly : 0) +
+    (calc.prnIncluded ? prn.qualifyingMonthly : 0);
+  return { hospital, agency, prn, stipendMonthly, qualifyingMonthly };
+}
+
+export function emptySelfEmployed(): SelfEmployedCalculator {
+  return {
+    currentNet: 0,
+    currentDepreciation: 0,
+    currentHomeUse: 0,
+    currentDepletionAmortization: 0,
+    currentOtherAddbacks: 0,
+    currentNonRecurringIncome: 0,
+    priorNet: 0,
+    priorDepreciation: 0,
+    priorHomeUse: 0,
+    priorDepletionAmortization: 0,
+    priorOtherAddbacks: 0,
+    priorNonRecurringIncome: 0,
+    ytdNet: 0,
+    ytdAddbacks: 0,
+    ytdMonths: 0,
+  };
+}
+
+export function hydrateSelfEmployed(income: IncomeWorksheet): SelfEmployedCalculator {
+  return { ...emptySelfEmployed(), ...income.selfEmployed };
+}
+
+export type SelfEmployedMethod = "average" | "lower-year" | "ytd-cap" | "single" | "none";
+
+export interface SelfEmployedBreakdown {
+  currentAdjusted: number;
+  currentMonthly: number;
+  priorAdjusted: number;
+  priorMonthly: number;
+  qualifyingAnnual: number;
+  qualifyingMonthly: number;
+  method: SelfEmployedMethod;
+  ytdMonthly: number | null;
+}
+
+export function selfEmployedBreakdown(calc: SelfEmployedCalculator): SelfEmployedBreakdown {
+  const currentAdjusted =
+    calc.currentNet +
+    calc.currentDepreciation +
+    calc.currentHomeUse +
+    calc.currentDepletionAmortization +
+    calc.currentOtherAddbacks -
+    calc.currentNonRecurringIncome;
+  const priorAdjusted =
+    calc.priorNet +
+    calc.priorDepreciation +
+    calc.priorHomeUse +
+    calc.priorDepletionAmortization +
+    calc.priorOtherAddbacks -
+    calc.priorNonRecurringIncome;
+  const currentEntered = currentAdjusted !== 0;
+  const priorEntered = priorAdjusted !== 0;
+  let method: SelfEmployedMethod = "none";
+  let qualifyingAnnual = 0;
+  if (currentEntered && priorEntered) {
+    if (currentAdjusted < priorAdjusted) {
+      method = "lower-year";
+      qualifyingAnnual = currentAdjusted;
+    } else {
+      method = "average";
+      qualifyingAnnual = (currentAdjusted + priorAdjusted) / 2;
+    }
+  } else if (currentEntered || priorEntered) {
+    method = "single";
+    qualifyingAnnual = currentEntered ? currentAdjusted : priorAdjusted;
+  }
+  const ytdMonthly = calc.ytdMonths > 0 ? (calc.ytdNet + calc.ytdAddbacks) / calc.ytdMonths : null;
+  if (ytdMonthly != null && ytdMonthly < qualifyingAnnual / 12) {
+    qualifyingAnnual = ytdMonthly * 12;
+    method = "ytd-cap";
+  }
+  return {
+    currentAdjusted,
+    currentMonthly: currentAdjusted / 12,
+    priorAdjusted,
+    priorMonthly: priorAdjusted / 12,
+    qualifyingAnnual,
+    qualifyingMonthly: qualifyingAnnual / 12,
+    method,
+    ytdMonthly,
+  };
 }
 
 export function estimatedPayment(
