@@ -460,7 +460,7 @@ function samplePayoffs(prefix = ""): Liability[] {
 const elena: Application = {
   id: "2084417",
   opportunityName: "Elena Voss-2084417",
-  recordType: "Tavant",
+  recordType: "ReFi",
   stage: "UW - PreReview",
   amount: PRIMARY_AMOUNT,
   requestedTerm: 60,
@@ -944,7 +944,7 @@ function buildSeedApplications(): Application[] {
     return lightApplication({
       id,
       name,
-      recordType: index % 2 === 0 ? "Tavant" : "InSchool",
+      recordType: (["ReFi", "InSchool", "EdMed"] as const)[index % 3],
       amount: index === 3 ? 5200 : index === 5 ? 151200 : 4200 + Math.round(rand() * 176000),
       priority: 1 + (index % 6),
       difficulty: index === 5 || index % 5 === 0 ? "Hard" : "Medium",

@@ -76,7 +76,7 @@ function patchForField(
   if (key === "preReviewPriority" && (value === "Medium" || value === "Hard")) {
     patch.difficulty = value;
   }
-  if (key === "recordType" && (value === "InSchool" || value === "Tavant")) {
+  if (key === "recordType" && (value === "InSchool" || value === "ReFi" || value === "EdMed")) {
     patch.recordType = value;
   }
   return patch;

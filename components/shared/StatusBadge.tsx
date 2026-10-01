@@ -14,13 +14,31 @@ const statusTone: Record<string, BadgeTone> = {
   Medium: "neutral",
   Hard: "error",
   InSchool: "info",
+  ReFi: "navy",
+  EdMed: "orange",
   Tavant: "navy",
+  requested: "warning",
+  certified: "success",
+  reduced: "orange",
+  scheduled: "navy",
+  disbursed: "success",
+  high: "error",
+  medium: "warning",
+  low: "neutral",
+  open: "info",
+  "waiting-on-advisor": "warning",
+  "waiting-on-school": "navy",
+  resolved: "success",
+  completed: "success",
+  "In-School": "info",
 };
 
 export function StatusBadge({
   value,
+  label,
 }: {
   value: WorkflowStatus | DocumentStatus | string;
+  label?: string;
 }) {
-  return <Badge tone={statusTone[value] ?? "neutral"}>{value.replace(/-/g, " ")}</Badge>;
+  return <Badge tone={statusTone[value] ?? "neutral"}>{label ?? value.replace(/-/g, " ")}</Badge>;
 }

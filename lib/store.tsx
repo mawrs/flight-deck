@@ -18,6 +18,7 @@ import type {
   DebtTrade,
   Decision,
   Person,
+  RecordType,
   Role,
   UnderwritingExtras,
 } from "./types";
@@ -102,14 +103,15 @@ function loadApplications(): Application[] {
     if (!Array.isArray(parsed) || parsed.length === 0) {
       return clone(seedApplications);
     }
-    return parsed.map((item) => ({
+    const mapped = parsed.map((item) => ({
       ...item,
+      recordType: normalizeRecordType(item.recordType),
       borrower: hydratePerson(item.borrower) ?? item.borrower,
       cosigner: hydratePerson(item.cosigner),
       workbookFileName: item.workbookFileName ?? null,
       workbookUploadedAt: item.workbookUploadedAt ?? null,
       workbookCopy: item.workbookCopy ?? null,
-      opportunity: item.opportunity ?? {},
+      opportunity: normalizeOpportunityType(item.opportunity),
       underwriting: hydrateUnderwriting(item.underwriting, item),
       fileReview: item.fileReview ?? null,
       cosignerStatus: item.cosignerStatus ?? (item.cosigner ? "On file" : ""),
@@ -123,9 +125,33 @@ function loadApplications(): Application[] {
         ? item.payoffs
         : clone(seedApplications.find((seed) => seed.id === item.id)?.payoffs ?? []),
     }));
+    if (mapped.some((item) => item.recordType === "EdMed")) return mapped;
+    return mapped.map((item, index) =>
+      index % 3 === 2
+        ? {
+            ...item,
+            recordType: "EdMed" as const,
+            opportunity: item.opportunity?.recordType
+              ? { ...item.opportunity, recordType: "EdMed" }
+              : item.opportunity,
+          }
+        : item,
+    );
   } catch {
     return clone(seedApplications);
   }
+}
+
+function normalizeRecordType(value: string): RecordType {
+  if (value === "ReFi" || value === "EdMed" || value === "InSchool") return value;
+  if (value === "Tavant") return "ReFi";
+  return "InSchool";
+}
+
+function normalizeOpportunityType(opportunity: Application["opportunity"]) {
+  const next = opportunity ?? {};
+  if (!next.recordType) return next;
+  return { ...next, recordType: normalizeRecordType(next.recordType) };
 }
 
 function subscribe(listener: Listener) {

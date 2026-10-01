@@ -66,8 +66,9 @@ function defaultLoanDirection(key: LoanSortKey): SortDirection {
 
 const CATEGORIES: { id: CategoryFilter; label: string }[] = [
   { id: "all", label: "Loan Type" },
-  { id: "Tavant", label: "Student Loan Refi" },
-  { id: "InSchool", label: "In-School" },
+  { id: "InSchool", label: "InSchool" },
+  { id: "ReFi", label: "ReFi" },
+  { id: "EdMed", label: "EdMed" },
 ];
 
 const STATUSES: { id: "all" | WorkflowStatus; label: string }[] = [

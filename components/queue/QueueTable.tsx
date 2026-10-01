@@ -97,7 +97,8 @@ function defaultOpportunityDirection(key: OpportunitySortKey): SortDirection {
 const RECORD_TYPES: { id: "all" | RecordType; label: string }[] = [
   { id: "all", label: "Opportunity Record Type" },
   { id: "InSchool", label: "InSchool" },
-  { id: "Tavant", label: "Tavant" },
+  { id: "ReFi", label: "ReFi" },
+  { id: "EdMed", label: "EdMed" },
 ];
 
 const APPLICATION_DATES: { id: ApplicationWindow; label: string }[] = [

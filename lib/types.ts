@@ -1,4 +1,4 @@
-export type RecordType = "InSchool" | "Tavant";
+export type RecordType = "InSchool" | "ReFi" | "EdMed";
 export type Difficulty = "Medium" | "Hard";
 export type Role = "underwriter" | "senior";
 

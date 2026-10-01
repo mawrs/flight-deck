@@ -1,4 +1,4 @@
-import type { Application, WorkflowStatus } from "./types";
+import type { Application, RecordType, WorkflowStatus } from "./types";
 
 export const BORROWER_STATUS_LABEL: Record<WorkflowStatus, string> = {
   "pre-review": "UW Pre-Review",
@@ -11,7 +11,7 @@ export const BORROWER_STATUS_LABEL: Record<WorkflowStatus, string> = {
 export type SearchField = "loan-number" | "borrower" | "cosigner";
 export type OpportunitySearchField = "opportunity" | "underwriter" | "owner";
 export type CosignerFilter = "all" | "has" | "none";
-export type CategoryFilter = "all" | "InSchool" | "Tavant";
+export type CategoryFilter = "all" | RecordType;
 
 export type SearchChoice<T extends string = string> = {
   id: T;
@@ -46,11 +46,13 @@ export function fileWorkspaceHref(app: Application) {
 }
 
 export function loanTypeLabel(app: Application) {
-  return app.recordType === "InSchool" ? "Student Loan InSchool" : "Student Loan Refi";
+  return app.recordType;
 }
 
 export function loanTypeFullLabel(app: Application) {
-  return app.recordType === "InSchool" ? "In-School Student Loan" : "Student Loan Refinancing";
+  if (app.recordType === "ReFi") return "Student Loan Refinancing";
+  if (app.recordType === "EdMed") return "EdMed Student Loan";
+  return "In-School Student Loan";
 }
 
 export function matchesBorrowerName(app: Application, query: string) {

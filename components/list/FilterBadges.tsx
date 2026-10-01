@@ -36,7 +36,7 @@ export function listFilterChips(
   if (values.category !== "all") {
     chips.push({
       id: "category",
-      label: values.category === "InSchool" ? "In-School" : "Student Loan Refi",
+      label: values.category,
       onClear: onClear.category,
     });
   }

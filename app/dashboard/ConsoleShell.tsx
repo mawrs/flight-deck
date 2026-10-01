@@ -22,9 +22,22 @@ function selectionFor(pathname: string) {
   return "flight-deck";
 }
 
+function loanChild(pathname: string) {
+  if (pathname.startsWith("/dashboard/loan-origination/certification")) return "certification";
+  if (pathname.startsWith("/dashboard/loan-origination/servicing")) return "servicing";
+  if (pathname.startsWith("/dashboard/loan-origination")) return "applications";
+  return "";
+}
+
 const EMAIL_TABS = [
   { id: "single-email", label: "Single email send", icon: "/dashboard/mail.svg", width: 20, height: 14 },
   { id: "suppression", label: "Suppression list", icon: "/dashboard/close.svg", width: 20, height: 20 },
+] as const;
+
+const LOAN_TABS = [
+  { id: "applications", label: "Applications", href: "/dashboard/loan-origination", icon: "/dashboard/applicant.svg" },
+  { id: "certification", label: "Certification", href: "/dashboard/loan-origination/certification", icon: "/dashboard/check-circle.svg" },
+  { id: "servicing", label: "Servicing", href: "/dashboard/loan-origination/servicing", icon: "/dashboard/invoice.svg" },
 ] as const;
 
 export function ConsoleShell({ children, initialExpanded = false }: { children: ReactNode; initialExpanded?: boolean }) {
@@ -40,38 +53,24 @@ export function ConsoleShell({ children, initialExpanded = false }: { children: 
       return value;
     });
   }
-  const [emailsOpen, setEmailsOpen] = useState(() => pathname.startsWith("/dashboard/emails"));
+  const section = pathname.startsWith("/dashboard/loan-origination")
+    ? "loans"
+    : pathname.startsWith("/dashboard/emails")
+      ? "emails"
+      : "other";
+  const [menuSection, setMenuSection] = useState(section);
+  const [emailsMenu, setEmailsMenu] = useState<boolean | null>(null);
+  const [loansMenu, setLoansMenu] = useState<boolean | null>(null);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
-  const [selected, setSelected] = useState(() => selectionFor(pathname));
-
-  useEffect(() => {
-    if (pathname.startsWith("/dashboard/loan-origination")) {
-      setSelected("loan-origination");
-      setEmailsOpen(false);
-      return;
-    }
-    if (pathname.startsWith("/dashboard/users")) {
-      setSelected("users");
-      setEmailsOpen(false);
-      return;
-    }
-    if (pathname.startsWith("/dashboard/configuration")) {
-      setSelected("settings");
-      setEmailsOpen(false);
-      return;
-    }
-    if (pathname.startsWith("/dashboard/emails")) {
-      setEmailsOpen(true);
-      if (pathname.startsWith("/dashboard/emails/suppression")) setSelected("suppression");
-      else if (pathname.startsWith("/dashboard/emails/send")) setSelected("single-email");
-      else setSelected("emails");
-      return;
-    }
-    if (pathname === "/dashboard" || /^\/dashboard\/[^/]+$/.test(pathname)) {
-      setSelected("flight-deck");
-      setEmailsOpen(false);
-    }
-  }, [pathname]);
+  if (menuSection !== section) {
+    setMenuSection(section);
+    setEmailsMenu(null);
+    setLoansMenu(null);
+  }
+  const emailsOpen = (menuSection === section ? emailsMenu : null) ?? section === "emails";
+  const loansOpen = (menuSection === section ? loansMenu : null) ?? section === "loans";
+  const selected = selectionFor(pathname);
+  const activeLoanChild = loanChild(pathname);
 
   useEffect(() => {
     if (!userMenuOpen) return;
@@ -148,25 +147,35 @@ export function ConsoleShell({ children, initialExpanded = false }: { children: 
                   <button
                     className={active ? styles.itemActive : styles.item}
                     type="button"
-                    aria-current={active ? "page" : undefined}
-                    aria-expanded={item.id === "emails" ? emailsOpen : undefined}
+                    aria-current={active && !(item.id === "loan-origination" && activeLoanChild) ? "page" : undefined}
+                    aria-expanded={
+                      item.id === "emails" ? emailsOpen : item.id === "loan-origination" ? loansOpen : undefined
+                    }
                     onClick={() => {
                       if (item.id === "emails") {
                         if (!expanded) setExpanded(true);
+                        setLoansMenu(false);
                         if (pathname !== "/dashboard/emails") {
-                          setEmailsOpen(true);
-                          setSelected("emails");
+                          setEmailsMenu(true);
                           router.push("/dashboard/emails");
                           return;
                         }
-                        setEmailsOpen((open) => !open);
+                        setEmailsMenu((open) => !(open ?? true));
                         return;
                       }
-                      setSelected(item.id);
-                      setEmailsOpen(false);
-                      if (item.id === "loan-origination" && pathname !== "/dashboard/loan-origination") {
-                        router.push("/dashboard/loan-origination");
+                      if (item.id === "loan-origination") {
+                        if (!expanded) setExpanded(true);
+                        setEmailsMenu(false);
+                        if (pathname !== "/dashboard/loan-origination") {
+                          setLoansMenu(true);
+                          router.push("/dashboard/loan-origination");
+                          return;
+                        }
+                        setLoansMenu((open) => !(open ?? true));
+                        return;
                       }
+                      setEmailsMenu(false);
+                      setLoansMenu(false);
                       if (item.id === "users" && pathname !== "/dashboard/users") {
                         router.push("/dashboard/users");
                       }
@@ -189,7 +198,40 @@ export function ConsoleShell({ children, initialExpanded = false }: { children: 
                         height={20}
                       />
                     ) : null}
+                    {item.id === "loan-origination" && expanded ? (
+                      <img
+                        className={[loansOpen ? styles.chevron : styles.chevronClosed, active ? "" : styles.iconMute]
+                          .filter(Boolean)
+                          .join(" ")}
+                        src="/dashboard/chevron-menu.svg"
+                        alt=""
+                        width={20}
+                        height={20}
+                      />
+                    ) : null}
                   </button>
+                  {item.id === "loan-origination" && loansOpen && expanded ? (
+                    <div className={styles.submenu} role="group" aria-label="Loan Origination">
+                      {LOAN_TABS.map((tab) => (
+                        <button
+                          key={tab.id}
+                          className={[styles.subitem, activeLoanChild === tab.id ? styles.subitemActive : ""]
+                            .filter(Boolean)
+                            .join(" ")}
+                          type="button"
+                          aria-current={activeLoanChild === tab.id ? "page" : undefined}
+                          onClick={() => {
+                            setLoansMenu(true);
+                            setEmailsMenu(false);
+                            router.push(tab.href);
+                          }}
+                        >
+                          <img src={tab.icon} alt="" width={20} height={20} />
+                          {tab.label}
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
                   {item.id === "emails" && emailsOpen && expanded ? (
                     <div className={styles.submenu} role="group" aria-label="Emails">
                       {EMAIL_TABS.map((tab) => (
@@ -199,7 +241,8 @@ export function ConsoleShell({ children, initialExpanded = false }: { children: 
                           type="button"
                           aria-current={selected === tab.id ? "page" : undefined}
                           onClick={() => {
-                            setSelected(tab.id);
+                            setEmailsMenu(true);
+                            setLoansMenu(false);
                             router.push(tab.id === "suppression" ? "/dashboard/emails/suppression" : "/dashboard/emails/send");
                           }}
                         >
