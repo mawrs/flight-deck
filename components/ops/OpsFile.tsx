@@ -30,8 +30,8 @@ export function OpsFile({
         </Link>
         {actions ? <div className="flex flex-wrap items-center justify-end gap-sm">{actions}</div> : null}
       </div>
-      <div className="uw-workspace-scroll">
-        <div className="uw-workspace-content flex flex-col gap-lg">{children}</div>
+      <div className="uw-workspace-scroll bg-white">
+        <div className="flex w-full flex-col gap-lg px-xl py-lg">{children}</div>
       </div>
     </div>
   );
@@ -47,27 +47,31 @@ export function OpsCard({
   children: ReactNode;
 }) {
   return (
-    <section className="uw-card">
+    <section className="uw-card w-full">
       <div className="uw-card-header">
         <h2 className="text-lg text-black">{title}</h2>
         {action}
       </div>
-      <div className="p-lg">{children}</div>
+      <div className="flex flex-col gap-md p-lg">{children}</div>
     </section>
   );
 }
 
 export function FactList({ items }: { items: { label: string; value: ReactNode }[] }) {
   return (
-    <dl className="flex min-w-60 flex-1 flex-col gap-md">
+    <dl className="grid w-full grid-cols-4 gap-sm">
       {items.map((item) => (
-        <div key={item.label} className="flex flex-col gap-xs">
+        <div key={item.label} className="flex min-w-0 flex-col gap-xs">
           <dt className="text-xs text-gray-medium">{item.label}</dt>
           <dd className="text-sm text-black">{item.value}</dd>
         </div>
       ))}
     </dl>
   );
+}
+
+export function FieldGrid({ children }: { children: ReactNode }) {
+  return <div className="grid w-full grid-cols-4 gap-sm">{children}</div>;
 }
 
 export function OpsMissing({ message, href, label }: { message: string; href: string; label: string }) {

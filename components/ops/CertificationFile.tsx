@@ -3,7 +3,7 @@
 import { useState, type FormEvent } from "react";
 import Link from "next/link";
 import { Button } from "@/components/Button";
-import { FactList, OpsCard, OpsFile, OpsMissing } from "@/components/ops/OpsFile";
+import { FactList, FieldGrid, OpsCard, OpsFile, OpsMissing } from "@/components/ops/OpsFile";
 import { OpsBadge } from "@/components/ops/OpsBadge";
 import { FloatInput } from "@/components/ui/FloatInput";
 import { Select } from "@/components/ui/Dropdown";
@@ -82,28 +82,22 @@ export function CertificationFile({ id }: { id: string }) {
         </p>
       ) : null}
       <OpsCard title="School certification">
-        <div className="flex flex-wrap gap-xl">
-          <FactList
-            items={[
-              { label: "Borrower", value: cert.borrower },
-              { label: "Loan type", value: cert.product },
-              { label: "School", value: cert.school },
-              { label: "School code", value: cert.schoolCode },
-              { label: "Status", value: <OpsBadge value={cert.status} /> },
-            ]}
-          />
-          <FactList
-            items={[
-              { label: "Requested", value: dateOnly(cert.requestedAt) },
-              { label: "Certified", value: dateOnly(cert.certifiedAt) },
-              { label: "Approved amount", value: money(cert.approvedAmount) },
-              { label: "Certified amount", value: money(cert.certifiedAmount) },
-              { label: "Cost of attendance", value: money(cert.costOfAttendance) },
-              { label: "Enrollment", value: cert.enrollment ? opsLabel(cert.enrollment) : "—" },
-            ]}
-          />
-        </div>
-        <div className="mt-lg flex flex-wrap gap-md text-sm">
+        <FactList
+          items={[
+            { label: "Borrower", value: cert.borrower },
+            { label: "Loan type", value: cert.product },
+            { label: "School", value: cert.school },
+            { label: "School code", value: cert.schoolCode },
+            { label: "Status", value: <OpsBadge value={cert.status} /> },
+            { label: "Requested", value: dateOnly(cert.requestedAt) },
+            { label: "Certified", value: dateOnly(cert.certifiedAt) },
+            { label: "Approved amount", value: money(cert.approvedAmount) },
+            { label: "Certified amount", value: money(cert.certifiedAmount) },
+            { label: "Cost of attendance", value: money(cert.costOfAttendance) },
+            { label: "Enrollment", value: cert.enrollment ? opsLabel(cert.enrollment) : "—" },
+          ]}
+        />
+        <div className="flex flex-wrap gap-md text-sm">
           {loan ? (
             <Link href={servicingLoanHref(loan.id)} className="text-primary">
               Open loan account
@@ -130,16 +124,18 @@ function SchoolCodeCard({ certificationId, schoolCode }: { certificationId: stri
   return (
     <OpsCard title="School code">
       <form
-        className="flex max-w-md flex-col gap-md"
+        className="flex w-full flex-col gap-md"
         onSubmit={(event) => {
           event.preventDefault();
           editSchoolCode(certificationId, code);
           setSaved(true);
         }}
       >
-        <FloatInput label="School code" value={code} onChange={setCode} />
+        <FieldGrid>
+          <FloatInput label="School code" value={code} onChange={setCode} />
+        </FieldGrid>
         <div className="flex items-center gap-md">
-          <Button size="small" type="submit">
+          <Button size="small" type="submit" className="whitespace-nowrap">
             Save school code
           </Button>
           {saved ? <span className="text-sm text-gray-medium">Saved on this certification and the loan account.</span> : null}
@@ -207,8 +203,8 @@ function ResponseCard({ id }: { id: string }) {
 
   return (
     <OpsCard title="Record school response">
-      <form className="flex flex-col gap-lg" onSubmit={submit}>
-        <div className="flex max-w-xl flex-col gap-md">
+      <form className="flex w-full flex-col gap-lg" onSubmit={submit}>
+        <FieldGrid>
           <Select
             label="Enrollment"
             aria-label="Enrollment"
@@ -219,44 +215,46 @@ function ResponseCard({ id }: { id: string }) {
           />
           <FloatInput label="Certified amount" value={certifiedAmount} onChange={setCertifiedAmount} />
           <FloatInput label="Cost of attendance" value={cost} onChange={setCost} />
-        </div>
-        <div className="flex flex-col gap-sm">
-          <h3 className="text-sm text-black">Disbursement schedule</h3>
+        </FieldGrid>
+        <div className="flex w-full flex-col gap-sm">
+          <h3 className="text-sm font-semibold text-black">Disbursement schedule</h3>
           {lines.map((line) => (
-            <div key={line.key} className="flex flex-wrap items-end gap-sm">
-              <label className="flex flex-col gap-xs text-xs text-gray-medium">
+            <FieldGrid key={line.key}>
+              <label className="flex min-w-0 flex-col gap-xs text-xs text-gray-medium">
                 Date
                 <input
-                  className="uw-input"
+                  className="uw-input h-[60px] w-full px-md"
                   type="date"
                   value={line.date}
                   disabled={line.status === "disbursed"}
                   onChange={(event) => updateLine(line.key, { date: event.target.value })}
                 />
               </label>
-              <label className="flex flex-col gap-xs text-xs text-gray-medium">
+              <label className="flex min-w-0 flex-col gap-xs text-xs text-gray-medium">
                 Amount
                 <input
-                  className="uw-input"
+                  className="uw-input h-[60px] w-full px-md"
                   inputMode="decimal"
                   value={line.amount}
                   disabled={line.status === "disbursed"}
                   onChange={(event) => updateLine(line.key, { amount: event.target.value })}
                 />
               </label>
-              <span className="pb-sm">
+              <span className="flex h-[60px] items-center self-end">
                 <OpsBadge value={line.status === "new" ? "scheduled" : line.status} />
               </span>
               {line.status !== "disbursed" ? (
                 <button
                   type="button"
-                  className="pb-sm text-sm text-primary"
+                  className="h-[60px] justify-self-start self-end text-sm text-primary"
                   onClick={() => setLines((current) => current.filter((item) => item.key !== line.key))}
                 >
                   Remove
                 </button>
-              ) : null}
-            </div>
+              ) : (
+                <span />
+              )}
+            </FieldGrid>
           ))}
           <button
             type="button"

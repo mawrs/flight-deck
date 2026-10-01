@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/Button";
 import { OpsBadge } from "@/components/ops/OpsBadge";
-import { FactList, OpsCard, OpsFile, OpsMissing } from "@/components/ops/OpsFile";
+import { FactList, FieldGrid, OpsCard, OpsFile, OpsMissing } from "@/components/ops/OpsFile";
 import { FloatInput } from "@/components/ui/FloatInput";
 import { dateOnly, money } from "@/lib/format";
 import { applicationBase, certificationHref, servicingCaseHref, servicingHome } from "@/lib/loan-routes";
@@ -42,28 +42,22 @@ export function LoanAccount({ id }: { id: string }) {
         </p>
       ) : null}
       <OpsCard title="Account">
-        <div className="flex flex-wrap gap-xl">
-          <FactList
-            items={[
-              { label: "Borrower", value: loan.borrower },
-              { label: "Loan type", value: loan.product },
-              { label: "School", value: loan.school || "—" },
-              { label: "School code", value: loan.schoolCode || "—" },
-              { label: "Servicer", value: loan.servicer },
-            ]}
-          />
-          <FactList
-            items={[
-              { label: "Boarding", value: <OpsBadge value={loan.boardingStatus} /> },
-              { label: "Boarded", value: dateOnly(loan.boardedAt) },
-              { label: "Certified amount", value: money(cert?.certifiedAmount) },
-              { label: "Principal", value: money(loan.principal) },
-              { label: "Interest", value: money(loan.interest) },
-              { label: "Balance", value: money(loan.principal + loan.interest) },
-            ]}
-          />
-        </div>
-        <div className="mt-lg flex flex-wrap gap-md text-sm">
+        <FactList
+          items={[
+            { label: "Borrower", value: loan.borrower },
+            { label: "Loan type", value: loan.product },
+            { label: "School", value: loan.school || "—" },
+            { label: "School code", value: loan.schoolCode || "—" },
+            { label: "Servicer", value: loan.servicer },
+            { label: "Boarding", value: <OpsBadge value={loan.boardingStatus} /> },
+            { label: "Boarded", value: dateOnly(loan.boardedAt) },
+            { label: "Certified amount", value: money(cert?.certifiedAmount) },
+            { label: "Principal", value: money(loan.principal) },
+            { label: "Interest", value: money(loan.interest) },
+            { label: "Balance", value: money(loan.principal + loan.interest) },
+          ]}
+        />
+        <div className="flex flex-wrap gap-md text-sm">
           {cert ? (
             <Link href={certificationHref(cert.id)} className="text-primary">
               Open certification
@@ -114,21 +108,23 @@ function SchoolCodeEditor({ certificationId, schoolCode }: { certificationId: st
   return (
     <OpsCard title="School code">
       <form
-        className="flex max-w-md flex-col gap-md"
+        className="flex w-full flex-col gap-md"
         onSubmit={(event) => {
           event.preventDefault();
           editSchoolCode(certificationId, code);
           setSaved(true);
         }}
       >
-        <FloatInput
-          label="School code"
-          value={code}
-          onChange={(value) => {
-            setCode(value);
-            setSaved(false);
-          }}
-        />
+        <FieldGrid>
+          <FloatInput
+            label="School code"
+            value={code}
+            onChange={(value) => {
+              setCode(value);
+              setSaved(false);
+            }}
+          />
+        </FieldGrid>
         <div className="flex items-center gap-md">
           <Button size="small" type="submit">
             Save school code
@@ -146,35 +142,33 @@ function DisbursementLine({ loanId, line, readOnly }: { loanId: string; line: Di
   const scheduled = line.status === "scheduled" && !readOnly;
 
   return (
-    <div className="flex flex-wrap items-end gap-sm border-b border-gray-light pb-md">
-      <div className="flex min-w-40 flex-col gap-xs">
+    <FieldGrid>
+      <div className="flex h-[60px] flex-col justify-center gap-xs">
         <span className="text-xs text-gray-medium">Date</span>
         <span className="text-sm text-black">{dateOnly(line.date)}</span>
       </div>
-      <label className="flex flex-col gap-xs text-xs text-gray-medium">
-        Amount
-        <input
-          className="uw-input"
-          inputMode="decimal"
-          value={scheduled ? amount : money(line.amount)}
-          readOnly={!scheduled}
-          onChange={(event) => setAmount(event.target.value)}
-        />
-      </label>
-      <span className="pb-sm">
+      <FloatInput
+        label="Amount"
+        value={scheduled ? amount : money(line.amount)}
+        readOnly={!scheduled}
+        onChange={setAmount}
+      />
+      <span className="flex h-[60px] items-center">
         <OpsBadge value={line.status} />
       </span>
       {scheduled ? (
-        <>
+        <div className="flex h-[60px] items-center gap-sm">
           <Button
             size="small"
             variant="outline"
+            className="whitespace-nowrap"
             onClick={() => updateDisbursement(loanId, line.id, Number(amount.replace(/[^0-9.]/g, "")))}
           >
             Save amount
           </Button>
           <Button
             size="small"
+            className="whitespace-nowrap"
             onClick={() => {
               const next = Number(amount.replace(/[^0-9.]/g, ""));
               if (next > 0) updateDisbursement(loanId, line.id, next);
@@ -183,8 +177,10 @@ function DisbursementLine({ loanId, line, readOnly }: { loanId: string; line: Di
           >
             Mark disbursed
           </Button>
-        </>
-      ) : null}
-    </div>
+        </div>
+      ) : (
+        <span />
+      )}
+    </FieldGrid>
   );
 }

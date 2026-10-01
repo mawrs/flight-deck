@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/Button";
 import { OpsBadge } from "@/components/ops/OpsBadge";
-import { FactList, OpsCard, OpsFile, OpsMissing } from "@/components/ops/OpsFile";
+import { FactList, FieldGrid, OpsCard, OpsFile, OpsMissing } from "@/components/ops/OpsFile";
 import { Select } from "@/components/ui/Dropdown";
 import { dateOnly } from "@/lib/format";
 import { applicationBase, certificationHref, servicingHome, servicingLoanHref } from "@/lib/loan-routes";
@@ -45,27 +45,21 @@ export function CaseFile({ id }: { id: string }) {
       }
     >
       <OpsCard title="Case">
-        <div className="flex flex-wrap gap-xl">
-          <FactList
-            items={[
-              { label: "Borrower", value: loan.borrower },
-              { label: "Loan type", value: loan.product },
-              { label: "Case type", value: opsLabel(item.type) },
-              { label: "Priority", value: <OpsBadge value={item.priority} /> },
-              { label: "Status", value: <OpsBadge value={item.status} /> },
-            ]}
-          />
-          <FactList
-            items={[
-              { label: "Opened by", value: item.openedBy },
-              { label: "Assignee", value: item.assignee },
-              { label: "Opened", value: dateOnly(item.openedAt) },
-              { label: "School", value: loan.school || "—" },
-              { label: "Details", value: item.details },
-            ]}
-          />
-        </div>
-        <div className="mt-lg flex flex-wrap gap-md text-sm">
+        <FactList
+          items={[
+            { label: "Borrower", value: loan.borrower },
+            { label: "Loan type", value: loan.product },
+            { label: "Case type", value: opsLabel(item.type) },
+            { label: "Priority", value: <OpsBadge value={item.priority} /> },
+            { label: "Status", value: <OpsBadge value={item.status} /> },
+            { label: "Opened by", value: item.openedBy },
+            { label: "Assignee", value: item.assignee },
+            { label: "Opened", value: dateOnly(item.openedAt) },
+            { label: "School", value: loan.school || "—" },
+            { label: "Details", value: item.details },
+          ]}
+        />
+        <div className="flex flex-wrap gap-md text-sm">
           <Link href={servicingLoanHref(loan.id)} className="text-primary">
             Open loan account
           </Link>
@@ -82,7 +76,7 @@ export function CaseFile({ id }: { id: string }) {
         </div>
       </OpsCard>
       <OpsCard title="Reassign">
-        <div className="max-w-md">
+        <FieldGrid>
           <Select
             label="Assignee"
             aria-label="Assignee"
@@ -92,10 +86,10 @@ export function CaseFile({ id }: { id: string }) {
             options={ADVISORS.map((name) => ({ id: name, label: name }))}
             onChange={(value) => ops.reassignCase(item.id, value)}
           />
-          <p className="mt-sm text-sm text-gray-medium">
-            Reassigning an open case hands it to that advisor to follow up with the borrower.
-          </p>
-        </div>
+        </FieldGrid>
+        <p className="text-sm text-gray-medium">
+          Reassigning an open case hands it to that advisor to follow up with the borrower.
+        </p>
       </OpsCard>
       <OpsCard title="Servicing notes">
         <form
@@ -106,11 +100,11 @@ export function CaseFile({ id }: { id: string }) {
             setSaved(true);
           }}
         >
-          <label className="flex flex-col gap-xs text-xs text-gray-medium">
+          <label className="flex w-full flex-col gap-xs text-xs text-gray-medium">
             Notes
             <textarea
-              className="uw-editor rounded-xs border border-gray-light px-md py-md text-sm text-black"
-              rows={5}
+              className="uw-input w-full"
+              rows={4}
               value={notes}
               onChange={(event) => {
                 setNotes(event.target.value);
