@@ -435,7 +435,7 @@ export function ComboSearch<T extends string>({
     inputRef.current?.focus();
   }
 
-  function onKey(event: KeyboardEvent<HTMLInputElement>) {
+  function onKey(event: KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) {
     if (!open) {
       if (event.key === "ArrowDown") {
         event.preventDefault();
@@ -601,7 +601,7 @@ export function Combobox({
     setOpen(false);
   }
 
-  function onKey(event: KeyboardEvent<HTMLInputElement>) {
+  function onKey(event: KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) {
     if (!open) {
       if (event.key === "ArrowDown") {
         event.preventDefault();
