@@ -62,6 +62,23 @@ export type CasePriority = "high" | "medium" | "low";
 
 export type CaseStatus = "open" | "waiting-on-advisor" | "waiting-on-school" | "resolved";
 
+export interface CaseForm {
+  caseNumber: string;
+  contactName: string;
+  opportunity: string;
+  suggestionForm: string;
+  phone: string;
+  email: string;
+  sla: string;
+  underwriter: string;
+  origin: string;
+  reason: string;
+  disbursementStatus: string;
+  openedLabel: string;
+  closedAt: string;
+  webEmail: string;
+}
+
 export interface ServicingCase {
   id: string;
   loanId: string;
@@ -71,14 +88,57 @@ export interface ServicingCase {
   openedBy: string;
   assignee: string;
   openedAt: string;
+  subject: string;
+  disbursement: string;
   details: string;
   notes: string;
+  fileNotes?: string;
+  fileNotesUpdatedAt?: string | null;
+  form?: Partial<CaseForm>;
+}
+
+export type CasePatch = Partial<
+  Pick<
+    ServicingCase,
+    "subject" | "details" | "notes" | "fileNotes" | "fileNotesUpdatedAt" | "status" | "priority" | "type" | "assignee" | "form"
+  >
+>;
+
+export interface FeedComment {
+  id: string;
+  author: string;
+  body: string;
+  createdAt: string;
+}
+
+export interface FeedPost {
+  id: string;
+  caseId: string;
+  author: string;
+  body: string;
+  createdAt: string;
+  likes: number;
+  liked: boolean;
+  comments: FeedComment[];
+  kind?: "created" | "note";
+  audience?: string;
+}
+
+export interface CaseDocument {
+  id: string;
+  caseId: string;
+  name: string;
+  fileName: string;
+  uploadedBy: string;
+  uploadedAt: string;
 }
 
 export interface OpsState {
   certifications: Certification[];
   loans: ServicingLoan[];
   cases: ServicingCase[];
+  feed: FeedPost[];
+  documents: CaseDocument[];
 }
 
 export interface SchoolResponse {

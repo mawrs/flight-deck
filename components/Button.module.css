@@ -139,7 +139,8 @@
   text-decoration: none;
 }
 
-.link:hover {
+.link:hover,
+.link[aria-pressed="true"] {
   color: var(--primary);
   text-decoration: underline;
 }

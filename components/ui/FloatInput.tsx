@@ -10,6 +10,7 @@ export function FloatInput({
   readOnly,
   autoFocus,
   type = "text",
+  multiline,
   onKeyDown,
   onFocus,
   onBlur,
@@ -20,38 +21,37 @@ export function FloatInput({
   readOnly?: boolean;
   autoFocus?: boolean;
   type?: string;
-  onKeyDown?: (event: KeyboardEvent<HTMLInputElement>) => void;
-  onFocus?: (event: FocusEvent<HTMLInputElement>) => void;
-  onBlur?: (event: FocusEvent<HTMLInputElement>) => void;
+  multiline?: boolean;
+  onKeyDown?: (event: KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
+  onFocus?: (event: FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
+  onBlur?: (event: FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
 }) {
   const [focused, setFocused] = useState(Boolean(autoFocus));
   const floated = focused || value.trim().length > 0;
+  const field = {
+    "aria-label": label,
+    value,
+    readOnly,
+    autoFocus,
+    placeholder: " ",
+    onChange: (event: { target: { value: string } }) => onChange?.(event.target.value),
+    onKeyDown,
+    onClick: () => setFocused(true),
+    onFocus: (event: FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+      setFocused(true);
+      onFocus?.(event);
+    },
+    onBlur: (event: FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+      setFocused(false);
+      onBlur?.(event);
+    },
+    className: multiline ? "uw-float-input uw-float-input-multiline" : "uw-float-input",
+  };
 
   return (
     <label className="uw-float-field">
-      <input
-        aria-label={label}
-        type={type}
-        value={value}
-        readOnly={readOnly}
-        autoFocus={autoFocus}
-        placeholder=" "
-        onChange={(event) => onChange?.(event.target.value)}
-        onKeyDown={onKeyDown}
-        onClick={() => setFocused(true)}
-        onFocus={(event) => {
-          setFocused(true);
-          onFocus?.(event);
-        }}
-        onBlur={(event) => {
-          setFocused(false);
-          onBlur?.(event);
-        }}
-        className="uw-float-input"
-      />
-      <span className={`uw-float-label ${floated ? "uw-float-label-active" : ""}`}>
-        {label}
-      </span>
+      {multiline ? <textarea {...field} rows={4} /> : <input {...field} type={type} />}
+      <span className={`uw-float-label ${floated ? "uw-float-label-active" : ""}`}>{label}</span>
     </label>
   );
 }

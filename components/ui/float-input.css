@@ -33,6 +33,12 @@
   background: var(--surface-sunken);
 }
 
+textarea.uw-float-input-multiline {
+  height: auto;
+  min-height: 120px;
+  resize: vertical;
+}
+
 .uw-float-label {
   position: absolute;
   top: 18px;

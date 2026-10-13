@@ -39,12 +39,14 @@ export function NotesModal({
   updatedAt,
   onChange,
   onClose,
+  emptyHtml = DEFAULT_FILE_NOTES,
 }: {
   open: boolean;
   value: string;
   updatedAt: string | null;
   onChange: (html: string, touch?: boolean) => void;
   onClose: () => void;
+  emptyHtml?: string;
 }) {
   const editorRef = useRef<HTMLDivElement>(null);
   const valueRef = useRef(value);
@@ -70,11 +72,11 @@ export function NotesModal({
       const editor = editorRef.current;
       if (!editor) return;
       const blank = isBlankNote(valueRef.current);
-      const html = blank ? DEFAULT_FILE_NOTES : valueRef.current;
+      const html = blank ? emptyHtml : valueRef.current;
       editor.innerHTML = html;
-      if (blank) onChangeRef.current(html);
+      if (blank && emptyHtml) onChangeRef.current(html);
       editor.focus();
-      placeCaretAfterFirstLabel(editor);
+      if (html) placeCaretAfterFirstLabel(editor);
       syncActive();
     });
     return () => {
@@ -82,7 +84,7 @@ export function NotesModal({
       document.body.style.overflow = previous;
       window.removeEventListener("keydown", onKey);
     };
-  }, [open, onClose]);
+  }, [open, onClose, emptyHtml]);
 
   function syncActive() {
     setActive({

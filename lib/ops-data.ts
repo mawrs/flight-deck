@@ -3,6 +3,8 @@ import type {
   Certification,
   Disbursement,
   DisbursementStatus,
+  CaseDocument,
+  FeedPost,
   OpsState,
   ServicingCase,
   ServicingLoan,
@@ -337,6 +339,8 @@ export function createOpsSeed(): OpsState {
       openedBy: "Morgan Struchko",
       assignee: "Morgan Struchko",
       openedAt: at("2026-09-18", 8),
+      subject: "Disbursement date passed",
+      disbursement: "Research fall roster",
       details: "School disbursement date has passed and the funds are still scheduled. Confirm the roster before release.",
       notes: "",
     },
@@ -349,6 +353,8 @@ export function createOpsSeed(): OpsState {
       openedBy: "Bini Phillip",
       assignee: "Morgan Struchko",
       openedAt: at("2026-09-30", 9),
+      subject: "Move first disbursement",
+      disbursement: "",
       details: "Borrower asked to move the first disbursement. School date is today, so this needs a same-day review.",
       notes: "Borrower called and asked for the fall disbursement to be split.",
     },
@@ -361,6 +367,8 @@ export function createOpsSeed(): OpsState {
       openedBy: "Morgan Struchko",
       assignee: "Morgan Struchko",
       openedAt: at("2026-09-11", 14),
+      subject: "Confirm school code",
+      disbursement: "",
       details: "Certified amount is below the approval. Confirm the school code before the November disbursement is scheduled.",
       notes: "",
     },
@@ -373,6 +381,8 @@ export function createOpsSeed(): OpsState {
       openedBy: "Nathan",
       assignee: "Morgan Struchko",
       openedAt: at("2026-09-08", 10),
+      subject: "Reduced certification",
+      disbursement: "Research certified amount",
       details: "EdMed certification was reduced and the disbursement date has passed. Review the certified amount against cost of attendance.",
       notes: "",
     },
@@ -385,6 +395,8 @@ export function createOpsSeed(): OpsState {
       openedBy: "Morgan Struchko",
       assignee: "Liz",
       openedAt: at("2026-09-16", 11),
+      subject: "Spring disbursement timing",
+      disbursement: "",
       details: "Borrower asked when the spring disbursement will show on the school account. No change to the certified dates.",
       notes: "Reassigned to Liz to call the borrower back.",
     },
@@ -397,6 +409,8 @@ export function createOpsSeed(): OpsState {
       openedBy: "Chris Stamm",
       assignee: "Morgan Struchko",
       openedAt: at("2026-09-22", 15),
+      subject: "Resend certification",
+      disbursement: "",
       details: "School asked for the certification to be resent before the October disbursement. First disbursement already went out.",
       notes: "",
     },
@@ -409,6 +423,8 @@ export function createOpsSeed(): OpsState {
       openedBy: "Bini Phillip",
       assignee: "Nathan",
       openedAt: at("2026-09-29", 13),
+      subject: "Disbursement not released",
+      disbursement: "Research unreleased funds",
       details: "Disbursement was scheduled for September 28 and has not been released. Borrower is asking for status.",
       notes: "",
     },
@@ -421,6 +437,8 @@ export function createOpsSeed(): OpsState {
       openedBy: "Liz",
       assignee: "Morgan Struchko",
       openedAt: at("2026-09-06", 9),
+      subject: "Enrollment confirmed",
+      disbursement: "",
       details: "Borrower confirmed the fall enrollment after certification.",
       notes: "Spoke with the borrower. Enrollment matches the school certification.",
     },
@@ -433,12 +451,118 @@ export function createOpsSeed(): OpsState {
       openedBy: "Morgan Struchko",
       assignee: "Morgan Struchko",
       openedAt: at("2026-09-20", 9),
+      subject: "Review passed disbursement",
+      disbursement: "Research passed date",
       details: "ReFi certification is scheduled and the disbursement date has passed. Review before release.",
       notes: "",
     },
   ];
 
-  return { certifications, loans, cases };
+  const feed: FeedPost[] = [
+    {
+      id: "feed-1",
+      caseId: "case-3001",
+      author: "Morgan Struchko",
+      createdAt: at("2026-10-13", 12),
+      likes: 1,
+      liked: false,
+      comments: [
+        {
+          id: "feed-1-c1",
+          author: "Nathan",
+          body: "I can take the roster check if the school replies after 4.",
+          createdAt: at("2026-10-13", 13),
+        },
+      ],
+      body: "Called the bursar about Noor Cohen. The fall disbursement date passed and the funds are still scheduled. They can confirm the roster today if we resend the certification request.",
+    },
+    {
+      id: "feed-2",
+      caseId: "case-3007",
+      author: "Bini Phillip",
+      createdAt: at("2026-10-13", 10),
+      likes: 0,
+      liked: false,
+      comments: [],
+      body: "Mateo Ruiz called again. The September 28 disbursement never hit the school account. I told him we are checking with the servicer before we promise a date.",
+    },
+    {
+      id: "feed-3",
+      caseId: "case-3005",
+      author: "Liz",
+      createdAt: at("2026-10-12", 15),
+      likes: 2,
+      liked: false,
+      comments: [],
+      body: "Spoke with Sana Okoye. She only wanted to know when the spring disbursement shows on the school account. No change to the certified dates.",
+    },
+    {
+      id: "feed-4",
+      caseId: "case-3006",
+      author: "Chris Stamm",
+      createdAt: at("2026-10-12", 11),
+      likes: 0,
+      liked: false,
+      comments: [],
+      body: "Medical College of Wisconsin asked us to resend Claire Adeyemi's certification before the October disbursement. The first disbursement already went out.",
+    },
+    {
+      id: "feed-5",
+      caseId: "case-3004",
+      author: "Nathan",
+      createdAt: at("2026-10-11", 9),
+      likes: 1,
+      liked: false,
+      comments: [],
+      body: "Jonah Ellis's EdMed certification came back reduced. Comparing the certified amount to cost of attendance before we release the September disbursement.",
+    },
+    {
+      id: "feed-6",
+      caseId: "case-3002",
+      author: "Morgan Struchko",
+      createdAt: at("2026-10-10", 14),
+      likes: 0,
+      liked: false,
+      comments: [],
+      body: "Priya Raman wants the first disbursement moved. Emory's school date is the same day, so this needs a same-day review if we are going to split it.",
+    },
+  ];
+
+  const documents: CaseDocument[] = [
+    doc("doc-1", "case-3001", "Email to school — roster confirmation.pdf", "Morgan Struchko", "2026-10-13", 11),
+    doc("doc-2", "case-3001", "School reply — fall roster.pdf", "Nathan", "2026-10-13", 14),
+    doc("doc-3", "case-3007", "Email to school — September disbursement missing.pdf", "Bini Phillip", "2026-10-13", 9),
+    doc("doc-4", "case-3007", "Servicer follow-up.pdf", "Liz", "2026-10-13", 15),
+    doc("doc-5", "case-3006", "Email to Medical College of Wisconsin — resend certification.pdf", "Chris Stamm", "2026-10-12", 10),
+    doc("doc-6", "case-3002", "Email to Emory — split first disbursement.pdf", "Morgan Struchko", "2026-10-10", 13),
+    doc("doc-7", "case-3004", "Email to school — reduced certification.pdf", "Nathan", "2026-10-11", 8),
+    doc("doc-8", "case-3005", "Email to school — spring disbursement timing.pdf", "Liz", "2026-10-12", 16),
+  ];
+
+  return { certifications, loans, cases, feed, documents };
+}
+
+const SAMPLE_PDFS = [
+  "Application_Disclosure.pdf",
+  "Credit Score Exception Notice.pdf",
+  "Degree_Verification_MSU.pdf",
+  "Equifax_MLA_Verification.pdf",
+  "Identity_Verification_[V1].pdf",
+  "KYC_CIP_2084417.pdf",
+  "Paystub_08012026.pdf",
+  "Paystub_08152026.pdf",
+];
+
+function doc(id: string, caseId: string, name: string, uploadedBy: string, date: string, hour: number): CaseDocument {
+  const index = Number(id.replace(/\D/g, "")) - 1;
+  return {
+    id,
+    caseId,
+    name,
+    fileName: SAMPLE_PDFS[index] ?? SAMPLE_PDFS[0],
+    uploadedBy,
+    uploadedAt: at(date, hour),
+  };
 }
 
 function loanFromCert(

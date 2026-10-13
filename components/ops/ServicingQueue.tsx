@@ -7,10 +7,12 @@ import { DataTable, DataTableCard, DataTableScroll, SearchField } from "@/compon
 import { FilterBadges, type FilterChip } from "@/components/list/FilterBadges";
 import { ListPagination, usePagedList } from "@/components/list/ListPagination";
 import { SortHeader } from "@/components/list/SortHeader";
+import { CasePreview } from "@/components/ops/CasePreview";
 import { OpsBadge } from "@/components/ops/OpsBadge";
 import { OpsViewSelect } from "@/components/ops/OpsViewSelect";
+import { Button } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Dropdown";
-import { dateOnly, money } from "@/lib/format";
+import { dateOnly, money, shortDate } from "@/lib/format";
 import { compareSortValues, timeValue, type SortDirection } from "@/lib/list-sort";
 import { servicingCaseHref, servicingHome, servicingLoanHref } from "@/lib/loan-routes";
 import {
@@ -24,19 +26,18 @@ import {
 import { useOps } from "@/lib/ops-store";
 import type { CasePriority, ServicingCase, ServicingLoan } from "@/lib/ops-types";
 
-type CaseSort = "priority" | "borrower" | "product" | "type" | "openedBy" | "assignee" | "openedAt" | "status";
+type CaseSort = "number" | "contact" | "subject" | "product" | "status" | "priority" | "openedAt";
 type RosterSort = "priority" | "borrower" | "product" | "school" | "date" | "amount" | "status";
 type BoardSort = "borrower" | "product" | "servicer" | "boardedAt" | "status";
 
 const CASE_COLUMNS: { key: CaseSort; label: string }[] = [
-  { key: "priority", label: "Priority" },
-  { key: "borrower", label: "Borrower" },
+  { key: "number", label: "Case number" },
+  { key: "contact", label: "Contact Name" },
+  { key: "subject", label: "Subject" },
   { key: "product", label: "Loan type" },
-  { key: "type", label: "Case type" },
-  { key: "openedBy", label: "Opened by" },
-  { key: "assignee", label: "Assignee" },
-  { key: "openedAt", label: "Opened" },
   { key: "status", label: "Status" },
+  { key: "priority", label: "Priority" },
+  { key: "openedAt", label: "Date/Time Opened" },
 ];
 
 const ROSTER_COLUMNS: { key: RosterSort; label: string }[] = [
@@ -76,6 +77,13 @@ const PRODUCTS = [
   { id: "EdMed", label: "EdMed" },
 ];
 
+const PRIORITIES = [
+  { id: "all", label: "Priority" },
+  { id: "high", label: "High" },
+  { id: "medium", label: "Medium" },
+  { id: "low", label: "Low" },
+];
+
 function rosterPriority(status: string, due: boolean): CasePriority {
   if (due) return "high";
   if (status === "scheduled") return "medium";
@@ -88,11 +96,12 @@ export function ServicingQueue() {
   const { cases, loans, certifications } = useOps();
   const [query, setQuery] = useState("");
   const [product, setProduct] = useState("all");
+  const [priority, setPriority] = useState("all");
   const [servicer, setServicer] = useState("all");
   const [boarding, setBoarding] = useState("all");
   const [caseSort, setCaseSort] = useState<{ key: CaseSort; direction: SortDirection }>({
-    key: "priority",
-    direction: "asc",
+    key: "openedAt",
+    direction: "desc",
   });
   const [rosterSort, setRosterSort] = useState<{ key: RosterSort; direction: SortDirection }>({
     key: "priority",
@@ -112,17 +121,22 @@ export function ServicingQueue() {
         const loan = loanById.get(item.loanId);
         if (!loan) return false;
         if (product !== "all" && loan.product !== product) return false;
+        if (priority !== "all" && item.priority !== priority) return false;
         if (!needle) return true;
-        return [loan.borrower, loan.product, item.type, item.openedBy, item.assignee, item.details]
+        return [caseNumberLabel(item.id), loan.borrower, loan.product, item.subject, item.details, opsLabel(item.status), opsLabel(item.priority), item.openedBy, item.assignee]
           .join(" ")
           .toLowerCase()
           .includes(needle);
       })
       .sort((a, b) => {
-        const primary = compareSortValues(caseValue(a, loanById, caseSort.key), caseValue(b, loanById, caseSort.key), caseSort.direction);
-        return primary || timeValue(a.openedAt) - timeValue(b.openedAt) || a.id.localeCompare(b.id);
+        const primary = compareSortValues(
+          caseValue(a, loanById, caseSort.key),
+          caseValue(b, loanById, caseSort.key),
+          caseSort.direction,
+        );
+        return primary || timeValue(b.openedAt) - timeValue(a.openedAt) || a.id.localeCompare(b.id);
       });
-  }, [caseSort, cases, loanById, needle, product]);
+  }, [caseSort, cases, loanById, needle, priority, product]);
 
   const rosterRows = useMemo(() => {
     return loans
@@ -171,6 +185,7 @@ export function ServicingQueue() {
   const chips: FilterChip[] = [];
   if (query.trim()) chips.push({ id: "query", label: query.trim(), onClear: () => setQuery("") });
   if (product !== "all") chips.push({ id: "product", label: product, onClear: () => setProduct("all") });
+  if (view === "cases" && priority !== "all") chips.push({ id: "priority", label: opsLabel(priority), onClear: () => setPriority("all") });
   if (view === "onboarded" && servicer !== "all") {
     chips.push({ id: "servicer", label: servicer, onClear: () => setServicer("all") });
   }
@@ -181,7 +196,15 @@ export function ServicingQueue() {
   return (
     <div className="uw-list-page uw-list-page-flush">
       <div className="uw-list-header">
-        <OpsViewSelect value={view} views={SERVICING_VIEWS} hrefFor={(id) => servicingHome(id)} />
+        <div className="uw-list-header-row">
+          <OpsViewSelect value={view} views={SERVICING_VIEWS} hrefFor={(id) => servicingHome(id)} />
+          {view === "cases" ? (
+            <div className="uw-list-header-actions">
+              <Button variant="secondary">Merge Cases</Button>
+              <Button variant="primary">Open Case</Button>
+            </div>
+          ) : null}
+        </div>
       </div>
       <DataTableCard rules className="uw-list-card">
         <div className="uw-list-toolbar">
@@ -207,6 +230,16 @@ export function ServicingQueue() {
                 boardPage.setPage(1);
               }}
             />
+            {view === "cases" ? (
+              <Select
+                value={priority}
+                options={PRIORITIES}
+                onChange={(value) => {
+                  setPriority(value);
+                  casePage.setPage(1);
+                }}
+              />
+            ) : null}
             {view === "onboarded" ? (
               <>
                 <Select
@@ -233,6 +266,7 @@ export function ServicingQueue() {
             onClearAll={() => {
               setQuery("");
               setProduct("all");
+              setPriority("all");
               setServicer("all");
               setBoarding("all");
               casePage.setPage(1);
@@ -249,7 +283,7 @@ export function ServicingQueue() {
             loanById={loanById}
             sort={caseSort}
             onSort={(key) => {
-              setCaseSort((current) => toggleSort(current, key, "asc"));
+              setCaseSort((current) => toggleSort(current, key, key === "openedAt" ? "desc" : "asc"));
               casePage.setPage(1);
             }}
             count={casePage.count}
@@ -299,25 +333,33 @@ function toggleSort<Key extends string>(
     : { key, direction: initial };
 }
 
+function caseNumberLabel(id: string) {
+  const match = id.match(/(\d+)$/);
+  const suffix = (match?.[1] ?? "0").slice(-4).padStart(4, "0");
+  return `0004${suffix}`;
+}
+
+function caseNumber(id: string) {
+  return Number(caseNumberLabel(id));
+}
+
 function caseValue(item: ServicingCase, loans: Map<string, ServicingLoan>, key: CaseSort): string | number {
   const loan = loans.get(item.loanId);
   switch (key) {
-    case "priority":
-      return PRIORITY_RANK[item.priority];
-    case "borrower":
+    case "number":
+      return caseNumber(item.id);
+    case "contact":
       return loan?.borrower ?? "";
+    case "subject":
+      return item.subject;
     case "product":
       return loan?.product ?? "";
-    case "type":
-      return item.type;
-    case "openedBy":
-      return item.openedBy;
-    case "assignee":
-      return item.assignee;
-    case "openedAt":
-      return timeValue(item.openedAt);
     case "status":
       return item.status;
+    case "priority":
+      return PRIORITY_RANK[item.priority];
+    case "openedAt":
+      return timeValue(item.openedAt);
   }
 }
 
@@ -401,17 +443,25 @@ function CaseTable({
                 <tr key={item.id} className="uw-list-row">
                   <td className="uw-list-td">
                     <Link href={servicingCaseHref(item.id)} className="uw-list-row-link" aria-label={`Open case for ${loan?.borrower}`} />
-                    <OpsBadge value={item.priority} />
+                    {caseNumberLabel(item.id)}
                   </td>
                   <td className="uw-list-td">{loan?.borrower}</td>
-                  <td className="uw-list-td">{loan?.product}</td>
-                  <td className="uw-list-td">{opsLabel(item.type)}</td>
-                  <td className="uw-list-td">{item.openedBy}</td>
-                  <td className="uw-list-td">{item.assignee}</td>
-                  <td className="uw-list-td">{dateOnly(item.openedAt)}</td>
                   <td className="uw-list-td">
-                    <OpsBadge value={item.status} />
+                    <CasePreview
+                      href={servicingCaseHref(item.id)}
+                      subject={item.subject}
+                      priority={opsLabel(item.priority)}
+                      status={opsLabel(item.status)}
+                      caseNumber={caseNumberLabel(item.id)}
+                      description={item.details}
+                    />
                   </td>
+                  <td className="uw-list-td">{loan?.product}</td>
+                  <td className="uw-list-td">{opsLabel(item.status)}</td>
+                  <td className="uw-list-td">
+                    <OpsBadge value={item.priority} />
+                  </td>
+                  <td className="uw-list-td">{shortDate(item.openedAt)}</td>
                 </tr>
               );
             })}

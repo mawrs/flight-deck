@@ -3,7 +3,7 @@
 import { createContext, useContext, useMemo, useSyncExternalStore, type ReactNode } from "react";
 import { opsSeed } from "./ops-data";
 import { statusAfterAmounts } from "./ops-logic";
-import type { CaseStatus, Disbursement, OpsProduct, OpsState, SchoolResponse, ServicingLoan } from "./ops-types";
+import type { CasePatch, CaseStatus, Disbursement, FeedPost, OpsProduct, OpsState, SchoolResponse, ServicingLoan } from "./ops-types";
 
 const STORAGE_KEY = "fd-ops-v1";
 const SERVER_SNAPSHOT = opsSeed;
@@ -59,12 +59,32 @@ function mergeOpsSeed(saved: OpsState): OpsState {
   const loans = saved.loans.map((item) => ({ ...item, product: asProduct(item.product) }));
   const certIds = new Set(certifications.map((item) => item.id));
   const loanIds = new Set(loans.map((item) => item.id));
+  const seedCases = new Map(opsSeed.cases.map((item) => [item.id, item]));
   const caseIds = new Set(saved.cases.map((item) => item.id));
+  const cases = saved.cases.map((item) => {
+    const seed = seedCases.get(item.id);
+    if (!seed) return item;
+    return {
+      ...item,
+      subject: item.subject || seed.subject,
+      disbursement: item.disbursement ?? seed.disbursement,
+    };
+  });
+  const savedFeed = Array.isArray(saved.feed) ? saved.feed : [];
+  const feedIds = new Set(savedFeed.map((item) => item.id));
   return {
     certifications: [...certifications, ...opsSeed.certifications.filter((item) => !certIds.has(item.id))],
     loans: [...loans, ...opsSeed.loans.filter((item) => !loanIds.has(item.id))],
-    cases: [...saved.cases, ...opsSeed.cases.filter((item) => !caseIds.has(item.id))],
+    cases: [...cases, ...opsSeed.cases.filter((item) => !caseIds.has(item.id))],
+    feed: [...savedFeed, ...opsSeed.feed.filter((item) => !feedIds.has(item.id))],
+    documents: mergeDocuments(saved),
   };
+}
+
+function mergeDocuments(saved: OpsState) {
+  const savedDocs = Array.isArray(saved.documents) ? saved.documents : [];
+  const docIds = new Set(savedDocs.map((item) => item.id));
+  return [...savedDocs, ...opsSeed.documents.filter((item) => !docIds.has(item.id))];
 }
 
 function subscribe(listener: Listener) {
@@ -77,6 +97,8 @@ function getSnapshot() {
     state = loadState();
     clientHydrated = true;
   }
+  if (!Array.isArray(state.feed)) state = { ...state, feed: clone(opsSeed.feed) };
+  if (!Array.isArray(state.documents)) state = { ...state, documents: clone(opsSeed.documents) };
   return state;
 }
 
@@ -98,6 +120,11 @@ export interface OpsStore {
   certifications: OpsState["certifications"];
   loans: OpsState["loans"];
   cases: OpsState["cases"];
+  feed: OpsState["feed"];
+  documents: OpsState["documents"];
+  addFeedPost: (caseId: string, author: string, body: string) => void;
+  addFeedComment: (postId: string, author: string, body: string) => void;
+  toggleFeedLike: (postId: string) => void;
   recordSchoolResponse: (id: string, response: SchoolResponse) => void;
   resendCertification: (id: string) => void;
   rejectCertification: (id: string) => void;
@@ -107,6 +134,7 @@ export interface OpsStore {
   reassignCase: (id: string, assignee: string) => void;
   resolveCase: (id: string) => void;
   saveCaseNotes: (id: string, notes: string) => void;
+  updateCase: (id: string, patch: CasePatch) => void;
 }
 
 const OpsContext = createContext<OpsStore | null>(null);
@@ -119,6 +147,49 @@ export function OpsProvider({ children }: { children: ReactNode }) {
       certifications: snapshot.certifications,
       loans: snapshot.loans,
       cases: snapshot.cases,
+      feed: snapshot.feed,
+      documents: snapshot.documents,
+      addFeedPost: (caseId, author, body) => {
+        const note = body.trim();
+        if (!note) return;
+        edit((current) => {
+          if (!Array.isArray(current.feed)) current.feed = [];
+          current.feed.unshift({
+            id: `feed-${Date.now().toString(36)}`,
+            caseId,
+            author,
+            body: note,
+            createdAt: new Date().toISOString(),
+            likes: 0,
+            liked: false,
+            comments: [],
+            kind: "note",
+            audience: "Southeast Bank Only",
+          });
+        });
+      },
+      addFeedComment: (postId, author, body) => {
+        const note = body.trim();
+        if (!note) return;
+        edit((current) => {
+          const post = feedPost(current, postId);
+          if (!post) return;
+          post.comments.push({
+            id: `comment-${Date.now().toString(36)}`,
+            author,
+            body: note,
+            createdAt: new Date().toISOString(),
+          });
+        });
+      },
+      toggleFeedLike: (postId) => {
+        edit((current) => {
+          const post = feedPost(current, postId);
+          if (!post) return;
+          post.liked = !post.liked;
+          post.likes += post.liked ? 1 : -1;
+        });
+      },
       recordSchoolResponse: (id, response) => {
         edit((current) => {
           const cert = current.certifications.find((item) => item.id === id);
@@ -208,10 +279,48 @@ export function OpsProvider({ children }: { children: ReactNode }) {
           item.notes = notes;
         });
       },
+      updateCase: (id, patch) => {
+        edit((current) => {
+          const item = current.cases.find((entry) => entry.id === id);
+          if (!item) return;
+          if (patch.subject !== undefined) item.subject = patch.subject;
+          if (patch.details !== undefined) item.details = patch.details;
+          if (patch.notes !== undefined) item.notes = patch.notes;
+          if (patch.fileNotes !== undefined) item.fileNotes = patch.fileNotes;
+          if (patch.fileNotesUpdatedAt !== undefined) item.fileNotesUpdatedAt = patch.fileNotesUpdatedAt;
+          if (patch.status !== undefined) item.status = patch.status;
+          if (patch.priority !== undefined) item.priority = patch.priority;
+          if (patch.type !== undefined) item.type = patch.type;
+          if (patch.assignee !== undefined) item.assignee = patch.assignee;
+          if (patch.form) item.form = { ...item.form, ...patch.form };
+        });
+      },
     };
   }, [snapshot]);
 
   return <OpsContext.Provider value={value}>{children}</OpsContext.Provider>;
+}
+
+function feedPost(current: OpsState, postId: string): FeedPost | undefined {
+  if (!Array.isArray(current.feed)) current.feed = [];
+  const existing = current.feed.find((item) => item.id === postId);
+  if (existing) return existing;
+  if (!postId.startsWith("created-")) return undefined;
+  const item = current.cases.find((entry) => entry.id === postId.slice("created-".length));
+  if (!item) return undefined;
+  const post: FeedPost = {
+    id: postId,
+    caseId: item.id,
+    author: item.openedBy,
+    body: item.details || item.subject,
+    createdAt: item.openedAt,
+    likes: 0,
+    liked: false,
+    comments: [],
+    kind: "created",
+  };
+  current.feed.push(post);
+  return post;
 }
 
 function disbursementTarget(current: OpsState, loanId: string): { loan: ServicingLoan; disbursements: Disbursement[] } | null {

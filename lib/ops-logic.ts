@@ -35,7 +35,7 @@ export type CertViewId = (typeof CERT_VIEWS)[number]["id"];
 export const SERVICING_VIEWS = [
   {
     id: "cases",
-    label: "Servicing cases",
+    label: "Servicing Queue",
     empty: "No servicing cases match this view.",
   },
   {
@@ -62,9 +62,9 @@ export const OPS_LABELS: Record<string, string> = {
   high: "High",
   medium: "Medium",
   low: "Low",
-  open: "Open",
-  "waiting-on-advisor": "Waiting on advisor",
-  "waiting-on-school": "Waiting on school",
+  open: "New",
+  "waiting-on-advisor": "On Hold",
+  "waiting-on-school": "On Hold",
   resolved: "Resolved",
   completed: "Completed",
   pending: "Pending",
