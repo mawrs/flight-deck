@@ -35,6 +35,10 @@ export function servicingCaseHref(id: string) {
   return `${LOAN_HOME}/servicing/cases/${id}`;
 }
 
+export function servicingNewCaseHref() {
+  return `${LOAN_HOME}/servicing/cases/new`;
+}
+
 export function servicingLoanHref(id: string) {
   return `${LOAN_HOME}/servicing/loans/${id}`;
 }

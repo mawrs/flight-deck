@@ -19,6 +19,7 @@ import { certificationById, opsLabel } from "@/lib/ops-logic";
 import { ADVISORS } from "@/lib/ops-data";
 import { useOps } from "@/lib/ops-store";
 import { useStore } from "@/lib/store";
+import { CASE_ORIGINS, CASE_QUEUES, CASE_REASONS, CASE_REQUEST_TYPES, CASE_SUB_QUEUES, picklist } from "@/lib/case-open";
 import { CASE_STATUSES, type CaseForm, type CasePatch, type CasePriority, type CaseStatus, type CaseType } from "@/lib/ops-types";
 
 const PRIORITY_OPTIONS: { id: CasePriority; label: string }[] = [
@@ -46,7 +47,7 @@ const TYPE_OPTIONS: { id: CaseType; label: string }[] = [
 const SECTION_FIELDS = {
   details: ["caseNumber", "assignee", "contactName", "phone", "opportunity", "email", "highestDegree", "suggestionForm"],
   loan: ["sla", "underwriter"],
-  info: ["status", "type", "origin", "reason", "priority", "disbursementStatus", "subject", "details", "notes", "openedLabel", "closedAt", "webEmail"],
+  info: ["status", "type", "requestType", "origin", "reason", "queue", "subQueue", "projectDue", "priority", "disbursementStatus", "subject", "details", "notes", "openedLabel", "closedAt", "webEmail"],
 } as const;
 
 type EditSection = keyof typeof SECTION_FIELDS;
@@ -91,6 +92,7 @@ export function CaseFile({
 
   const closed = item.status === "closed";
   const form = item.form;
+  const requestCase = Boolean(shown(form, "requestType", ""));
   const save = (patch: CasePatch) => ops.updateCase(item.id, patch);
   const setField = (key: DraftKey, value: string) => {
     setDrafts((current) => ({ ...current, [key]: value }));
@@ -143,10 +145,17 @@ export function CaseFile({
     if (panel === "info") {
       const status = take("status", item.status);
       if (status !== undefined) patch.status = status as CaseStatus;
-      const type = take("type", item.type);
-      if (type !== undefined) patch.type = type as CaseType;
+      if (requestCase) {
+        takeForm("requestType", shown(form, "requestType", ""));
+      } else {
+        const type = take("type", item.type);
+        if (type !== undefined) patch.type = type as CaseType;
+      }
       takeForm("origin", shown(form, "origin", ""));
       takeForm("reason", shown(form, "reason", ""));
+      takeForm("queue", shown(form, "queue", ""));
+      takeForm("subQueue", shown(form, "subQueue", ""));
+      takeForm("projectDue", shown(form, "projectDue", ""));
       const priority = take("priority", item.priority);
       if (priority !== undefined) patch.priority = priority as CasePriority;
       takeForm("disbursementStatus", shown(form, "disbursementStatus", ""));
@@ -210,9 +219,23 @@ export function CaseFile({
                 options={CASE_STATUSES.map((option) => ({ id: option.id, label: option.label }))}
                 onChange={(value) => setField("status", value)}
               />
-              <CaseField editing={editing.info} label="Type" value={item.type} draft={drafts.type} options={TYPE_OPTIONS} onChange={(value) => setField("type", value)} />
-              <CaseField editing={editing.info} label="Case Origin" value={shown(form, "origin", "")} draft={drafts.origin} onChange={(value) => setField("origin", value)} />
-              <CaseField editing={editing.info} label="Case Reason" value={shown(form, "reason", "")} draft={drafts.reason} onChange={(value) => setField("reason", value)} />
+              <CaseField
+                editing={editing.info}
+                label="Type"
+                value={requestCase ? shown(form, "requestType", "") : item.type}
+                draft={requestCase ? drafts.requestType : drafts.type}
+                options={requestCase ? picklist(CASE_REQUEST_TYPES) : TYPE_OPTIONS}
+                onChange={(value) => setField(requestCase ? "requestType" : "type", value)}
+              />
+              <CaseField editing={editing.info} label="Case Origin" value={shown(form, "origin", "")} draft={drafts.origin} options={picklist(CASE_ORIGINS)} onChange={(value) => setField("origin", value)} />
+              <CaseField editing={editing.info} label="Case Reason" value={shown(form, "reason", "")} draft={drafts.reason} options={picklist(CASE_REASONS)} onChange={(value) => setField("reason", value)} />
+              {requestCase || editing.info ? (
+                <>
+                  <CaseField editing={editing.info} label="Queue" value={shown(form, "queue", "")} draft={drafts.queue} options={picklist(CASE_QUEUES)} onChange={(value) => setField("queue", value)} />
+                  <CaseField editing={editing.info} label="Sub Queue" value={shown(form, "subQueue", "")} draft={drafts.subQueue} options={picklist(CASE_SUB_QUEUES)} onChange={(value) => setField("subQueue", value)} />
+                  <CaseField editing={editing.info} label="Project Due Date" value={shown(form, "projectDue", "")} draft={drafts.projectDue} onChange={(value) => setField("projectDue", value)} />
+                </>
+              ) : null}
               <CaseField editing={editing.info} label="Priority" value={item.priority} draft={drafts.priority} options={PRIORITY_OPTIONS} onChange={(value) => setField("priority", value)} />
               <CaseField editing={editing.info} label="Disbursement Case Status" value={shown(form, "disbursementStatus", "")} draft={drafts.disbursementStatus} onChange={(value) => setField("disbursementStatus", value)} />
               <CaseField editing={editing.info} label="Subject" value={item.subject} draft={drafts.subject} onChange={(value) => setField("subject", value)} />
@@ -246,7 +269,7 @@ export function CaseFile({
       backHref={servicingHome()}
       backLabel="Back to servicing cases"
       eyebrow="Servicing case"
-      title={`${loan.borrower} - ${opsLabel(item.type)}`}
+      title={`${shown(form, "contactName", "") || loan.borrower} - ${shown(form, "requestType", "") || opsLabel(item.type)}`}
       tabs={
         <SectionTabs
           label="Servicing sections"

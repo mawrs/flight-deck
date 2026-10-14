@@ -1,0 +1,14 @@
+.avatar {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: 999px;
+  color: #fff;
+}
+
+.avatar svg {
+  width: 68%;
+  height: 68%;
+}

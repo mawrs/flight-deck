@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import { Notifications } from "@/components/ops/Notifications";
 import styles from "./dashboard.module.css";
 
 const NAV = [
@@ -90,7 +91,9 @@ export function ConsoleShell({ children, initialExpanded = false }: { children: 
     <div className={styles.shell}>
       <header className={styles.topbar}>
         <img className={styles.logo} src="/dashboard/logo.png" alt="SouthEast Bank" width={162} height={43} />
-        <div className={styles.userMenu} ref={userMenuRef}>
+        <div className={styles.topActions}>
+          <Notifications />
+          <div className={styles.userMenu} ref={userMenuRef}>
           <button
             className={styles.user}
             type="button"
@@ -114,6 +117,7 @@ export function ConsoleShell({ children, initialExpanded = false }: { children: 
               </button>
             </div>
           ) : null}
+        </div>
         </div>
       </header>
       <div className={styles.body}>

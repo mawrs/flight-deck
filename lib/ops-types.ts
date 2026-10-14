@@ -86,6 +86,10 @@ export interface CaseForm {
   underwriter: string;
   origin: string;
   reason: string;
+  requestType: string;
+  queue: string;
+  subQueue: string;
+  projectDue: string;
   disbursementStatus: string;
   openedLabel: string;
   closedAt: string;
@@ -141,6 +145,16 @@ export interface FeedPost {
   emailBcc?: string;
 }
 
+export interface OpsNotification {
+  id: string;
+  kind: "mention" | "case-created";
+  actor: string;
+  body: string;
+  caseId: string;
+  createdAt: string;
+  read: boolean;
+}
+
 export interface CaseDocument {
   id: string;
   caseId: string;
@@ -161,6 +175,7 @@ export interface OpsState {
   cases: ServicingCase[];
   feed: FeedPost[];
   documents: CaseDocument[];
+  notifications: OpsNotification[];
 }
 
 export interface SchoolResponse {

@@ -5,6 +5,7 @@ import type {
   DisbursementStatus,
   CaseDocument,
   FeedPost,
+  OpsNotification,
   OpsState,
   ServicingCase,
   ServicingLoan,
@@ -351,7 +352,7 @@ export function createOpsSeed(): OpsState {
       openedAt: at("2026-09-18", 8),
       subject: "Disbursement date passed",
       disbursement: "Research fall roster",
-      details: "School disbursement date has passed and the funds are still scheduled. Confirm the roster before release.",
+      details: "@Demo Account The fall disbursement date passed and the funds are still scheduled. Confirm the roster before release.",
       notes: "",
     },
     {
@@ -388,12 +389,12 @@ export function createOpsSeed(): OpsState {
       type: "disbursement-review",
       priority: "high",
       status: "new",
-      openedBy: "Nathan",
+      openedBy: "Loan Operations",
       assignee: "Morgan Struchko",
       openedAt: at("2026-09-08", 10),
       subject: "Reduced certification",
       disbursement: "Research certified amount",
-      details: "EdMed certification was reduced and the disbursement date has passed. Review the certified amount against cost of attendance.",
+      details: "@Demo Account EdMed certification was reduced and the disbursement date has passed. Review the certified amount against cost of attendance.",
       notes: "",
     },
     {
@@ -549,7 +550,46 @@ export function createOpsSeed(): OpsState {
     doc("doc-8", "case-3005", "Email to school — spring disbursement timing.pdf", "Liz", "2026-10-12", 16),
   ];
 
-  return { certifications, loans, cases, feed, documents };
+  const notifications: OpsNotification[] = [
+    {
+      id: "notice-1",
+      kind: "mention",
+      actor: "Morgan Struchko",
+      body: "@Demo Account The fall disbursement date passed and the funds are still scheduled. Confirm the roster before release.",
+      caseId: "case-3001",
+      createdAt: at("2026-10-13", 9),
+      read: false,
+    },
+    {
+      id: "notice-2",
+      kind: "case-created",
+      actor: "Bini Phillip",
+      body: "Bini Phillip has created a new Servicing Case with Case#: 00043002",
+      caseId: "case-3002",
+      createdAt: at("2026-10-12", 19),
+      read: false,
+    },
+    {
+      id: "notice-3",
+      kind: "case-created",
+      actor: "Morgan Struchko",
+      body: "Morgan Struchko has created a new Disbursement/Payoff Servicing Case with Case#: 00043009",
+      caseId: "case-3009",
+      createdAt: at("2026-10-11", 15),
+      read: false,
+    },
+    {
+      id: "notice-4",
+      kind: "mention",
+      actor: "Loan Operations",
+      body: "@Demo Account EdMed certification was reduced and the disbursement date has passed. Review the certified amount against cost of attendance.",
+      caseId: "case-3004",
+      createdAt: at("2026-10-10", 10),
+      read: false,
+    },
+  ];
+
+  return { certifications, loans, cases, feed, documents, notifications };
 }
 
 const SAMPLE_PDFS = [
