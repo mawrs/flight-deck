@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Badge, Button } from "@/components";
+import { servicingCaseHref } from "@/lib/loan-routes";
 import { EMAIL_ACTIVITY } from "./activity";
 import styles from "./emails.module.css";
 
@@ -37,22 +38,42 @@ export function SingleSend({
   embedded = false,
   templateTitle,
   onCancel,
+  onDone,
+  onSent,
   readOnly = false,
   body,
   sentLabel,
+  initialSubject,
+  doneLabel,
   applicantName,
   applicantEmail,
   productName,
+  hideFooter = false,
+  directSend = false,
+  caseNumber,
+  caseId,
+  lineLabel,
+  applicationId,
 }: {
   embedded?: boolean;
   templateTitle?: string;
   onCancel?: () => void;
+  onDone?: () => void;
+  onSent?: (email: { subject: string; body: string; to: string; cc: string; bcc: string }) => void;
   readOnly?: boolean;
   body?: string;
   sentLabel?: string;
+  initialSubject?: string;
+  doneLabel?: string;
   applicantName?: string;
   applicantEmail?: string;
   productName?: string;
+  hideFooter?: boolean;
+  directSend?: boolean;
+  caseNumber?: string;
+  caseId?: string;
+  lineLabel?: string;
+  applicationId?: string;
 } = {}) {
   const router = useRouter();
   const queryTemplate = useSearchParams().get("template");
@@ -62,7 +83,10 @@ export function SingleSend({
   const editorRef = useRef<HTMLDivElement>(null);
   const bodyRef = useRef(startingBody);
   const [mode, setMode] = useState<Mode>("edit");
-  const [subject, setSubject] = useState(matched?.subject ?? "Your SouthEast Bank Application");
+  const [subject, setSubject] = useState(initialSubject ?? matched?.subject ?? "Your SouthEast Bank Application");
+  const [to, setTo] = useState(applicantEmail ?? "");
+  const [cc, setCc] = useState("");
+  const [bcc, setBcc] = useState("");
   const [preheader, setPreheader] = useState("");
   const [bodyHtml, setBodyHtml] = useState(startingBody);
   const [sendOpen, setSendOpen] = useState(false);
@@ -82,10 +106,10 @@ export function SingleSend({
   }, [mode]);
 
   useEffect(() => {
-    if (mode !== "sending") return;
+    if (mode !== "sending" || directSend) return;
     const id = window.setInterval(() => setSeconds((value) => (value > 0 ? value - 1 : 0)), 1000);
     return () => window.clearInterval(id);
-  }, [mode]);
+  }, [mode, directSend]);
 
   function syncBody() {
     if (!editorRef.current) return;
@@ -113,45 +137,162 @@ export function SingleSend({
     setMode("scheduled");
   }
 
+  function sendNow() {
+    syncBody();
+    setSendOpen(false);
+    setSeconds(59);
+    setMode("sending");
+    onSent?.({ subject, body: bodyRef.current, to, cc, bcc });
+  }
+
+  function formattingBar(compact = false) {
+    return (
+      <div className={styles.editorToolbar} aria-label="Formatting">
+        <div className={compact ? `${styles.toolRow} ${styles.toolRowSingle}` : styles.toolRow}>
+          {compact ? null : (
+            <>
+              <Tool label="Undo" onClick={() => format("undo")}>↺</Tool>
+              <Tool label="Redo" onClick={() => format("redo")}>↻</Tool>
+              <span className={styles.toolGap} />
+            </>
+          )}
+          <select className={styles.toolSelect} aria-label="Zoom" defaultValue="100%">
+            <option>100%</option>
+            <option>125%</option>
+            <option>150%</option>
+          </select>
+          <select className={styles.toolSelect} aria-label="Style" defaultValue="Paragraph text" onChange={() => format("formatBlock", "P")}>
+            <option>Paragraph text</option>
+            <option>Heading</option>
+          </select>
+          <select className={styles.toolSelect} aria-label="Font" defaultValue="Arial" onChange={(event) => format("fontName", event.target.value)}>
+            <option>Arial</option>
+            <option>Georgia</option>
+            <option>Verdana</option>
+          </select>
+          <Tool label="Decrease size" onClick={() => format("fontSize", "2")}>−</Tool>
+          <Tool label="Increase size" onClick={() => format("fontSize", "4")}>+</Tool>
+          <span className={styles.toolGap} />
+          <Tool label="Bold" onClick={() => format("bold")}>B</Tool>
+          <Tool label="Italic" onClick={() => format("italic")}>I</Tool>
+          <Tool label="Underline" onClick={() => format("underline")}>U</Tool>
+          {compact ? (
+            <>
+              <span className={styles.toolGap} />
+              <Tool label="Bulleted list" onClick={() => format("insertUnorderedList")}>•≡</Tool>
+              <Tool label="Numbered list" onClick={() => format("insertOrderedList")}>1.</Tool>
+              <span className={styles.toolGap} />
+              <Tool label="Align left" onClick={() => format("justifyLeft")}>≡</Tool>
+              <Tool label="Align center" onClick={() => format("justifyCenter")}>≡</Tool>
+              <Tool label="Align right" onClick={() => format("justifyRight")}>≡</Tool>
+            </>
+          ) : null}
+        </div>
+        {compact ? null : (
+        <div className={styles.toolRow}>
+          <Tool label="Bulleted list" onClick={() => format("insertUnorderedList")}>•≡</Tool>
+          <Tool label="Numbered list" onClick={() => format("insertOrderedList")}>1.</Tool>
+          <span className={styles.toolGap} />
+          <Tool label="Align left" onClick={() => format("justifyLeft")}>≡</Tool>
+          <Tool label="Align center" onClick={() => format("justifyCenter")}>≡</Tool>
+          <Tool label="Align right" onClick={() => format("justifyRight")}>≡</Tool>
+          <span className={styles.toolGap} />
+          <div className={styles.menuWrap}>
+            <button className={styles.toolSelect} type="button" aria-expanded={placeholdersOpen} onClick={() => setPlaceholdersOpen((open) => !open)}>
+              Placeholders
+              <Chevron />
+            </button>
+            {placeholdersOpen ? (
+              <div className={styles.menu} role="menu">
+                {PLACEHOLDERS.map((token) => (
+                  <button key={token} type="button" role="menuitem" onClick={() => insertPlaceholder(token)}>
+                    {token}
+                  </button>
+                ))}
+              </div>
+            ) : null}
+          </div>
+        </div>
+        )}
+      </div>
+    );
+  }
+
   function leave() {
     if (onCancel) onCancel();
     else if (queryTemplate) router.back();
     else router.push("/dashboard/emails");
   }
 
+  function finish() {
+    if (onDone) onDone();
+    else leave();
+  }
+
   return (
-    <main className={[embedded ? styles.embedded : styles.page, mode === "sending" || mode === "scheduled" ? styles.sendingPage : ""].filter(Boolean).join(" ")}>
+    <main className={[embedded ? styles.embedded : styles.page, directSend ? styles.directPage : "", mode === "sending" || mode === "scheduled" ? styles.sendingPage : ""].filter(Boolean).join(" ")}>
       {mode === "edit" || mode === "preview" ? (
         <>
           {!embedded && mode === "edit" ? (
             <section className={styles.profile}>
               <div>
-                <h2>{applicantName ?? "John Smith"}</h2>
+                <h2>{applicantName || (lineLabel ? lineLabel : "John Smith")}</h2>
                 <p>Email</p>
-                <strong>{applicantEmail ?? "jsmith@email.com"}</strong>
+                <strong>{applicantEmail || (lineLabel ? "Add a recipient" : "jsmith@email.com")}</strong>
               </div>
               <span className={styles.rule} />
               <div>
-                <h2>{productName ?? "6-Month CD"}</h2>
+                <h2>{productName || (lineLabel === "Other" ? "Unlinked" : "6-Month CD")}</h2>
                 <div className={styles.facts}>
-                  <div>
-                    <p>Initial Deposit</p>
-                    <strong>$10,000.00</strong>
-                  </div>
-                  <div>
-                    <p>Application Number</p>
-                    <strong>138701283</strong>
-                  </div>
-                  <div>
-                    <p>Status</p>
-                    <Badge tone="warning">Manual Review</Badge>
-                  </div>
-                  <div>
-                    <p>Assigned to</p>
-                    <button className={styles.assign} type="button">
-                      Unassigned
-                    </button>
-                  </div>
+                  {lineLabel && lineLabel !== "Deposits" ? (
+                    <>
+                      <div>
+                        <p>Line</p>
+                        <strong>{lineLabel}</strong>
+                      </div>
+                      {caseNumber ? (
+                        <div>
+                          <p>Case</p>
+                          <strong>
+                            {caseId ? (
+                              <a className={styles.link} href={servicingCaseHref(caseId)}>
+                                {caseNumber}
+                              </a>
+                            ) : (
+                              caseNumber
+                            )}
+                          </strong>
+                        </div>
+                      ) : null}
+                      {applicationId ? (
+                        <div>
+                          <p>Application</p>
+                          <strong>{applicationId}</strong>
+                        </div>
+                      ) : null}
+                    </>
+                  ) : (
+                    <>
+                      <div>
+                        <p>Initial Deposit</p>
+                        <strong>$10,000.00</strong>
+                      </div>
+                      <div>
+                        <p>Application Number</p>
+                        <strong>138701283</strong>
+                      </div>
+                      <div>
+                        <p>Status</p>
+                        <Badge tone="warning">Manual Review</Badge>
+                      </div>
+                      <div>
+                        <p>Assigned to</p>
+                        <button className={styles.assign} type="button">
+                          Unassigned
+                        </button>
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
             </section>
@@ -161,13 +302,20 @@ export function SingleSend({
           <div className={readOnly || mode === "preview" ? styles.previewTitle : styles.editorTitleRow}>
             <div className={styles.previewHeading}>
               <h2 className={styles.editorTitle}>{templateName ?? (mode === "preview" ? "General Rejection Template" : "General Rejection V2")}</h2>
+              {caseNumber ? <p className={styles.sentWhen}>Case {caseNumber}</p> : null}
               {readOnly && sentLabel ? <p className={styles.sentWhen}>Sent {sentLabel}</p> : null}
+              {embedded && applicantEmail && !directSend ? (
+                <p className={styles.sentWhen}>
+                  To {applicantName ? `${applicantName} (${applicantEmail})` : applicantEmail}
+                </p>
+              ) : null}
             </div>
             {mode === "preview" && !readOnly ? (
               <Button variant="outline" size="small">
                 Preview
               </Button>
             ) : null}
+            {directSend && mode === "edit" ? null : (
             <div className={styles.actions}>
               {readOnly ? (
                 <Button variant="outline" size="small" onClick={leave}>
@@ -179,12 +327,19 @@ export function SingleSend({
                 </Button>
               ) : (
                 <>
-                  <Button variant="outline" size="small" onClick={() => setMode("preview")}>
-                    Preview
-                  </Button>
+                  {directSend ? null : (
+                    <Button variant="outline" size="small" onClick={() => setMode("preview")}>
+                      Preview
+                    </Button>
+                  )}
                   <Button variant="outline" size="small" className={embedded ? styles.danger : undefined} onClick={leave}>
                     Cancel
                   </Button>
+                  {directSend ? (
+                    <Button size="small" onClick={sendNow}>
+                      Send
+                    </Button>
+                  ) : (
                   <div className={styles.menuWrap}>
                     <Button size="small" aria-expanded={sendOpen} onClick={() => setSendOpen((open) => !open)}>
                       Send
@@ -195,11 +350,7 @@ export function SingleSend({
                         <button
                           type="button"
                           role="menuitem"
-                          onClick={() => {
-                            setSendOpen(false);
-                            setSeconds(59);
-                            setMode("sending");
-                          }}
+                          onClick={sendNow}
                         >
                           Send now
                         </button>
@@ -329,13 +480,66 @@ export function SingleSend({
                       </section>
                     ) : null}
                   </div>
+                  )}
                 </>
               )}
             </div>
+            )}
           </div>
 
           {mode === "edit" && !readOnly ? (
-            <div className={[embedded ? styles.embeddedBody : "", styles.editorStack, scheduleOpen ? styles.editorDim : ""].filter(Boolean).join(" ")}>
+            <div className={[embedded ? styles.embeddedBody : "", styles.editorStack, directSend ? styles.mailStack : "", scheduleOpen ? styles.editorDim : ""].filter(Boolean).join(" ")}>
+              {directSend ? (
+                <div className={styles.mailFields}>
+                  {caseNumber ? (
+                    <div className={styles.mailField}>
+                      <label>Case</label>
+                      {caseId ? (
+                        <a className={`${styles.mailValue} ${styles.link}`} href={servicingCaseHref(caseId)}>
+                          {caseNumber}
+                        </a>
+                      ) : (
+                        <span className={styles.mailValue}>{caseNumber}</span>
+                      )}
+                    </div>
+                  ) : null}
+                  <div className={styles.mailField}>
+                    <label htmlFor="mail-to">To</label>
+                    <input id="mail-to" className={styles.mailInput} value={to} onChange={(event) => setTo(event.target.value)} />
+                  </div>
+                  <div className={styles.mailField}>
+                    <label htmlFor="mail-cc">Cc</label>
+                    <input id="mail-cc" className={styles.mailInput} value={cc} onChange={(event) => setCc(event.target.value)} />
+                  </div>
+                  <div className={styles.mailField}>
+                    <label htmlFor="mail-bcc">Bcc</label>
+                    <input id="mail-bcc" className={styles.mailInput} value={bcc} onChange={(event) => setBcc(event.target.value)} />
+                  </div>
+                  <div className={styles.mailField}>
+                    <label htmlFor="subject">Subject</label>
+                    <input id="subject" className={styles.mailInput} value={subject} onChange={(event) => setSubject(event.target.value)} />
+                  </div>
+                </div>
+              ) : null}
+              {caseNumber && !directSend ? (
+                <div className={styles.caseLine}>
+                  <span>Case</span>
+                  {caseId ? (
+                    <a className={styles.link} href={servicingCaseHref(caseId)}>
+                      {caseNumber}
+                    </a>
+                  ) : (
+                    <strong>{caseNumber}</strong>
+                  )}
+                </div>
+              ) : null}
+              {!directSend && !applicantEmail && !readOnly ? (
+                <div className={styles.caseLine}>
+                  <label htmlFor="mail-to">To</label>
+                  <input id="mail-to" className={styles.subjectInput} value={to} onChange={(event) => setTo(event.target.value)} />
+                </div>
+              ) : null}
+              {directSend ? null : (
               <div className={styles.subjectRow}>
                 <div className={styles.subjectLine}>
                   <div className={styles.subjectInline}>
@@ -357,85 +561,26 @@ export function SingleSend({
                   <p className={styles.hint}>Short preview message displayed before the email is opened.</p>
                 </div>
               </div>
-              <section className={styles.editor}>
-                <div className={styles.editorToolbar} aria-label="Formatting">
-                  <div className={styles.toolRow}>
-                    <Tool label="Undo" onClick={() => format("undo")}>
-                      ↺
-                    </Tool>
-                    <Tool label="Redo" onClick={() => format("redo")}>
-                      ↻
-                    </Tool>
-                    <span className={styles.toolGap} />
-                    <select className={styles.toolSelect} aria-label="Zoom" defaultValue="100%">
-                      <option>100%</option>
-                      <option>125%</option>
-                      <option>150%</option>
-                    </select>
-                    <select className={styles.toolSelect} aria-label="Style" defaultValue="Paragraph text" onChange={() => format("formatBlock", "P")}>
-                      <option>Paragraph text</option>
-                      <option>Heading</option>
-                    </select>
-                    <select className={styles.toolSelect} aria-label="Font" defaultValue="Arial" onChange={(event) => format("fontName", event.target.value)}>
-                      <option>Arial</option>
-                      <option>Georgia</option>
-                      <option>Verdana</option>
-                    </select>
-                    <Tool label="Decrease size" onClick={() => format("fontSize", "2")}>
-                      −
-                    </Tool>
-                    <Tool label="Increase size" onClick={() => format("fontSize", "4")}>
-                      +
-                    </Tool>
-                    <span className={styles.toolGap} />
-                    <Tool label="Bold" onClick={() => format("bold")}>
-                      B
-                    </Tool>
-                    <Tool label="Italic" onClick={() => format("italic")}>
-                      I
-                    </Tool>
-                    <Tool label="Underline" onClick={() => format("underline")}>
-                      U
-                    </Tool>
-                  </div>
-                  <div className={styles.toolRow}>
-                    <Tool label="Bulleted list" onClick={() => format("insertUnorderedList")}>
-                      •≡
-                    </Tool>
-                    <Tool label="Numbered list" onClick={() => format("insertOrderedList")}>
-                      1.
-                    </Tool>
-                    <span className={styles.toolGap} />
-                    <Tool label="Align left" onClick={() => format("justifyLeft")}>
-                      ≡
-                    </Tool>
-                    <Tool label="Align center" onClick={() => format("justifyCenter")}>
-                      ≡
-                    </Tool>
-                    <Tool label="Align right" onClick={() => format("justifyRight")}>
-                      ≡
-                    </Tool>
-                    <span className={styles.toolGap} />
-                    <div className={styles.menuWrap}>
-                      <button className={styles.toolSelect} type="button" aria-expanded={placeholdersOpen} onClick={() => setPlaceholdersOpen((open) => !open)}>
-                        Placeholders
-                        <Chevron />
-                      </button>
-                      {placeholdersOpen ? (
-                        <div className={styles.menu} role="menu">
-                          {PLACEHOLDERS.map((token) => (
-                            <button key={token} type="button" role="menuitem" onClick={() => insertPlaceholder(token)}>
-                              {token}
-                            </button>
-                          ))}
-                        </div>
-                      ) : null}
+              )}
+              <section className={directSend ? `${styles.editor} ${styles.editorMail}` : styles.editor}>
+                {directSend ? (
+                  <div className={styles.composeFoot}>
+                    {formattingBar(true)}
+                    <div className={styles.mailActions}>
+                      <Button variant="outline" size="small" className={embedded ? styles.danger : undefined} onClick={leave}>
+                        Cancel
+                      </Button>
+                      <Button size="small" onClick={sendNow}>
+                        Send
+                      </Button>
                     </div>
                   </div>
-                </div>
+                ) : (
+                  formattingBar()
+                )}
                 <div className={styles.canvas}>
-                  <article className={styles.letter}>
-                    <img className={styles.brand} src="/dashboard/logo.png" alt="SouthEast Bank" />
+                  <article className={directSend ? `${styles.letter} ${styles.plainLetter}` : styles.letter}>
+                    {directSend ? null : <img className={styles.brand} src="/dashboard/logo.png" alt="SouthEast Bank" />}
                     <div
                       ref={editorRef}
                       className={styles.body}
@@ -445,17 +590,21 @@ export function SingleSend({
                       onInput={syncBody}
                       suppressContentEditableWarning
                     />
-                    <footer className={styles.letterFooter}>
-                      <img src="/dashboard/logo.png" alt="" />
-                      <span>
-                        SouthEast Bank
-                        <br />
-                        <a href="https://www.southeastbank.com/contact-us">https://www.southeastbank.com/contact-us</a>
-                        <br />
-                        1-844-732-2657
-                      </span>
-                    </footer>
-                    <p className={styles.unsubscribe}>Unsubscribe</p>
+                    {hideFooter ? null : (
+                      <>
+                        <footer className={styles.letterFooter}>
+                          <img src="/dashboard/logo.png" alt="" />
+                          <span>
+                            SouthEast Bank
+                            <br />
+                            <a href="https://www.southeastbank.com/contact-us">https://www.southeastbank.com/contact-us</a>
+                            <br />
+                            1-844-732-2657
+                          </span>
+                        </footer>
+                        <p className={styles.unsubscribe}>Unsubscribe</p>
+                      </>
+                    )}
                   </article>
                 </div>
               </section>
@@ -466,17 +615,21 @@ export function SingleSend({
                 <article className={styles.letter}>
                   <img className={styles.brand} src="/dashboard/logo.png" alt="SouthEast Bank" />
                   <div className={styles.body} dangerouslySetInnerHTML={{ __html: bodyHtml }} />
-                  <footer className={styles.letterFooter}>
-                    <img src="/dashboard/logo.png" alt="" />
-                    <span>
-                      SouthEast Bank
-                      <br />
-                      <a href="https://www.southeastbank.com/contact-us">https://www.southeastbank.com/contact-us</a>
-                      <br />
-                      1-844-732-2657
-                    </span>
-                  </footer>
-                  <p className={styles.unsubscribe}>Unsubscribe</p>
+                  {hideFooter ? null : (
+                    <>
+                      <footer className={styles.letterFooter}>
+                        <img src="/dashboard/logo.png" alt="" />
+                        <span>
+                          SouthEast Bank
+                          <br />
+                          <a href="https://www.southeastbank.com/contact-us">https://www.southeastbank.com/contact-us</a>
+                          <br />
+                          1-844-732-2657
+                        </span>
+                      </footer>
+                      <p className={styles.unsubscribe}>Unsubscribe</p>
+                    </>
+                  )}
                 </article>
               </div>
             </section>
@@ -492,12 +645,15 @@ export function SingleSend({
           {mode === "sending" ? <Plane /> : <CalendarArt />}
           <p className={styles.confirmMessage}>
             {mode === "sending"
-              ? seconds === 0
-                ? "Email sent"
-                : `Email will be sent in ${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`
+              ? directSend
+                ? "Email sent!"
+                : seconds === 0
+                  ? "Email sent"
+                  : `Email will be sent in ${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`
               : `Email has been scheduled for ${scheduledLabel}`}
           </p>
           <div className={styles.confirmActions}>
+            {directSend ? null : (
             <Button
               variant="outline"
               size="small"
@@ -509,8 +665,9 @@ export function SingleSend({
             >
               Cancel send
             </Button>
-            <Button size="small" onClick={leave}>
-              {embedded ? "Return to application" : "Return to dashboard"}
+            )}
+            <Button size="small" onClick={finish}>
+              {doneLabel ?? (embedded ? "Return to application" : "Return to dashboard")}
             </Button>
           </div>
           {mode === "scheduled" ? (

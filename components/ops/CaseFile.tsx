@@ -8,21 +8,18 @@ import { CaseDocuments, CaseFeed } from "@/components/ops/CaseFeed";
 import { OpsFile, OpsMissing } from "@/components/ops/OpsFile";
 import { Select } from "@/components/ui/Dropdown";
 import { FloatInput } from "@/components/ui/FloatInput";
+import { SchoolEmailPicker } from "@/components/email/SchoolEmailPicker";
 import { SectionTabs } from "@/components/ui/SectionTabs";
-import { shortDate } from "@/lib/format";
+import { SingleSend } from "@/app/dashboard/emails/SingleSend";
+import { dateOnly, shortDate } from "@/lib/format";
+import { CDA_DETAILS } from "@/lib/cda-record";
+import { contactForSchool, schoolFileName } from "@/lib/school-contacts";
 import { servicingHome } from "@/lib/loan-routes";
 import { certificationById, opsLabel } from "@/lib/ops-logic";
 import { ADVISORS } from "@/lib/ops-data";
 import { useOps } from "@/lib/ops-store";
 import { useStore } from "@/lib/store";
-import type { CaseForm, CasePatch, CasePriority, CaseStatus, CaseType } from "@/lib/ops-types";
-
-const STATUS_OPTIONS: { id: CaseStatus; label: string }[] = [
-  { id: "open", label: "New" },
-  { id: "waiting-on-advisor", label: "On Hold" },
-  { id: "waiting-on-school", label: "On Hold" },
-  { id: "resolved", label: "Resolved" },
-];
+import { CASE_STATUSES, type CaseForm, type CasePatch, type CasePriority, type CaseStatus, type CaseType } from "@/lib/ops-types";
 
 const PRIORITY_OPTIONS: { id: CasePriority; label: string }[] = [
   { id: "high", label: "High" },
@@ -46,7 +43,24 @@ const TYPE_OPTIONS: { id: CaseType; label: string }[] = [
   { id: "borrower-follow-up", label: "Borrower follow-up" },
 ];
 
-export function CaseFile({ id }: { id: string }) {
+const SECTION_FIELDS = {
+  details: ["caseNumber", "assignee", "contactName", "phone", "opportunity", "email", "highestDegree", "suggestionForm"],
+  loan: ["sla", "underwriter"],
+  info: ["status", "type", "origin", "reason", "priority", "disbursementStatus", "subject", "details", "notes", "openedLabel", "closedAt", "webEmail"],
+} as const;
+
+type EditSection = keyof typeof SECTION_FIELDS;
+type DraftKey = (typeof SECTION_FIELDS)[EditSection][number];
+
+export function CaseFile({
+  id,
+  embedded = false,
+  section: sectionProp,
+}: {
+  id: string;
+  embedded?: boolean;
+  section?: CaseSection;
+}) {
   const ops = useOps();
   const { getApplication, applications } = useStore();
   const item = ops.cases.find((entry) => entry.id === id);
@@ -60,8 +74,10 @@ export function CaseFile({ id }: { id: string }) {
   const [loanOpen, setLoanOpen] = useState(true);
   const [infoOpen, setInfoOpen] = useState(true);
   const [editing, setEditing] = useState({ details: false, loan: false, info: false });
+  const [drafts, setDrafts] = useState<Partial<Record<DraftKey, string>>>({});
   const [notesOpen, setNotesOpen] = useState(false);
-  const [section, setSection] = useState<CaseSection>("feed");
+  const [sectionState, setSection] = useState<CaseSection>("feed");
+  const section = embedded && sectionProp ? sectionProp : sectionState;
 
   if (!item || !loan) {
     return (
@@ -73,16 +89,157 @@ export function CaseFile({ id }: { id: string }) {
     );
   }
 
-  const resolved = item.status === "resolved";
+  const closed = item.status === "closed";
   const form = item.form;
   const save = (patch: CasePatch) => ops.updateCase(item.id, patch);
-  const saveForm = (key: keyof CaseForm, value: string) => save({ form: { [key]: value } });
-  const toggleEdit = (section: keyof typeof editing) => {
-    const next = !editing[section];
-    setEditing((current) => ({ ...current, [section]: next }));
-    if (next && section === "loan") setLoanOpen(true);
-    if (next && section === "info") setInfoOpen(true);
+  const setField = (key: DraftKey, value: string) => {
+    setDrafts((current) => ({ ...current, [key]: value }));
   };
+  const clearSection = (panel: EditSection) => {
+    setDrafts((current) => {
+      const next = { ...current };
+      for (const key of SECTION_FIELDS[panel]) delete next[key];
+      return next;
+    });
+  };
+  const startEdit = (panel: EditSection) => {
+    setEditing((current) => ({ ...current, [panel]: true }));
+    if (panel === "loan") setLoanOpen(true);
+    if (panel === "info") setInfoOpen(true);
+  };
+  const cancelEdit = (panel: EditSection) => {
+    clearSection(panel);
+    setEditing((current) => ({ ...current, [panel]: false }));
+  };
+  const saveEdit = (panel: EditSection) => {
+    const patch: CasePatch = {};
+    const formPatch: Partial<CaseForm> = {};
+    const take = (key: DraftKey, current: string) => {
+      const next = drafts[key];
+      return next !== undefined && next !== current ? next : undefined;
+    };
+    const takeForm = (key: keyof CaseForm, current: string) => {
+      const next = take(key, current);
+      if (next !== undefined) formPatch[key] = next;
+    };
+
+    if (panel === "details") {
+      takeForm("caseNumber", shown(form, "caseNumber", caseNumberLabel(item.id)));
+      const assignee = take("assignee", item.assignee);
+      if (assignee !== undefined) patch.assignee = assignee;
+      takeForm("contactName", shown(form, "contactName", loan.borrower));
+      takeForm("phone", shown(form, "phone", application?.borrower.phone ?? ""));
+      takeForm("opportunity", shown(form, "opportunity", application?.opportunityName ?? ""));
+      takeForm("email", shown(form, "email", application?.borrower.email ?? ""));
+      takeForm("highestDegree", shown(form, "highestDegree", degreeLabel(degreeBorrower)));
+      takeForm("suggestionForm", shown(form, "suggestionForm", ""));
+    }
+
+    if (panel === "loan") {
+      takeForm("sla", shown(form, "sla", ""));
+      takeForm("underwriter", shown(form, "underwriter", application?.underwriter ?? ""));
+    }
+
+    if (panel === "info") {
+      const status = take("status", item.status);
+      if (status !== undefined) patch.status = status as CaseStatus;
+      const type = take("type", item.type);
+      if (type !== undefined) patch.type = type as CaseType;
+      takeForm("origin", shown(form, "origin", ""));
+      takeForm("reason", shown(form, "reason", ""));
+      const priority = take("priority", item.priority);
+      if (priority !== undefined) patch.priority = priority as CasePriority;
+      takeForm("disbursementStatus", shown(form, "disbursementStatus", ""));
+      const subject = take("subject", item.subject);
+      if (subject !== undefined) patch.subject = subject;
+      const details = take("details", item.details);
+      if (details !== undefined) patch.details = details;
+      const notes = take("notes", item.notes);
+      if (notes !== undefined) patch.notes = notes;
+      takeForm("openedLabel", shown(form, "openedLabel", shortDate(item.openedAt)));
+      takeForm("closedAt", shown(form, "closedAt", ""));
+      takeForm("webEmail", shown(form, "webEmail", ""));
+    }
+
+    if (Object.keys(formPatch).length) patch.form = formPatch;
+    if (Object.keys(patch).length) save(patch);
+    clearSection(panel);
+    setEditing((current) => ({ ...current, [panel]: false }));
+  };
+
+  const sections = (
+    <>
+      {section === "documents" ? <CaseDocuments caseId={item.id} /> : null}
+      {section === "cda-history" ? (
+        <CdaHistory assignee={item.assignee} />
+      ) : null}
+      {section === "feed" ? (
+      <div className="flex min-h-0 flex-1 flex-col bg-white">
+        <div className="uw-card-header shrink-0">
+          <h2 className="text-lg text-black">Case Details</h2>
+          <SectionEdit editing={editing.details} onEdit={() => startEdit("details")} onSave={() => saveEdit("details")} onCancel={() => cancelEdit("details")} />
+        </div>
+        <div className="uw-case-sections min-h-0 flex-1 overflow-auto">
+          <section className="uw-case-section">
+            <div className="uw-case-grid">
+              <CaseField editing={editing.details} label="Case Number" value={shown(form, "caseNumber", caseNumberLabel(item.id))} draft={drafts.caseNumber} onChange={(value) => setField("caseNumber", value)} />
+              <CaseField editing={editing.details} label="Case Owner" value={item.assignee} draft={drafts.assignee} onChange={(value) => setField("assignee", value)} />
+              <CaseField editing={editing.details} label="Contact Name" value={shown(form, "contactName", loan.borrower)} draft={drafts.contactName} onChange={(value) => setField("contactName", value)} />
+              <CaseField editing={editing.details} label="Contact Phone" value={shown(form, "phone", application?.borrower.phone ?? "")} draft={drafts.phone} onChange={(value) => setField("phone", value)} />
+              <CaseField editing={editing.details} label="Opportunity" value={shown(form, "opportunity", application?.opportunityName ?? "")} draft={drafts.opportunity} onChange={(value) => setField("opportunity", value)} />
+              <CaseField editing={editing.details} label="Contact Email" value={shown(form, "email", application?.borrower.email ?? "")} draft={drafts.email} onChange={(value) => setField("email", value)} />
+              <CaseField editing={editing.details} label="Highest Degree" value={shown(form, "highestDegree", degreeLabel(degreeBorrower))} draft={drafts.highestDegree} multiline onChange={(value) => setField("highestDegree", value)} />
+              <CaseField editing={editing.details} label="Suggestion Form" value={shown(form, "suggestionForm", "")} draft={drafts.suggestionForm} onChange={(value) => setField("suggestionForm", value)} />
+            </div>
+          </section>
+
+          <CaseFold title="Loan Details" open={loanOpen} onToggle={() => setLoanOpen((open) => !open)} editing={editing.loan} onEdit={() => startEdit("loan")} onSave={() => saveEdit("loan")} onCancel={() => cancelEdit("loan")}>
+            <div className="uw-case-grid">
+              <CaseField editing={editing.loan} label="SLA" value={shown(form, "sla", "")} draft={drafts.sla} onChange={(value) => setField("sla", value)} />
+              <CaseField editing={editing.loan} label="Underwriter" value={shown(form, "underwriter", application?.underwriter ?? "")} draft={drafts.underwriter} onChange={(value) => setField("underwriter", value)} />
+            </div>
+          </CaseFold>
+
+          <CaseFold title="Additional Information" open={infoOpen} onToggle={() => setInfoOpen((open) => !open)} editing={editing.info} onEdit={() => startEdit("info")} onSave={() => saveEdit("info")} onCancel={() => cancelEdit("info")}>
+            <div className="uw-case-grid">
+              <CaseField
+                editing={editing.info}
+                label="Status"
+                value={item.status}
+                draft={drafts.status}
+                options={CASE_STATUSES.map((option) => ({ id: option.id, label: option.label }))}
+                onChange={(value) => setField("status", value)}
+              />
+              <CaseField editing={editing.info} label="Type" value={item.type} draft={drafts.type} options={TYPE_OPTIONS} onChange={(value) => setField("type", value)} />
+              <CaseField editing={editing.info} label="Case Origin" value={shown(form, "origin", "")} draft={drafts.origin} onChange={(value) => setField("origin", value)} />
+              <CaseField editing={editing.info} label="Case Reason" value={shown(form, "reason", "")} draft={drafts.reason} onChange={(value) => setField("reason", value)} />
+              <CaseField editing={editing.info} label="Priority" value={item.priority} draft={drafts.priority} options={PRIORITY_OPTIONS} onChange={(value) => setField("priority", value)} />
+              <CaseField editing={editing.info} label="Disbursement Case Status" value={shown(form, "disbursementStatus", "")} draft={drafts.disbursementStatus} onChange={(value) => setField("disbursementStatus", value)} />
+              <CaseField editing={editing.info} label="Subject" value={item.subject} draft={drafts.subject} onChange={(value) => setField("subject", value)} />
+              <CaseField editing={editing.info} label="Description" value={item.details} draft={drafts.details} multiline wide onChange={(value) => setField("details", value)} />
+              <CaseField editing={editing.info} label="Internal Comments" value={item.notes} draft={drafts.notes} multiline wide onChange={(value) => setField("notes", value)} />
+              <CaseField editing={editing.info} label="Date/Time Opened" value={shown(form, "openedLabel", shortDate(item.openedAt))} draft={drafts.openedLabel} onChange={(value) => setField("openedLabel", value)} />
+              <CaseField editing={editing.info} label="Date/Time Closed" value={shown(form, "closedAt", "")} draft={drafts.closedAt} onChange={(value) => setField("closedAt", value)} />
+              <CaseField editing={editing.info} label="Web Email" value={shown(form, "webEmail", "")} draft={drafts.webEmail} onChange={(value) => setField("webEmail", value)} />
+            </div>
+          </CaseFold>
+        </div>
+      </div>
+      ) : null}
+    </>
+  );
+
+  if (embedded) {
+    if (section !== "feed") return sections;
+    return (
+      <div className="flex h-[720px] overflow-hidden bg-white">
+        <div className="flex h-full w-[60%] min-w-0 flex-col overflow-hidden">
+          <CaseFeed caseId={item.id} author={item.assignee} />
+        </div>
+        <div className="h-full w-[40%] min-w-0 overflow-auto bg-white">{sections}</div>
+      </div>
+    );
+  }
 
   return (
     <OpsFile
@@ -110,7 +267,7 @@ export function CaseFile({ id }: { id: string }) {
                 variant="field"
                 align="right"
                 value={item.assignee}
-                disabled={resolved}
+                disabled={closed}
                 options={ADVISORS.map((name) => ({ id: name, label: name }))}
                 onChange={(value) => ops.reassignCase(item.id, value)}
               />
@@ -132,68 +289,13 @@ export function CaseFile({ id }: { id: string }) {
             }
             onClose={() => setNotesOpen(false)}
           />
-          <Button size="small" disabled={resolved} onClick={() => ops.resolveCase(item.id)}>
-            {resolved ? "Resolved" : "Resolve case"}
+          <Button size="small" disabled={closed} onClick={() => ops.resolveCase(item.id)}>
+            {closed ? "Closed" : "Resolve case"}
           </Button>
         </>
       }
     >
-      {section === "documents" ? <CaseDocuments caseId={item.id} /> : null}
-      {section === "cda-history" ? <CdaHistory /> : null}
-      {section === "feed" ? (
-      <div className="flex min-h-0 flex-1 flex-col bg-white">
-        <div className="uw-card-header shrink-0">
-          <h2 className="text-lg text-black">Case Details</h2>
-          <SectionEdit editing={editing.details} onClick={() => toggleEdit("details")} />
-        </div>
-        <div className="uw-case-sections min-h-0 flex-1 overflow-auto">
-          <section className="uw-case-section">
-            <div className="uw-case-grid">
-              <CaseField editing={editing.details} label="Case Number" value={shown(form, "caseNumber", caseNumberLabel(item.id))} onSave={(value) => saveForm("caseNumber", value)} />
-              <CaseField editing={editing.details} label="Case Owner" value={item.assignee} onSave={(value) => save({ assignee: value })} />
-              <CaseField editing={editing.details} label="Contact Name" value={shown(form, "contactName", loan.borrower)} onSave={(value) => saveForm("contactName", value)} />
-              <CaseField editing={editing.details} label="Contact Phone" value={shown(form, "phone", application?.borrower.phone ?? "")} onSave={(value) => saveForm("phone", value)} />
-              <CaseField editing={editing.details} label="Opportunity" value={shown(form, "opportunity", application?.opportunityName ?? "")} onSave={(value) => saveForm("opportunity", value)} />
-              <CaseField editing={editing.details} label="Contact Email" value={shown(form, "email", application?.borrower.email ?? "")} onSave={(value) => saveForm("email", value)} />
-              <CaseField editing={editing.details} label="Highest Degree" value={shown(form, "highestDegree", degreeLabel(degreeBorrower))} multiline onSave={(value) => saveForm("highestDegree", value)} />
-              <CaseField editing={editing.details} label="Suggestion Form" value={shown(form, "suggestionForm", "")} onSave={(value) => saveForm("suggestionForm", value)} />
-            </div>
-          </section>
-
-          <CaseFold title="Loan Details" open={loanOpen} onToggle={() => setLoanOpen((open) => !open)} editing={editing.loan} onEdit={() => toggleEdit("loan")}>
-            <div className="uw-case-grid">
-              <CaseField editing={editing.loan} label="SLA" value={shown(form, "sla", "")} onSave={(value) => saveForm("sla", value)} />
-              <CaseField editing={editing.loan} label="Underwriter" value={shown(form, "underwriter", application?.underwriter ?? "")} onSave={(value) => saveForm("underwriter", value)} />
-            </div>
-          </CaseFold>
-
-          <CaseFold title="Additional Information" open={infoOpen} onToggle={() => setInfoOpen((open) => !open)} editing={editing.info} onEdit={() => toggleEdit("info")}>
-            <div className="uw-case-grid">
-              <CaseField
-                editing={editing.info}
-                label="Status"
-                value={item.status}
-                options={STATUS_OPTIONS.filter((option) =>
-                  item.status === "waiting-on-school" ? option.id !== "waiting-on-advisor" : option.id !== "waiting-on-school",
-                )}
-                onSave={(value) => save({ status: value as CaseStatus })}
-              />
-              <CaseField editing={editing.info} label="Type" value={item.type} options={TYPE_OPTIONS} onSave={(value) => save({ type: value as CaseType })} />
-              <CaseField editing={editing.info} label="Case Origin" value={shown(form, "origin", "")} onSave={(value) => saveForm("origin", value)} />
-              <CaseField editing={editing.info} label="Case Reason" value={shown(form, "reason", "")} onSave={(value) => saveForm("reason", value)} />
-              <CaseField editing={editing.info} label="Priority" value={item.priority} options={PRIORITY_OPTIONS} onSave={(value) => save({ priority: value as CasePriority })} />
-              <CaseField editing={editing.info} label="Disbursement Case Status" value={shown(form, "disbursementStatus", "")} onSave={(value) => saveForm("disbursementStatus", value)} />
-              <CaseField editing={editing.info} label="Subject" value={item.subject} onSave={(value) => save({ subject: value })} />
-              <CaseField editing={editing.info} label="Description" value={item.details} multiline wide onSave={(value) => save({ details: value })} />
-              <CaseField editing={editing.info} label="Internal Comments" value={item.notes} multiline wide onSave={(value) => save({ notes: value })} />
-              <CaseField editing={editing.info} label="Date/Time Opened" value={shown(form, "openedLabel", shortDate(item.openedAt))} onSave={(value) => saveForm("openedLabel", value)} />
-              <CaseField editing={editing.info} label="Date/Time Closed" value={shown(form, "closedAt", "")} onSave={(value) => saveForm("closedAt", value)} />
-              <CaseField editing={editing.info} label="Web Email" value={shown(form, "webEmail", "")} onSave={(value) => saveForm("webEmail", value)} />
-            </div>
-          </CaseFold>
-        </div>
-      </div>
-      ) : null}
+      {sections}
     </OpsFile>
   );
 }
@@ -201,18 +303,98 @@ export function CaseFile({ id }: { id: string }) {
 const TH = "h-11 border-b border-gray-light px-xl py-3 font-semibold whitespace-nowrap text-black";
 const TD = "border-b border-gray-light px-xl py-md";
 
-function CdaHistory() {
+function CdaHistory({ assignee }: { assignee: string }) {
+  const ops = useOps();
   const [open, setOpen] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [draft, setDraft] = useState<{ caseId: string; school: string } | null>(null);
+  const openCases = ops.cases
+    .filter((item) => item.status !== "closed")
+    .map((item) => {
+      const loan = ops.loans.find((entry) => entry.id === item.loanId);
+      const number = item.form?.caseNumber?.trim() || caseNumberLabel(item.id);
+      const borrower = loan?.borrower ?? "Unknown borrower";
+      return { id: item.id, label: `${number} · ${borrower}`, school: loan?.school.trim() ?? "" };
+    })
+    .sort((a, b) => a.label.localeCompare(b.label));
+  const schools = [...new Set(ops.loans.map((loan) => loan.school.trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+  const target = draft ? ops.cases.find((item) => item.id === draft.caseId) : null;
+  const targetLoan = target ? ops.loans.find((item) => item.id === target.loanId) : null;
+  const targetCert = targetLoan ? certificationById(ops, targetLoan.certificationId) : null;
+  const contact = draft ? contactForSchool(draft.school, targetLoan?.schoolCode ?? "") : null;
+  const disbursementDate =
+    targetCert?.disbursements.find((line) => line.status === "scheduled")?.date ??
+    targetCert?.disbursements[0]?.date ??
+    targetLoan?.disbursements.find((line) => line.status === "scheduled")?.date ??
+    targetLoan?.disbursements[0]?.date ??
+    "";
+  const emailSubject = `Certification follow-up for ${targetLoan?.borrower ?? "borrower"}`;
+  const emailBody = contact
+    ? certificationDraft({
+        contactName: contact.name,
+        note: latestFeedNote(ops.feed ?? [], draft?.caseId ?? ""),
+        borrower: targetLoan?.borrower ?? "",
+        school: contact.school,
+        product: targetLoan?.product ?? "",
+        disbursementDate: dateOnly(disbursementDate),
+      })
+    : "";
 
   function toggle() {
     setOpen((value) => !value);
   }
 
+  function closeEmail() {
+    setPickerOpen(false);
+    setDraft(null);
+  }
+
   return (
-    <div className="flex flex-col bg-white">
+    <div className={draft ? "flex min-h-0 flex-1 flex-col overflow-hidden bg-white" : "flex flex-col bg-white"}>
       <div className="uw-card-header">
         <h2 className="text-lg text-black">CDA History</h2>
+        <Button variant="link" size="small" icon={<PlusIcon />} aria-expanded={pickerOpen || Boolean(draft)} onClick={() => (pickerOpen || draft ? closeEmail() : setPickerOpen(true))}>
+          Email the school
+        </Button>
       </div>
+      {pickerOpen && !draft ? (
+        <SchoolEmailPicker
+          cases={openCases}
+          schools={schools}
+          onCancel={closeEmail}
+          onNext={(choice) => {
+            setDraft(choice);
+            setPickerOpen(false);
+          }}
+        />
+      ) : null}
+      {draft && contact && target ? (
+        <SingleSend
+          embedded
+          templateTitle={`Email ${contact.school}`}
+          initialSubject={emailSubject}
+          body={emailBody}
+          applicantName={contact.name}
+          applicantEmail={contact.email}
+          doneLabel="Return to case"
+          caseNumber={target.form?.caseNumber?.trim() || caseNumberLabel(target.id)}
+          caseId={target.id}
+          hideFooter
+          directSend
+          onCancel={closeEmail}
+          onSent={({ subject, body, to, cc, bcc }) => {
+            ops.sendSchoolEmail(target.id, assignee, {
+              to: to.trim() || contact.email,
+              cc,
+              bcc,
+              school: contact.school,
+              subject,
+              body: htmlToText(body),
+              fileName: schoolFileName(contact.school, target.subject),
+            });
+          }}
+        />
+      ) : (
       <div className="overflow-x-auto">
         <table className="uw-data-table min-w-[1100px] table-fixed">
           <thead className="bg-gray-lightest">
@@ -271,24 +453,84 @@ function CdaHistory() {
           </tbody>
         </table>
       </div>
+      )}
     </div>
   );
 }
 
-const CDA_DETAILS: { label: string; value: string; wide?: boolean }[] = [
-  { label: "Software Product Code", value: "ESAB" },
-  { label: "CDA Name", value: "ELM" },
-  { label: "File Identifier Name", value: "COMMON RESPONSE" },
-  { label: "File Identifier Code", value: "ROOAP" },
-  { label: "Recipient Name", value: "UNIVERSITY OF UTAH" },
-  { label: "FileName", value: "COMSL_RESP-02-DOE_834351-26100722141766.txt.pgp", wide: true },
-];
+function latestFeedNote(feed: { caseId: string; body: string; createdAt: string; kind?: string; id: string }[], caseId: string) {
+  const notes = feed.filter((post) => post.caseId === caseId && post.kind !== "created" && post.kind !== "email" && !post.id.startsWith("created-"));
+  notes.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  return notes[0]?.body ?? "";
+}
 
-function SectionEdit({ editing, onClick }: { editing: boolean; onClick: () => void }) {
+function certificationDraft({
+  contactName,
+  note,
+  borrower,
+  school,
+  product,
+  disbursementDate,
+}: {
+  contactName: string;
+  note: string;
+  borrower: string;
+  school: string;
+  product: string;
+  disbursementDate: string;
+}) {
+  const ask = note || "Please speed up certification for this loan.";
+  return `<p>Hello ${escapeHtml(contactName)},</p><p>${escapeHtml(ask)}</p><p>Borrower: ${escapeHtml(borrower)}<br>School: ${escapeHtml(school)}<br>Loan type: ${escapeHtml(product)}<br>Disbursement date: ${escapeHtml(disbursementDate)}</p><p>Please speed up certification so we can release these funds.</p>`;
+}
+
+function escapeHtml(value: string) {
+  return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+function htmlToText(html: string) {
+  const node = document.createElement("div");
+  node.innerHTML = html;
+  node.querySelectorAll("br").forEach((item) => item.replaceWith("\n"));
+  node.querySelectorAll("p, div, li, h1, h2, h3").forEach((item) => item.append("\n\n"));
+  return (node.textContent || "").replace(/[ \t]+\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim();
+}
+
+function PlusIcon() {
   return (
-    <Button size="small" variant="link" aria-pressed={editing} onClick={onClick}>
-      {editing ? "Done" : "Edit"}
-    </Button>
+    <svg width="16" height="16" viewBox="0 0 21 21" aria-hidden="true">
+      <path d="M11.55 4.2C11.55 3.61921 11.0808 3.15 10.5 3.15C9.91921 3.15 9.45 3.61921 9.45 4.2V9.45H4.2C3.61921 9.45 3.15 9.91921 3.15 10.5C3.15 11.0808 3.61921 11.55 4.2 11.55H9.45V16.8C9.45 17.3808 9.91921 17.85 10.5 17.85C11.0808 17.85 11.55 17.3808 11.55 16.8V11.55H16.8C17.3808 11.55 17.85 11.0808 17.85 10.5C17.85 9.91921 17.3808 9.45 16.8 9.45H11.55V4.2Z" fill="currentColor" />
+    </svg>
+  );
+}
+
+function SectionEdit({
+  editing,
+  onEdit,
+  onSave,
+  onCancel,
+}: {
+  editing: boolean;
+  onEdit: () => void;
+  onSave: () => void;
+  onCancel: () => void;
+}) {
+  if (!editing) {
+    return (
+      <Button size="small" variant="link" onClick={onEdit}>
+        Edit
+      </Button>
+    );
+  }
+
+  return (
+    <div className="uw-case-edit-actions">
+      <Button size="small" variant="link" onClick={onCancel}>
+        Cancel
+      </Button>
+      <Button size="small" variant="link" onClick={onSave}>
+        Save Changes
+      </Button>
+    </div>
   );
 }
 
@@ -298,6 +540,8 @@ function CaseFold({
   onToggle,
   editing,
   onEdit,
+  onSave,
+  onCancel,
   children,
 }: {
   title: string;
@@ -305,6 +549,8 @@ function CaseFold({
   onToggle: () => void;
   editing: boolean;
   onEdit: () => void;
+  onSave: () => void;
+  onCancel: () => void;
   children: ReactNode;
 }) {
   return (
@@ -314,7 +560,7 @@ function CaseFold({
           <Chevron open={open} />
           {title}
         </button>
-        <SectionEdit editing={editing} onClick={onEdit} />
+        <SectionEdit editing={editing} onEdit={onEdit} onSave={onSave} onCancel={onCancel} />
       </div>
       {open ? children : null}
     </section>
@@ -325,43 +571,31 @@ function CaseField({
   editing,
   label,
   value,
+  draft,
   multiline,
   wide,
   options,
-  onSave,
+  onChange,
 }: {
   editing: boolean;
   label: string;
   value: string;
+  draft?: string;
   multiline?: boolean;
   wide?: boolean;
   options?: { id: string; label: string }[];
-  onSave: (value: string) => void;
+  onChange: (value: string) => void;
 }) {
-  const [draft, setDraft] = useState(value);
-  const [seen, setSeen] = useState(value);
-  if (seen !== value) {
-    setSeen(value);
-    setDraft(value);
-  }
-
+  const current = draft ?? value;
   const answer = options?.find((option) => option.id === value)?.label ?? value.trim();
 
   return (
     <div className={wide ? "uw-case-field-wide" : undefined}>
       {editing ? (
         options ? (
-          <Select label={label} aria-label={label} variant="float" value={value} options={options} onChange={onSave} />
+          <Select label={label} aria-label={label} variant="float" value={current} options={options} onChange={onChange} />
         ) : (
-          <FloatInput
-            label={label}
-            value={draft}
-            multiline={multiline}
-            onChange={setDraft}
-            onBlur={() => {
-              if (draft !== value) onSave(draft);
-            }}
-          />
+          <FloatInput label={label} value={current} multiline={multiline} onChange={onChange} />
         )
       ) : (
         <div className="flex min-w-0 flex-col gap-xs">

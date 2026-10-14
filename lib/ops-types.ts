@@ -60,7 +60,19 @@ export type CaseType =
 
 export type CasePriority = "high" | "medium" | "low";
 
-export type CaseStatus = "open" | "waiting-on-advisor" | "waiting-on-school" | "resolved";
+export const CASE_STATUSES = [
+  { id: "none", label: "--None--" },
+  { id: "new", label: "New" },
+  { id: "open", label: "Open" },
+  { id: "review", label: "Review" },
+  { id: "on-hold", label: "On Hold" },
+  { id: "awaiting-information", label: "Awaiting Additional Information" },
+  { id: "pending-servicer", label: "Pending Response - Servicer" },
+  { id: "pending-seb-loan-ops", label: "Pending Response - SEB Loan Ops" },
+  { id: "closed", label: "Closed" },
+] as const;
+
+export type CaseStatus = (typeof CASE_STATUSES)[number]["id"];
 
 export interface CaseForm {
   caseNumber: string;
@@ -121,8 +133,12 @@ export interface FeedPost {
   likes: number;
   liked: boolean;
   comments: FeedComment[];
-  kind?: "created" | "note";
+  kind?: "created" | "note" | "email";
   audience?: string;
+  subject?: string;
+  emailTo?: string;
+  emailCc?: string;
+  emailBcc?: string;
 }
 
 export interface CaseDocument {
@@ -132,6 +148,11 @@ export interface CaseDocument {
   fileName: string;
   uploadedBy: string;
   uploadedAt: string;
+  subject?: string;
+  emailBody?: string;
+  emailTo?: string;
+  emailCc?: string;
+  emailBcc?: string;
 }
 
 export interface OpsState {

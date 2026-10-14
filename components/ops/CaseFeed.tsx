@@ -3,12 +3,16 @@
 import { useState } from "react";
 import { Button } from "@/components/Button";
 import { dateOnly } from "@/lib/format";
+import { openEmailPdf } from "@/lib/export/email-pdf";
 import { sampleDocumentHref } from "@/lib/documents";
+import { displayCaseNumber } from "@/lib/ops-logic";
 import { useOps } from "@/lib/ops-store";
-import type { FeedPost, ServicingCase } from "@/lib/ops-types";
+import type { CaseDocument, FeedPost, ServicingCase } from "@/lib/ops-types";
 
 export function CaseDocuments({ caseId }: { caseId: string }) {
   const ops = useOps();
+  const item = ops.cases.find((entry) => entry.id === caseId);
+  const caseNumber = item ? displayCaseNumber(item) : "";
   const documents = [...(ops.documents ?? [])]
     .filter((item) => item.caseId === caseId)
     .sort((a, b) => b.uploadedAt.localeCompare(a.uploadedAt));
@@ -32,11 +36,25 @@ export function CaseDocuments({ caseId }: { caseId: string }) {
           <tbody>
             {documents.map((item) => (
               <tr key={item.id}>
-                <td>
-                  <a href={sampleDocumentHref(item.fileName)} target="_blank" rel="noreferrer">
-                    {item.name}
-                  </a>
-                </td>
+                    <td>
+                      {item.emailBody ? (
+                        <button type="button" className="text-primary underline" onClick={() => openEmailPdf({
+                          to: item.emailTo ?? "",
+                          cc: item.emailCc,
+                          bcc: item.emailBcc,
+                          subject: item.subject ?? item.name,
+                          body: item.emailBody ?? "",
+                          sentAt: dateOnly(item.uploadedAt),
+                          caseNumber,
+                        })}>
+                          {item.name}
+                        </button>
+                      ) : (
+                        <a href={sampleDocumentHref(item.fileName)} target="_blank" rel="noreferrer">
+                          {item.name}
+                        </a>
+                      )}
+                    </td>
                 <td>{item.uploadedBy}</td>
                 <td>{dateOnly(item.uploadedAt)}</td>
               </tr>
@@ -53,6 +71,7 @@ export function CaseFeed({ caseId, author }: { caseId: string; author: string })
   const [draft, setDraft] = useState("");
   const [comments, setComments] = useState<Record<string, string>>({});
   const item = ops.cases.find((entry) => entry.id === caseId);
+  const caseNumber = item ? displayCaseNumber(item) : "";
   const posts = postsForCase(ops.feed ?? [], item);
 
   return (
@@ -101,7 +120,7 @@ export function CaseFeed({ caseId, author }: { caseId: string; author: string })
                   <p className="text-xs text-gray-medium">{postedAgo(post.createdAt)}</p>
                 </div>
               </div>
-              {post.body ? <p className="text-sm text-black">{post.body}</p> : null}
+              {post.body ? <p className="text-sm whitespace-pre-line text-black">{feedBody(post, ops.documents ?? [], caseNumber)}</p> : null}
               <div className="flex items-center gap-md text-sm">
                 <Button variant="link" size="small" icon={<ThumbIcon filled={post.liked} />} aria-pressed={post.liked} onClick={() => ops.toggleFeedLike(post.id)}>
                   Like{post.likes > 0 ? ` · ${post.likes}` : ""}
@@ -154,6 +173,23 @@ export function CaseFeed({ caseId, author }: { caseId: string; author: string })
   );
 }
 
+function feedBody(post: FeedPost, documents: CaseDocument[], caseNumber = "") {
+  if (post.kind !== "email") return post.body;
+  const linked = documents.find((item) => item.id === post.id.replace(/^feed-/, "doc-"));
+  const to = post.emailTo || linked?.emailTo || "";
+  const cc = post.emailCc || linked?.emailCc || "";
+  const bcc = post.emailBcc || linked?.emailBcc || "";
+  const subject = post.subject || linked?.subject || "";
+  const header = [
+    caseNumber ? `Case: ${caseNumber}` : "",
+    to ? `To: ${to}` : "",
+    cc ? `Cc: ${cc}` : "",
+    bcc ? `Bcc: ${bcc}` : "",
+    subject ? `Subject: ${subject}` : "",
+  ].filter(Boolean);
+  return header.length ? `${header.join("\n")}\n\n${post.body}` : post.body;
+}
+
 function postsForCase(feed: FeedPost[], item: ServicingCase | undefined) {
   if (!item) return [];
   const posts = feed.filter((post) => post.caseId === item.id);
@@ -176,6 +212,7 @@ function postsForCase(feed: FeedPost[], item: ServicingCase | undefined) {
 
 function postStatus(post: FeedPost) {
   if (post.kind === "created") return "created this case";
+  if (post.kind === "email") return `emailed ${post.audience || "the school"}`;
   return `to ${post.audience || "Southeast Bank Only"}`;
 }
 
