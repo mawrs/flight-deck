@@ -12,6 +12,7 @@ import {
 import { calculate } from "./calculations";
 import { hydrateCalculator } from "./calculations/income";
 import { seedApplications } from "./mock-data";
+import { opsSeed } from "./ops-data";
 import type {
   Application,
   ApplicationPatch,
@@ -95,10 +96,44 @@ function hydrateUnderwriting(
   };
 }
 
+function servicingLinks() {
+  const loansWithCases = new Set(opsSeed.cases.map((item) => item.loanId));
+  const latest = new Map<string, { product: Application["recordType"]; openedAt: string }>();
+  for (const loan of opsSeed.loans) {
+    if (!loan.applicationId || !loansWithCases.has(loan.id)) continue;
+    const openedAt = opsSeed.cases
+      .filter((item) => item.loanId === loan.id)
+      .reduce((latestOpen, item) => (item.openedAt > latestOpen ? item.openedAt : latestOpen), "");
+    const current = latest.get(loan.applicationId);
+    if (!current || openedAt > current.openedAt) latest.set(loan.applicationId, { product: loan.product, openedAt });
+  }
+  return [...latest.entries()].sort((a, b) => b[1].openedAt.localeCompare(a[1].openedAt));
+}
+
+function syncServicingApplications(apps: Application[]) {
+  const links = servicingLinks();
+  const rank = new Map(links.map(([id], index) => [id, index]));
+  const linked = new Map(links);
+  return apps.map((app) => {
+    const link = linked.get(app.id);
+    if (!link) return app;
+    const index = rank.get(app.id) ?? 0;
+    const visible = app.status === "pre-review" || app.status === "needs-docs" || app.status === "returned";
+    return {
+      ...app,
+      recordType: link.product,
+      opportunity: app.opportunity ? { ...app.opportunity, recordType: link.product } : app.opportunity,
+      status: visible ? app.status : "pre-review",
+      stage: visible ? app.stage : "UW - PreReview",
+      applicationDate: `2026-10-14T${String(18 - index).padStart(2, "0")}:00:00`,
+    };
+  });
+}
+
 function loadApplications(): Application[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return clone(seedApplications);
+    if (!raw) return syncServicingApplications(clone(seedApplications));
     const parsed = JSON.parse(raw) as Application[];
     if (!Array.isArray(parsed) || parsed.length === 0) {
       return clone(seedApplications);
@@ -138,9 +173,9 @@ function loadApplications(): Application[] {
               }
             : item,
         );
-    return typed.filter((item) => !item.id.startsWith("180300"));
+    return syncServicingApplications(typed.filter((item) => !item.id.startsWith("180300")));
   } catch {
-    return clone(seedApplications);
+    return syncServicingApplications(clone(seedApplications));
   }
 }
 
@@ -299,7 +334,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const resetStore = useCallback(() => {
     clientHydrated = true;
-    persist(clone(seedApplications));
+    persist(syncServicingApplications(clone(seedApplications)));
   }, []);
 
   const value = useMemo(

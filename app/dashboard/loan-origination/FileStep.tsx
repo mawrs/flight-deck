@@ -5,6 +5,7 @@ import { DocumentsPage } from "@/components/documents/DocumentsPage";
 import { NotesPage } from "@/components/notes/NotesPage";
 import { PayoffsPage } from "@/components/payoffs/PayoffsPage";
 import { SubmitPage } from "@/components/submit/SubmitPage";
+import { ServicingPage } from "@/components/ops/ServicingPage";
 import { RatesPage } from "@/components/underwriting/RatesPage";
 import { UnderwritingPage } from "@/components/underwriting/UnderwritingPage";
 import { applicationBase } from "@/lib/loan-routes";
@@ -31,6 +32,8 @@ export function FileStep({ id, step, senior }: { id: string; step: string; senio
       return <UnderwritingPage />;
     case "rates":
       return <RatesPage />;
+    case "servicing":
+      return <ServicingPage />;
     case "submit":
       return <SubmitPage />;
     default:

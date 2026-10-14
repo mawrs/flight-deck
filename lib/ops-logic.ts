@@ -1,10 +1,11 @@
-import type {
-  CasePriority,
-  Certification,
-  CertificationStatus,
-  Disbursement,
-  OpsState,
-  ServicingLoan,
+import {
+  CASE_STATUSES,
+  type CasePriority,
+  type Certification,
+  type CertificationStatus,
+  type Disbursement,
+  type OpsState,
+  type ServicingLoan,
 } from "./ops-types";
 
 export const CERT_VIEWS = [
@@ -62,10 +63,7 @@ export const OPS_LABELS: Record<string, string> = {
   high: "High",
   medium: "Medium",
   low: "Low",
-  open: "New",
-  "waiting-on-advisor": "On Hold",
-  "waiting-on-school": "On Hold",
-  resolved: "Resolved",
+  ...Object.fromEntries(CASE_STATUSES.map((item) => [item.id, item.label])),
   completed: "Completed",
   pending: "Pending",
   "full-time": "Full time",
@@ -158,4 +156,14 @@ export function daysSince(value: string | null) {
 
 export function statusAfterAmounts(certifiedAmount: number, approvedAmount: number): CertificationStatus {
   return certifiedAmount < approvedAmount ? "reduced" : "certified";
+}
+
+export function caseNumberLabel(id: string) {
+  const match = id.match(/(\d+)$/);
+  const suffix = (match?.[1] ?? "0").slice(-4).padStart(4, "0");
+  return `0004${suffix}`;
+}
+
+export function displayCaseNumber(item: { id: string; form?: { caseNumber?: string } }) {
+  return item.form?.caseNumber?.trim() || caseNumberLabel(item.id);
 }

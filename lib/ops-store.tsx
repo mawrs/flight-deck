@@ -3,7 +3,7 @@
 import { createContext, useContext, useMemo, useSyncExternalStore, type ReactNode } from "react";
 import { opsSeed } from "./ops-data";
 import { statusAfterAmounts } from "./ops-logic";
-import type { CasePatch, CaseStatus, Disbursement, FeedPost, OpsProduct, OpsState, SchoolResponse, ServicingLoan } from "./ops-types";
+import { CASE_STATUSES, type CasePatch, type CaseStatus, type Disbursement, type FeedPost, type OpsProduct, type OpsState, type SchoolResponse, type ServicingLoan } from "./ops-types";
 
 const STORAGE_KEY = "fd-ops-v1";
 const SERVER_SNAPSHOT = opsSeed;
@@ -81,6 +81,17 @@ const PREVIOUS_FEED = new Map<string, string>([
   ],
 ]);
 
+const LEGACY_CASE_STATUS = new Set(["waiting-on-advisor", "waiting-on-school", "resolved"]);
+const CASE_STATUS_IDS = new Set<string>(CASE_STATUSES.map((item) => item.id));
+
+function migrateCaseStatus(value: string, legacyStore: boolean): CaseStatus {
+  if (value === "waiting-on-advisor" || value === "waiting-on-school") return "on-hold";
+  if (value === "resolved") return "closed";
+  if (value === "open" && legacyStore) return "new";
+  if (CASE_STATUS_IDS.has(value as CaseStatus)) return value as CaseStatus;
+  return "new";
+}
+
 function mergeOpsSeed(saved: OpsState): OpsState {
   const seedCerts = new Map(opsSeed.certifications.map((item) => [item.id, item]));
   const seedLoans = new Map(opsSeed.loans.map((item) => [item.id, item]));
@@ -104,11 +115,14 @@ function mergeOpsSeed(saved: OpsState): OpsState {
   const loanIds = new Set(loans.map((item) => item.id));
   const seedCases = new Map(opsSeed.cases.map((item) => [item.id, item]));
   const caseIds = new Set(saved.cases.map((item) => item.id));
+  const legacyStatuses = saved.cases.some((item) => LEGACY_CASE_STATUS.has(item.status));
   const cases = saved.cases.map((item) => {
     const seed = seedCases.get(item.id);
-    if (!seed) return item;
+    const status = migrateCaseStatus(item.status, legacyStatuses);
+    if (!seed) return { ...item, status };
     return {
       ...item,
+      status,
       subject: item.subject || seed.subject,
       disbursement: item.disbursement ?? seed.disbursement,
     };
@@ -184,6 +198,11 @@ export interface OpsStore {
   resolveCase: (id: string) => void;
   saveCaseNotes: (id: string, notes: string) => void;
   updateCase: (id: string, patch: CasePatch) => void;
+  sendSchoolEmail: (
+    caseId: string,
+    author: string,
+    email: { to: string; cc?: string; bcc?: string; school: string; subject: string; body: string; fileName: string },
+  ) => void;
 }
 
 const OpsContext = createContext<OpsStore | null>(null);
@@ -309,16 +328,15 @@ export function OpsProvider({ children }: { children: ReactNode }) {
       reassignCase: (id, assignee) => {
         edit((current) => {
           const item = current.cases.find((entry) => entry.id === id);
-          if (!item || item.status === "resolved") return;
+          if (!item || item.status === "closed") return;
           item.assignee = assignee;
-          if (item.status === "open") item.status = "waiting-on-advisor";
         });
       },
       resolveCase: (id) => {
         edit((current) => {
           const item = current.cases.find((entry) => entry.id === id);
           if (!item) return;
-          item.status = "resolved" satisfies CaseStatus;
+          item.status = "closed" satisfies CaseStatus;
         });
       },
       saveCaseNotes: (id, notes) => {
@@ -326,6 +344,49 @@ export function OpsProvider({ children }: { children: ReactNode }) {
           const item = current.cases.find((entry) => entry.id === id);
           if (!item) return;
           item.notes = notes;
+        });
+      },
+      sendSchoolEmail: (caseId, author, email) => {
+        const body = email.body.trim();
+        if (!body) return;
+        edit((current) => {
+          const item = current.cases.find((entry) => entry.id === caseId);
+          if (!item) return;
+          if (!Array.isArray(current.feed)) current.feed = [];
+          if (!Array.isArray(current.documents)) current.documents = [];
+          const now = new Date().toISOString();
+          const id = Date.now().toString(36);
+          const cc = email.cc?.trim() ?? "";
+          const bcc = email.bcc?.trim() ?? "";
+          current.feed.unshift({
+            id: `feed-${id}`,
+            caseId,
+            author,
+            body,
+            createdAt: now,
+            likes: 0,
+            liked: false,
+            comments: [],
+            kind: "email",
+            audience: email.school,
+            subject: email.subject,
+            emailTo: email.to,
+            emailCc: cc,
+            emailBcc: bcc,
+          });
+          current.documents.unshift({
+            id: `doc-${id}`,
+            caseId,
+            name: email.fileName,
+            fileName: email.fileName,
+            uploadedBy: author,
+            uploadedAt: now,
+            subject: email.subject,
+            emailBody: body,
+            emailTo: email.to,
+            emailCc: cc,
+            emailBcc: bcc,
+          });
         });
       },
       updateCase: (id, patch) => {

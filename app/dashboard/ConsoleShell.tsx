@@ -16,7 +16,6 @@ function selectionFor(pathname: string) {
   if (pathname.startsWith("/dashboard/loan-origination")) return "loan-origination";
   if (pathname.startsWith("/dashboard/users")) return "users";
   if (pathname.startsWith("/dashboard/emails/suppression")) return "suppression";
-  if (pathname.startsWith("/dashboard/emails/send")) return "single-email";
   if (pathname.startsWith("/dashboard/emails")) return "emails";
   if (pathname.startsWith("/dashboard/configuration")) return "settings";
   return "flight-deck";
@@ -30,8 +29,7 @@ function loanChild(pathname: string) {
 }
 
 const EMAIL_TABS = [
-  { id: "single-email", label: "Single email send", icon: "/dashboard/mail.svg", width: 20, height: 14 },
-  { id: "suppression", label: "Suppression list", icon: "/dashboard/close.svg", width: 20, height: 20 },
+  { id: "suppression", label: "Suppression list", href: "/dashboard/emails/suppression", icon: "/dashboard/close.svg", width: 20, height: 20 },
 ] as const;
 
 const LOAN_TABS = [
@@ -243,7 +241,7 @@ export function ConsoleShell({ children, initialExpanded = false }: { children: 
                           onClick={() => {
                             setEmailsMenu(true);
                             setLoansMenu(false);
-                            router.push(tab.id === "suppression" ? "/dashboard/emails/suppression" : "/dashboard/emails/send");
+                            router.push(tab.href);
                           }}
                         >
                           <img src={tab.icon} alt="" width={tab.width} height={tab.height} />

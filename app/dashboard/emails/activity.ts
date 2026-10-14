@@ -1,5 +1,7 @@
 export type EmailStatus = "Delivered" | "Opened" | "Bounced" | "Blocked" | "Unsubscribed";
 
+export type EmailLine = "deposits" | "los" | "servicing" | "other";
+
 export type EmailActivity = {
   id: string;
   template: string;
@@ -8,6 +10,12 @@ export type EmailActivity = {
   customer: string;
   status: EmailStatus;
   sent: string;
+  line?: EmailLine;
+  caseId?: string;
+  caseNumber?: string;
+  applicationId?: string;
+  recordLabel?: string;
+  body?: string;
 };
 
 export const EMAIL_ACTIVITY: EmailActivity[] = [

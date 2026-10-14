@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useSyncExternalStore } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   Badge,
@@ -14,7 +14,9 @@ import {
   PageHeader,
   SearchField,
 } from "@/components";
-import { CONFIGURE, EMAIL_ACTIVITY, type EmailStatus } from "./activity";
+import { applicationBase, servicingCaseHref } from "@/lib/loan-routes";
+import { CONFIGURE, EMAIL_ACTIVITY, type EmailActivity, type EmailStatus } from "./activity";
+import { getEmailLogServerSnapshot, getEmailLogSnapshot, subscribeEmailLog } from "./email-log";
 import { SingleSend } from "./SingleSend";
 import styles from "./emails.module.css";
 
@@ -39,14 +41,19 @@ export function EmailDashboard() {
   const searchParams = useSearchParams();
   const [query, setQuery] = useState("");
   const [configureOpen, setConfigureOpen] = useState(false);
-  const preview = EMAIL_ACTIVITY.find((row) => row.id === searchParams.get("preview"));
+  const logged = useSyncExternalStore(subscribeEmailLog, getEmailLogSnapshot, getEmailLogServerSnapshot);
+  const activity = useMemo(() => [...logged, ...EMAIL_ACTIVITY], [logged]);
+  const preview = activity.find((row) => row.id === searchParams.get("preview"));
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return EMAIL_ACTIVITY;
-    return EMAIL_ACTIVITY.filter((row) =>
-      [row.template, row.subject, row.email, row.customer, row.status].join(" ").toLowerCase().includes(q),
+    if (!q) return activity;
+    return activity.filter((row) =>
+      [row.template, row.subject, row.email, row.customer, row.status, row.caseNumber, row.applicationId, row.recordLabel, row.line]
+        .join(" ")
+        .toLowerCase()
+        .includes(q),
     );
-  }, [query]);
+  }, [activity, query]);
 
   if (preview) {
     return (
@@ -56,6 +63,11 @@ export function EmailDashboard() {
         applicantName={preview.customer}
         applicantEmail={preview.email}
         sentLabel={preview.sent}
+        initialSubject={preview.subject}
+        body={preview.body}
+        caseNumber={preview.caseNumber}
+        caseId={preview.caseId}
+        applicationId={preview.applicationId}
         onCancel={() => router.push("/dashboard/emails")}
       />
     );
@@ -68,20 +80,25 @@ export function EmailDashboard() {
         title="Dashboard"
         subtitle="Last updated Sep 14, 2026 8:05am"
         actions={
-          <div className={styles.menuWrap}>
-          <Button size="small" aria-expanded={configureOpen} onClick={() => setConfigureOpen((open) => !open)}>
-            Configure
-            <Chevron />
-          </Button>
-          {configureOpen ? (
-            <div className={styles.menu} role="menu">
-              {CONFIGURE.map((item) => (
-                <button key={item} type="button" role="menuitem" onClick={() => setConfigureOpen(false)}>
-                  {item}
-                </button>
-              ))}
+          <div className={styles.headerActions}>
+            <div className={styles.menuWrap}>
+              <Button variant="outline" size="small" aria-expanded={configureOpen} onClick={() => setConfigureOpen((open) => !open)}>
+                Configure
+                <Chevron />
+              </Button>
+              {configureOpen ? (
+                <div className={styles.menu} role="menu">
+                  {CONFIGURE.map((item) => (
+                    <button key={item} type="button" role="menuitem" onClick={() => setConfigureOpen(false)}>
+                      {item}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
             </div>
-          ) : null}
+            <Button size="small" href="/dashboard/emails/send">
+              New Email
+            </Button>
           </div>
         }
       />
@@ -117,6 +134,7 @@ export function EmailDashboard() {
                 <th>Template Name</th>
                 <th>Email Address</th>
                 <th>Customer Name</th>
+                <th>Record</th>
                 <th>Status</th>
                 <th>Date/Time Sent</th>
               </tr>
@@ -132,6 +150,9 @@ export function EmailDashboard() {
                   </td>
                   <td>{row.email}</td>
                   <td>{row.customer}</td>
+                  <td>
+                    <RecordCell row={row} />
+                  </td>
                   <td>
                     <Badge tone={STATUS_TONE[row.status]}>{row.status}</Badge>
                   </td>
@@ -150,6 +171,25 @@ export function EmailDashboard() {
       </DataTableCard>
     </Page>
   );
+}
+
+function RecordCell({ row }: { row: EmailActivity }) {
+  if (row.caseId && row.caseNumber) {
+    return (
+      <a className={styles.link} href={servicingCaseHref(row.caseId)}>
+        Case {row.caseNumber}
+      </a>
+    );
+  }
+  if (row.applicationId) {
+    return (
+      <a className={styles.link} href={applicationBase(row.applicationId)}>
+        Application {row.applicationId}
+      </a>
+    );
+  }
+  if (row.recordLabel) return row.recordLabel;
+  return "—";
 }
 
 function Stat({ label, value }: { label: string; value: string }) {

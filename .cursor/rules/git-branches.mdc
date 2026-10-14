@@ -1,0 +1,20 @@
+---
+description: Push new work on a branch, never straight to main
+alwaysApply: true
+---
+
+# Branch every push
+
+Put every new push on its own branch. Do not push commits directly to `main` or `master`.
+
+- Start from the latest `main`.
+- Create a branch named for the work, then commit there.
+- Push that branch with `-u` the first time.
+- Leave `main` as it is. Opening a pull request still waits for an explicit ask.
+
+```bash
+git checkout main
+git pull
+git checkout -b servicing-school-email
+git push -u origin HEAD
+```

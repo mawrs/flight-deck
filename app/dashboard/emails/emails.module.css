@@ -50,6 +50,27 @@
   padding: var(--space-medium) var(--space-large) var(--space-xl);
 }
 
+:global(.uw-workspace-scroll):has(.mailStack),
+:global(.uw-workspace-scroll):has(.directPage) {
+  display: flex;
+  flex-direction: column;
+}
+
+.directPage {
+  flex: 1;
+  min-height: 0;
+}
+
+.embeddedBody.mailStack {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 0;
+  min-height: 0;
+  overflow: hidden;
+  padding: 0;
+}
+
 .embedded .composer > .editor {
   flex: 1;
   min-height: 0;
@@ -154,6 +175,12 @@
 .statsBand {
   padding: var(--space-extra-large) var(--space-xl);
   background: var(--surface);
+}
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-small);
 }
 
 .menuWrap {
@@ -427,6 +454,7 @@
   font-size: var(--font-size-body-small);
   font-weight: var(--font-weight-semibold);
   text-align: left;
+  text-decoration: none;
   cursor: pointer;
 }
 
@@ -565,10 +593,126 @@
   background: var(--surface) !important;
 }
 
+.caseLine {
+  display: flex;
+  align-items: center;
+  gap: var(--space-medium);
+  min-height: 44px;
+  padding: 0 var(--space-medium);
+  border: 1px solid var(--border);
+  border-bottom: 0;
+  background: var(--surface);
+}
+
+.caseLine span,
+.caseLine label {
+  flex: none;
+  width: 72px;
+  color: var(--color-neutral-gray-medium);
+  font-size: var(--font-size-body-small);
+  font-weight: var(--font-weight-semibold);
+}
+
 .subjectRow {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: var(--space-extra-large);
+}
+
+.mailFields {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  border: 1px solid var(--border);
+  border-bottom: 0;
+  border-radius: var(--radius-small) var(--radius-small) 0 0;
+  background: var(--surface);
+}
+
+.mailField {
+  display: flex;
+  align-items: center;
+  gap: var(--space-medium);
+  min-height: 44px;
+  padding: 0 var(--space-medium);
+  border-bottom: 1px solid var(--border);
+}
+
+.mailField label {
+  flex: none;
+  width: 72px;
+  color: var(--color-neutral-gray-medium);
+  font-size: var(--font-size-body-small);
+}
+
+.mailValue {
+  min-width: 0;
+  color: var(--foreground);
+  font-size: var(--font-size-body-small);
+}
+
+.mailInput {
+  flex: 1;
+  min-width: 0;
+  height: 40px;
+  border: 0;
+  background: transparent;
+  color: var(--foreground);
+  font: inherit;
+  font-size: var(--font-size-body-small);
+  outline: none;
+}
+
+.editorMail {
+  flex: 1;
+  min-height: 0;
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+}
+
+.editorMail .canvas {
+  order: 1;
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: var(--space-large);
+  text-align: left;
+}
+
+.plainLetter {
+  max-width: none;
+  margin: 0;
+  text-align: left;
+}
+
+.plainLetter .body {
+  text-align: left;
+}
+
+.composeFoot {
+  order: 2;
+  display: flex;
+  align-items: center;
+  gap: var(--space-medium);
+  padding: var(--space-medium);
+  border-top: 1px solid var(--border);
+  background: var(--color-neutral-gray-extra-light);
+}
+
+.composeFoot .editorToolbar {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.mailActions {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--space-small);
+  margin-left: auto;
 }
 
 .subjectLine,
@@ -636,6 +780,10 @@
   gap: var(--space-extra-small);
 }
 
+.toolRowSingle {
+  flex-wrap: nowrap;
+}
+
 .tool,
 .toolSelect {
   display: inline-flex;
@@ -678,6 +826,12 @@
 .letter {
   max-width: 760px;
   margin: 0 auto;
+}
+
+.editorMail .letter {
+  max-width: none;
+  margin: 0;
+  text-align: left;
 }
 
 .brand {
@@ -1059,6 +1213,33 @@
   cursor: default;
 }
 
+.lineRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-small);
+  margin: 0 var(--space-xl);
+}
+
+.line,
+.lineSelected {
+  height: var(--height-control);
+  padding: 0 var(--space-large);
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius-extra-small);
+  background: var(--surface);
+  color: var(--foreground);
+  font: inherit;
+  font-size: var(--font-size-body-small);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+}
+
+.lineSelected {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+
 .homeSearchWrap {
   position: relative;
   margin: 0 var(--space-xl);
@@ -1287,6 +1468,8 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-extra-small);
+  max-height: 280px;
+  overflow: auto;
   padding: var(--space-small);
   background: var(--surface);
   border: var(--border-width) solid var(--border);
@@ -1313,6 +1496,32 @@
 .homeOption:hover,
 .homeOptionActive {
   background: var(--surface-sunken);
+}
+
+.recordGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-medium) var(--space-large);
+  margin: 0;
+  padding: var(--space-large) var(--space-extra-large) var(--space-extra-large);
+}
+
+.recordGrid dt {
+  color: var(--foreground-subtle);
+  font-size: var(--font-size-body-extra-small);
+  line-height: var(--line-height-body-extra-small);
+}
+
+.recordGrid dd {
+  margin: var(--space-extra-small) 0 0;
+  color: var(--foreground);
+  font-size: var(--font-size-body-small);
+  line-height: var(--line-height-body-small);
+  overflow-wrap: anywhere;
+}
+
+.recordWide {
+  grid-column: 1 / -1;
 }
 
 @media (max-width: 900px) {

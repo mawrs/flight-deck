@@ -12,6 +12,7 @@ export const WORKFLOW_STEPS = [
   { slug: "documents", label: "Documents" },
   { slug: "underwriting", label: "Underwriting" },
   { slug: "rates", label: "Rates" },
+  { slug: "servicing", label: "Servicing" },
   { slug: "submit", label: "Completion" },
 ] as const;
 
@@ -23,6 +24,7 @@ export const FILE_TABS = [
   { slug: "documents", label: "Documents" },
   { slug: "underwriting", label: "Underwriting" },
   { slug: "rates", label: "Rates" },
+  { slug: "servicing", label: "Servicing" },
 ] as const;
 
 export type WorkflowSlug = (typeof WORKFLOW_STEPS)[number]["slug"];
@@ -68,6 +70,8 @@ export function stepDone(application: Application, slug: WorkflowSlug): boolean 
       return Boolean(items.income);
     case "rates":
       return application.requestedTerm > 0 && application.income.estimatedNewPayment > 0;
+    case "servicing":
+      return true;
     case "submit":
       return (
         application.status === "senior-review" ||

@@ -442,7 +442,8 @@
   width: 52%;
 }
 
-.uw-case-docs a {
+.uw-case-docs a,
+.uw-case-docs button {
   color: var(--primary);
   text-decoration: underline;
 }
@@ -600,6 +601,14 @@
     gap: var(--space-small);
     background: var(--surface-sunken);
     padding-right: var(--space-large);
+  }
+
+  .uw-case-edit-actions {
+    display: flex;
+    flex: none;
+    align-items: center;
+    gap: var(--space-small);
+    white-space: nowrap;
   }
 
   .uw-case-fold-toggle {
