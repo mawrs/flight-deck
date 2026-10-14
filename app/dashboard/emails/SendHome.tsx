@@ -558,7 +558,12 @@ export function SendHome() {
             <div className={styles.homePaneHead}>
               <p className={styles.homeName}>Send New Email</p>
             </div>
-            {line === "servicing" ? (
+            {line === "servicing" && !servicingCase ? (
+              <div className={styles.homePaneEmpty}>
+                <strong>No case selected</strong>
+                <p>Search by case number, borrower, or school.</p>
+              </div>
+            ) : line === "servicing" ? (
               <div className={styles.homeSteps} ref={stepsRef}>
                 <div className={styles.homeStep}>
                   <span className={styles.homeStepNum}>1</span>

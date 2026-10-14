@@ -7,6 +7,8 @@
 }
 
 .topbar {
+  position: relative;
+  z-index: 30;
   height: 90px;
   display: flex;
   align-items: center;
@@ -20,6 +22,12 @@
   width: 162px;
   height: 43px;
   object-fit: contain;
+}
+
+.topActions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-small);
 }
 
 .userMenu {

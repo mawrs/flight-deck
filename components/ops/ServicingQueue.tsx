@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { DataTable, DataTableCard, DataTableScroll, SearchField } from "@/components";
 import { FilterBadges, type FilterChip } from "@/components/list/FilterBadges";
 import { ListPagination, usePagedList } from "@/components/list/ListPagination";
@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Dropdown";
 import { dateOnly, money, shortDate } from "@/lib/format";
 import { compareSortValues, timeValue, type SortDirection } from "@/lib/list-sort";
-import { servicingCaseHref, servicingHome, servicingLoanHref } from "@/lib/loan-routes";
+import { servicingCaseHref, servicingHome, servicingLoanHref, servicingNewCaseHref } from "@/lib/loan-routes";
 import {
   PRIORITY_RANK,
   SERVICING_VIEWS,
@@ -91,6 +91,7 @@ function rosterPriority(status: string, due: boolean): CasePriority {
 }
 
 export function ServicingQueue() {
+  const router = useRouter();
   const view = servicingView(useSearchParams().get("view") ?? undefined);
   const viewMeta = SERVICING_VIEWS.find((item) => item.id === view) ?? SERVICING_VIEWS[0];
   const { cases, loans, certifications } = useOps();
@@ -201,7 +202,9 @@ export function ServicingQueue() {
           {view === "cases" ? (
             <div className="uw-list-header-actions">
               <Button variant="secondary">Merge Cases</Button>
-              <Button variant="primary">Open Case</Button>
+              <Button variant="primary" onClick={() => router.push(servicingNewCaseHref())}>
+                Open Case
+              </Button>
             </div>
           ) : null}
         </div>

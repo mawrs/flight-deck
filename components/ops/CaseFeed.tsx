@@ -1,26 +1,55 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState, type ChangeEvent, type SyntheticEvent } from "react";
 import { Button } from "@/components/Button";
+import { Avatar } from "@/components/ops/Avatar";
+import { MentionText } from "@/components/ops/MentionText";
 import { dateOnly } from "@/lib/format";
 import { openEmailPdf } from "@/lib/export/email-pdf";
 import { sampleDocumentHref } from "@/lib/documents";
+import { mentionMatches, mentionQuery } from "@/lib/mentions";
 import { displayCaseNumber } from "@/lib/ops-logic";
 import { useOps } from "@/lib/ops-store";
 import type { CaseDocument, FeedPost, ServicingCase } from "@/lib/ops-types";
 
 export function CaseDocuments({ caseId }: { caseId: string }) {
   const ops = useOps();
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [opened, setOpened] = useState<Record<string, string>>({});
   const item = ops.cases.find((entry) => entry.id === caseId);
   const caseNumber = item ? displayCaseNumber(item) : "";
   const documents = [...(ops.documents ?? [])]
-    .filter((item) => item.caseId === caseId)
+    .filter((entry) => entry.caseId === caseId)
     .sort((a, b) => b.uploadedAt.localeCompare(a.uploadedAt));
+
+  function upload(event: ChangeEvent<HTMLInputElement>) {
+    const files = [...(event.target.files ?? [])];
+    event.target.value = "";
+    if (!files.length) return;
+    const stamp = Date.now().toString(36);
+    const created = files.map((file, index) => ({
+      id: `doc-${stamp}-${index}`,
+      name: file.name,
+      url: URL.createObjectURL(file),
+    }));
+    ops.addCaseDocuments(caseId, created);
+    setOpened((current) => {
+      const next = { ...current };
+      for (const file of created) next[file.id] = file.url;
+      return next;
+    });
+  }
 
   return (
     <div className="flex flex-col bg-white">
       <div className="uw-card-header">
         <h2 className="text-lg text-black">Documents</h2>
+        <div>
+          <Button variant="link" size="small" onClick={() => fileRef.current?.click()}>
+            Upload files
+          </Button>
+          <input ref={fileRef} className="sr-only" type="file" multiple aria-label="Upload files" onChange={upload} />
+        </div>
       </div>
       {documents.length === 0 ? (
         <p className="px-xl py-lg text-sm text-gray-medium">No documents have been uploaded for this case.</p>
@@ -49,10 +78,12 @@ export function CaseDocuments({ caseId }: { caseId: string }) {
                         })}>
                           {item.name}
                         </button>
-                      ) : (
-                        <a href={sampleDocumentHref(item.fileName)} target="_blank" rel="noreferrer">
+                      ) : opened[item.id] || /^doc-\d+$/.test(item.id) ? (
+                        <a href={opened[item.id] || sampleDocumentHref(item.fileName)} target="_blank" rel="noreferrer">
                           {item.name}
                         </a>
+                      ) : (
+                        item.name
                       )}
                     </td>
                 <td>{item.uploadedBy}</td>
@@ -68,11 +99,31 @@ export function CaseDocuments({ caseId }: { caseId: string }) {
 
 export function CaseFeed({ caseId, author }: { caseId: string; author: string }) {
   const ops = useOps();
+  const box = useRef<HTMLTextAreaElement>(null);
   const [draft, setDraft] = useState("");
+  const [cursor, setCursor] = useState(0);
   const [comments, setComments] = useState<Record<string, string>>({});
   const item = ops.cases.find((entry) => entry.id === caseId);
   const caseNumber = item ? displayCaseNumber(item) : "";
   const posts = postsForCase(ops.feed ?? [], item);
+  const activeMention = mentionQuery(draft, cursor);
+  const matches = activeMention ? mentionMatches(activeMention.query) : [];
+
+  function placeCursor(event: SyntheticEvent<HTMLTextAreaElement>) {
+    setCursor(event.currentTarget.selectionStart ?? 0);
+  }
+
+  function chooseMention(name: string) {
+    if (!activeMention) return;
+    const next = `${draft.slice(0, activeMention.start)}@${name} ${draft.slice(cursor)}`;
+    const place = activeMention.start + name.length + 2;
+    setDraft(next);
+    setCursor(place);
+    requestAnimationFrame(() => {
+      box.current?.focus();
+      box.current?.setSelectionRange(place, place);
+    });
+  }
 
   return (
     <aside className="flex h-full min-h-0 w-full flex-col overflow-hidden border-r border-gray-light bg-white">
@@ -86,17 +137,43 @@ export function CaseFeed({ caseId, author }: { caseId: string; author: string })
             event.preventDefault();
             ops.addFeedPost(caseId, author, draft);
             setDraft("");
+            setCursor(0);
           }}
         >
-          <label className="flex flex-col gap-xs text-xs text-gray-medium">
+          <label className="relative flex flex-col gap-xs text-xs text-gray-medium">
             Leave a note as {author}
             <textarea
+              ref={box}
               className="uw-input w-full"
               rows={3}
               value={draft}
-              onChange={(event) => setDraft(event.target.value)}
+              onChange={(event) => {
+                setDraft(event.target.value);
+                setCursor(event.target.selectionStart ?? event.target.value.length);
+              }}
+              onSelect={placeCursor}
+              onKeyUp={placeCursor}
+              onClick={placeCursor}
               placeholder="What should the other bankers know about this case?"
             />
+            {activeMention && matches.length > 0 ? (
+              <ul className="absolute top-[calc(100%+4px)] z-20 flex max-h-48 w-full flex-col overflow-auto rounded-xs border border-gray-light bg-white shadow" role="listbox" aria-label="Mention someone">
+                {matches.map((name) => (
+                  <li key={name}>
+                    <button
+                      className="flex w-full items-center gap-sm px-sm py-xs text-left text-sm text-black hover:bg-gray-lightest"
+                      type="button"
+                      role="option"
+                      onMouseDown={(event) => event.preventDefault()}
+                      onClick={() => chooseMention(name)}
+                    >
+                      <Avatar name={name} size={24} />
+                      {name}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
           </label>
           <div className="flex justify-end">
             <Button size="small" type="submit" disabled={!draft.trim()}>
@@ -109,9 +186,7 @@ export function CaseFeed({ caseId, author }: { caseId: string; author: string })
           return (
             <article key={post.id} className="flex flex-col gap-sm border-t border-gray-light pt-lg">
               <div className="flex items-center gap-sm">
-                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gray-lightest text-xs text-gray-dark">
-                  {initials(post.author)}
-                </span>
+                <Avatar name={post.author} />
                 <div className="min-w-0">
                   <p className="flex min-w-0 items-baseline gap-xs">
                     <span className="truncate text-sm text-black">{post.author}</span>
@@ -120,7 +195,11 @@ export function CaseFeed({ caseId, author }: { caseId: string; author: string })
                   <p className="text-xs text-gray-medium">{postedAgo(post.createdAt)}</p>
                 </div>
               </div>
-              {post.body ? <p className="text-sm whitespace-pre-line text-black">{feedBody(post, ops.documents ?? [], caseNumber)}</p> : null}
+              {post.body ? (
+                <p className="text-sm whitespace-pre-line text-black">
+                  {post.kind === "email" ? feedBody(post, ops.documents ?? [], caseNumber) : <MentionText body={post.body} />}
+                </p>
+              ) : null}
               <div className="flex items-center gap-md text-sm">
                 <Button variant="link" size="small" icon={<ThumbIcon filled={post.liked} />} aria-pressed={post.liked} onClick={() => ops.toggleFeedLike(post.id)}>
                   Like{post.likes > 0 ? ` · ${post.likes}` : ""}
@@ -254,14 +333,6 @@ function CommentIcon() {
       />
     </svg>
   );
-}
-
-function initials(name: string) {
-  return name
-    .split(" ")
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase() ?? "")
-    .join("");
 }
 
 function postedAgo(value: string) {
