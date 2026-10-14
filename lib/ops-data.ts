@@ -26,6 +26,7 @@ function round2(value: number) {
 
 export function createOpsSeed(): OpsState {
   const inSchool = seedApplications.filter((app) => app.recordType === "InSchool");
+  const edMed = seedApplications.filter((app) => app.recordType === "EdMed");
   const refi = seedApplications.filter((app) => app.recordType === "ReFi");
   const linked = inSchool.slice(0, 3);
   const reduced = inSchool[3];
@@ -33,6 +34,15 @@ export function createOpsSeed(): OpsState {
   const second = linked[1]!;
   const third = linked[2]!;
   const fourth = reduced!;
+  const moreInSchool = inSchool.slice(4);
+  const rejectedInSchool = moreInSchool[0]!;
+  const springInSchool = moreInSchool[1]!;
+  const followUpInSchool = moreInSchool[2]!;
+  const requestedEdMed = edMed[0]!;
+  const secondEdMed = edMed[1]!;
+  const certifiedEdMed = edMed[2]!;
+  const reducedEdMed = edMed[3]!;
+  const resendEdMed = edMed[4]!;
   const refiLoan = refi[0]!;
   const refiPending = refi[1]!;
   const refiDone = refi[2]!;
@@ -72,8 +82,8 @@ export function createOpsSeed(): OpsState {
     },
     {
       id: "cert-1003",
-      applicationId: null,
-      borrower: "Amelia Cho",
+      applicationId: requestedEdMed.id,
+      borrower: requestedEdMed.borrower.fullName,
       product: "EdMed",
       school: "Vanderbilt University",
       schoolCode: "003535",
@@ -88,8 +98,8 @@ export function createOpsSeed(): OpsState {
     },
     {
       id: "cert-1004",
-      applicationId: null,
-      borrower: "Noah Ibarra",
+      applicationId: secondEdMed.id,
+      borrower: secondEdMed.borrower.fullName,
       product: "EdMed",
       school: "Tufts University",
       schoolCode: "002219",
@@ -104,8 +114,8 @@ export function createOpsSeed(): OpsState {
     },
     {
       id: "cert-1005",
-      applicationId: null,
-      borrower: "Helena Voss",
+      applicationId: rejectedInSchool.id,
+      borrower: rejectedInSchool.borrower.fullName,
       product: "InSchool",
       school: "University of Michigan",
       schoolCode: "002325",
@@ -136,8 +146,8 @@ export function createOpsSeed(): OpsState {
     },
     {
       id: "cert-1007",
-      applicationId: null,
-      borrower: "Priya Raman",
+      applicationId: certifiedEdMed.id,
+      borrower: certifiedEdMed.borrower.fullName,
       product: "EdMed",
       school: "Emory University",
       schoolCode: "001564",
@@ -168,8 +178,8 @@ export function createOpsSeed(): OpsState {
     },
     {
       id: "cert-1009",
-      applicationId: null,
-      borrower: "Jonah Ellis",
+      applicationId: reducedEdMed.id,
+      borrower: reducedEdMed.borrower.fullName,
       product: "EdMed",
       school: "Johns Hopkins University",
       schoolCode: "002077",
@@ -184,8 +194,8 @@ export function createOpsSeed(): OpsState {
     },
     {
       id: "cert-1010",
-      applicationId: null,
-      borrower: "Sana Okoye",
+      applicationId: springInSchool.id,
+      borrower: springInSchool.borrower.fullName,
       product: "InSchool",
       school: "Northridge College",
       schoolCode: "003456",
@@ -203,8 +213,8 @@ export function createOpsSeed(): OpsState {
     },
     {
       id: "cert-1011",
-      applicationId: null,
-      borrower: "Claire Adeyemi",
+      applicationId: resendEdMed.id,
+      borrower: resendEdMed.borrower.fullName,
       product: "EdMed",
       school: "Medical College of Wisconsin",
       schoolCode: "003156",
@@ -222,8 +232,8 @@ export function createOpsSeed(): OpsState {
     },
     {
       id: "cert-1012",
-      applicationId: null,
-      borrower: "Mateo Ruiz",
+      applicationId: followUpInSchool.id,
+      borrower: followUpInSchool.borrower.fullName,
       product: "InSchool",
       school: "University of Georgia",
       schoolCode: "001598",
@@ -474,7 +484,7 @@ export function createOpsSeed(): OpsState {
           createdAt: at("2026-10-13", 13),
         },
       ],
-      body: "Called the bursar about Noor Cohen. The fall disbursement date passed and the funds are still scheduled. They can confirm the roster today if we resend the certification request.",
+      body: `Called the bursar about ${third.borrower.fullName}. The fall disbursement date passed and the funds are still scheduled. They can confirm the roster today if we resend the certification request.`,
     },
     {
       id: "feed-2",
@@ -484,7 +494,7 @@ export function createOpsSeed(): OpsState {
       likes: 0,
       liked: false,
       comments: [],
-      body: "Mateo Ruiz called again. The September 28 disbursement never hit the school account. I told him we are checking with the servicer before we promise a date.",
+      body: `${followUpInSchool.borrower.fullName} called again. The September 28 disbursement never hit the school account. I told him we are checking with the servicer before we promise a date.`,
     },
     {
       id: "feed-3",
@@ -494,7 +504,7 @@ export function createOpsSeed(): OpsState {
       likes: 2,
       liked: false,
       comments: [],
-      body: "Spoke with Sana Okoye. She only wanted to know when the spring disbursement shows on the school account. No change to the certified dates.",
+      body: `Spoke with ${springInSchool.borrower.fullName}. They only wanted to know when the spring disbursement shows on the school account. No change to the certified dates.`,
     },
     {
       id: "feed-4",
@@ -504,7 +514,7 @@ export function createOpsSeed(): OpsState {
       likes: 0,
       liked: false,
       comments: [],
-      body: "Medical College of Wisconsin asked us to resend Claire Adeyemi's certification before the October disbursement. The first disbursement already went out.",
+      body: `Medical College of Wisconsin asked us to resend ${resendEdMed.borrower.fullName}'s certification before the October disbursement. The first disbursement already went out.`,
     },
     {
       id: "feed-5",
@@ -514,7 +524,7 @@ export function createOpsSeed(): OpsState {
       likes: 1,
       liked: false,
       comments: [],
-      body: "Jonah Ellis's EdMed certification came back reduced. Comparing the certified amount to cost of attendance before we release the September disbursement.",
+      body: `${reducedEdMed.borrower.fullName}'s EdMed certification came back reduced. Comparing the certified amount to cost of attendance before we release the September disbursement.`,
     },
     {
       id: "feed-6",
@@ -524,7 +534,7 @@ export function createOpsSeed(): OpsState {
       likes: 0,
       liked: false,
       comments: [],
-      body: "Priya Raman wants the first disbursement moved. Emory's school date is the same day, so this needs a same-day review if we are going to split it.",
+      body: `${certifiedEdMed.borrower.fullName} wants the first disbursement moved. Emory's school date is the same day, so this needs a same-day review if we are going to split it.`,
     },
   ];
 

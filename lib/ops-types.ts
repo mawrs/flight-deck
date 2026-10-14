@@ -69,6 +69,7 @@ export interface CaseForm {
   suggestionForm: string;
   phone: string;
   email: string;
+  highestDegree: string;
   sla: string;
   underwriter: string;
   origin: string;

@@ -125,18 +125,20 @@ function loadApplications(): Application[] {
         ? item.payoffs
         : clone(seedApplications.find((seed) => seed.id === item.id)?.payoffs ?? []),
     }));
-    if (mapped.some((item) => item.recordType === "EdMed")) return mapped;
-    return mapped.map((item, index) =>
-      index % 3 === 2
-        ? {
-            ...item,
-            recordType: "EdMed" as const,
-            opportunity: item.opportunity?.recordType
-              ? { ...item.opportunity, recordType: "EdMed" }
-              : item.opportunity,
-          }
-        : item,
-    );
+    const typed = mapped.some((item) => item.recordType === "EdMed")
+      ? mapped
+      : mapped.map((item, index) =>
+          index % 3 === 2
+            ? {
+                ...item,
+                recordType: "EdMed" as const,
+                opportunity: item.opportunity?.recordType
+                  ? { ...item.opportunity, recordType: "EdMed" }
+                  : item.opportunity,
+              }
+            : item,
+        );
+    return typed.filter((item) => !item.id.startsWith("180300"));
   } catch {
     return clone(seedApplications);
   }

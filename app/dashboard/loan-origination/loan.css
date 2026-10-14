@@ -416,17 +416,6 @@
   text-align: center;
 }
 
-.uw-case-panel-tabs {
-  display: flex;
-  height: 58px;
-  flex: none;
-  align-items: flex-end;
-  gap: var(--space-large);
-  border-bottom: 1px solid var(--color-gray-light);
-  padding: 0 var(--space-large);
-  background: var(--surface);
-}
-
 .uw-case-docs {
   width: 100%;
   border-collapse: collapse;
@@ -461,6 +450,12 @@
 .uw-case-docs th:last-child,
 .uw-case-docs td:last-child {
   white-space: nowrap;
+}
+
+.uw-data-table td.uw-cda-detail {
+  height: auto;
+  padding: 0;
+  white-space: normal;
 }
 
 .uw-section-tabs {
@@ -596,27 +591,6 @@
   .uw-case-sections {
     display: flex;
     flex-direction: column;
-    margin: calc(var(--space-large) * -1);
-  }
-
-  .uw-case-tab {
-    display: flex;
-    align-items: flex-end;
-    justify-content: space-between;
-    gap: var(--space-medium);
-    border-bottom: var(--border-width) solid var(--border-subtle);
-    padding: var(--space-small) var(--space-large) 0;
-  }
-
-  .uw-case-tab span {
-    display: inline-block;
-    margin-bottom: -1px;
-    border-bottom: 2px solid var(--primary);
-    padding: var(--space-small) var(--space-extra-small) var(--space-small-medium);
-    color: var(--foreground);
-    font-size: var(--font-size-body-small);
-    font-weight: var(--font-weight-bold);
-    line-height: var(--line-height-body-small);
   }
 
   .uw-case-fold {

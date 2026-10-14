@@ -7,7 +7,9 @@ export function OpsFile({
   eyebrow,
   title,
   actions,
+  tabs,
   aside,
+  flush,
   children,
 }: {
   backHref: string;
@@ -15,10 +17,12 @@ export function OpsFile({
   eyebrow: string;
   title: string;
   actions?: ReactNode;
+  tabs?: ReactNode;
   aside?: ReactNode;
+  flush?: boolean;
   children: ReactNode;
 }) {
-  const record = <div className="flex w-full flex-col gap-lg px-xl py-lg">{children}</div>;
+  const record = flush ? children : <div className="flex w-full flex-col gap-lg px-xl py-lg">{children}</div>;
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-white">
       <div className="uw-file-header-row">
@@ -33,10 +37,13 @@ export function OpsFile({
         </Link>
         {actions ? <div className="flex flex-wrap items-center justify-end gap-sm">{actions}</div> : null}
       </div>
+      {tabs}
       {aside ? (
         <div className="flex min-h-0 flex-1 overflow-hidden bg-white">
           <div className="flex min-h-0 w-[60%] min-w-0 flex-col overflow-hidden">{aside}</div>
-          <div className="uw-workspace-scroll min-h-0 w-[40%] min-w-0 bg-white">{record}</div>
+          <div className={flush ? "flex min-h-0 w-[40%] min-w-0 flex-col overflow-hidden bg-white" : "uw-workspace-scroll min-h-0 w-[40%] min-w-0 bg-white"}>
+            {record}
+          </div>
         </div>
       ) : (
         <div className="uw-workspace-scroll bg-white">{record}</div>

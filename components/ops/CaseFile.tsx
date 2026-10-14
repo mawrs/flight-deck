@@ -4,10 +4,11 @@ import { useState, type ReactNode } from "react";
 import { NotesModal } from "@/components/application/NotesModal";
 import { Button } from "@/components/Button";
 import { Button as HeaderButton } from "@/components/ui/Button";
-import { CaseFeed } from "@/components/ops/CaseFeed";
-import { OpsCard, OpsFile, OpsMissing } from "@/components/ops/OpsFile";
+import { CaseDocuments, CaseFeed } from "@/components/ops/CaseFeed";
+import { OpsFile, OpsMissing } from "@/components/ops/OpsFile";
 import { Select } from "@/components/ui/Dropdown";
 import { FloatInput } from "@/components/ui/FloatInput";
+import { SectionTabs } from "@/components/ui/SectionTabs";
 import { shortDate } from "@/lib/format";
 import { servicingHome } from "@/lib/loan-routes";
 import { certificationById, opsLabel } from "@/lib/ops-logic";
@@ -29,6 +30,14 @@ const PRIORITY_OPTIONS: { id: CasePriority; label: string }[] = [
   { id: "low", label: "Low" },
 ];
 
+const CASE_SECTIONS = [
+  { id: "feed", label: "Feed" },
+  { id: "documents", label: "Documents" },
+  { id: "cda-history", label: "CDA History" },
+] as const;
+
+type CaseSection = (typeof CASE_SECTIONS)[number]["id"];
+
 const TYPE_OPTIONS: { id: CaseType; label: string }[] = [
   { id: "disbursement-change", label: "Disbursement change" },
   { id: "disbursement-review", label: "Disbursement review" },
@@ -39,16 +48,20 @@ const TYPE_OPTIONS: { id: CaseType; label: string }[] = [
 
 export function CaseFile({ id }: { id: string }) {
   const ops = useOps();
-  const { getApplication } = useStore();
+  const { getApplication, applications } = useStore();
   const item = ops.cases.find((entry) => entry.id === id);
   const loan = item ? ops.loans.find((entry) => entry.id === item.loanId) : null;
   const cert = loan ? certificationById(ops, loan.certificationId) : null;
   const applicationId = loan?.applicationId ?? cert?.applicationId ?? null;
   const application = applicationId ? getApplication(applicationId) : undefined;
+  const degreeBorrower =
+    application?.borrower ??
+    (loan ? applications.find((entry) => entry.borrower.fullName === loan.borrower)?.borrower : undefined);
   const [loanOpen, setLoanOpen] = useState(true);
   const [infoOpen, setInfoOpen] = useState(true);
   const [editing, setEditing] = useState({ details: false, loan: false, info: false });
   const [notesOpen, setNotesOpen] = useState(false);
+  const [section, setSection] = useState<CaseSection>("feed");
 
   if (!item || !loan) {
     return (
@@ -77,7 +90,16 @@ export function CaseFile({ id }: { id: string }) {
       backLabel="Back to servicing cases"
       eyebrow="Servicing case"
       title={`${loan.borrower} - ${opsLabel(item.type)}`}
-      aside={<CaseFeed caseId={item.id} author={item.assignee} />}
+      tabs={
+        <SectionTabs
+          label="Servicing sections"
+          current={section}
+          tabs={CASE_SECTIONS.map((item) => ({ id: item.id, label: item.label }))}
+          onSelect={(id) => setSection(id as CaseSection)}
+        />
+      }
+      flush
+      aside={section === "feed" ? <CaseFeed caseId={item.id} author={item.assignee} /> : undefined}
       actions={
         <>
           <div className="flex items-center gap-sm">
@@ -116,12 +138,16 @@ export function CaseFile({ id }: { id: string }) {
         </>
       }
     >
-      <OpsCard title="Case Details" action={<SectionEdit editing={editing.details} onClick={() => toggleEdit("details")} />}>
-        <div className="uw-case-sections">
+      {section === "documents" ? <CaseDocuments caseId={item.id} /> : null}
+      {section === "cda-history" ? <CdaHistory /> : null}
+      {section === "feed" ? (
+      <div className="flex min-h-0 flex-1 flex-col bg-white">
+        <div className="uw-card-header shrink-0">
+          <h2 className="text-lg text-black">Case Details</h2>
+          <SectionEdit editing={editing.details} onClick={() => toggleEdit("details")} />
+        </div>
+        <div className="uw-case-sections min-h-0 flex-1 overflow-auto">
           <section className="uw-case-section">
-            <div className="uw-case-tab">
-              <span>Details</span>
-            </div>
             <div className="uw-case-grid">
               <CaseField editing={editing.details} label="Case Number" value={shown(form, "caseNumber", caseNumberLabel(item.id))} onSave={(value) => saveForm("caseNumber", value)} />
               <CaseField editing={editing.details} label="Case Owner" value={item.assignee} onSave={(value) => save({ assignee: value })} />
@@ -129,6 +155,7 @@ export function CaseFile({ id }: { id: string }) {
               <CaseField editing={editing.details} label="Contact Phone" value={shown(form, "phone", application?.borrower.phone ?? "")} onSave={(value) => saveForm("phone", value)} />
               <CaseField editing={editing.details} label="Opportunity" value={shown(form, "opportunity", application?.opportunityName ?? "")} onSave={(value) => saveForm("opportunity", value)} />
               <CaseField editing={editing.details} label="Contact Email" value={shown(form, "email", application?.borrower.email ?? "")} onSave={(value) => saveForm("email", value)} />
+              <CaseField editing={editing.details} label="Highest Degree" value={shown(form, "highestDegree", degreeLabel(degreeBorrower))} multiline onSave={(value) => saveForm("highestDegree", value)} />
               <CaseField editing={editing.details} label="Suggestion Form" value={shown(form, "suggestionForm", "")} onSave={(value) => saveForm("suggestionForm", value)} />
             </div>
           </section>
@@ -165,10 +192,97 @@ export function CaseFile({ id }: { id: string }) {
             </div>
           </CaseFold>
         </div>
-      </OpsCard>
+      </div>
+      ) : null}
     </OpsFile>
   );
 }
+
+const TH = "h-11 border-b border-gray-light px-xl py-3 font-semibold whitespace-nowrap text-black";
+const TD = "border-b border-gray-light px-xl py-md";
+
+function CdaHistory() {
+  const [open, setOpen] = useState(false);
+
+  function toggle() {
+    setOpen((value) => !value);
+  }
+
+  return (
+    <div className="flex flex-col bg-white">
+      <div className="uw-card-header">
+        <h2 className="text-lg text-black">CDA History</h2>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="uw-data-table min-w-[1100px] table-fixed">
+          <thead className="bg-gray-lightest">
+            <tr>
+              <th className={TH}>Record Identifier</th>
+              <th className={TH}>Integration Type</th>
+              <th className={TH}>Source</th>
+              <th className={TH}>Sent to CDA</th>
+              <th className={TH}>Received from CDA</th>
+              <th className={TH}>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              className="cursor-pointer"
+              role="button"
+              tabIndex={0}
+              aria-expanded={open}
+              aria-label="School certification request @1C"
+              onClick={toggle}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  toggle();
+                }
+              }}
+            >
+              <td className={TD}>
+                <span className="inline-flex items-center gap-sm">
+                  <Chevron open={open} />
+                  @1C
+                </span>
+              </td>
+              <td className={TD}>SCHOOL CERTIFICATION REQUEST</td>
+              <td className={TD}>SOUTHEAST BANK</td>
+              <td className={TD}>10/07/2026</td>
+              <td className={TD}>-</td>
+              <td className={TD}>SENT</td>
+            </tr>
+            {open ? (
+              <tr>
+                <td className="uw-cda-detail border-b border-gray-light" colSpan={6}>
+                  <div className="uw-case-grid">
+                    {CDA_DETAILS.map((field) => (
+                      <div key={field.label} className={field.wide ? "uw-case-field-wide" : undefined}>
+                        <div className="flex min-w-0 flex-col gap-xs">
+                          <span className="text-xs text-gray-medium">{field.label}</span>
+                          <span className="text-sm wrap-break-word text-black">{field.value}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </td>
+              </tr>
+            ) : null}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+const CDA_DETAILS: { label: string; value: string; wide?: boolean }[] = [
+  { label: "Software Product Code", value: "ESAB" },
+  { label: "CDA Name", value: "ELM" },
+  { label: "File Identifier Name", value: "COMMON RESPONSE" },
+  { label: "File Identifier Code", value: "ROOAP" },
+  { label: "Recipient Name", value: "UNIVERSITY OF UTAH" },
+  { label: "FileName", value: "COMSL_RESP-02-DOE_834351-26100722141766.txt.pgp", wide: true },
+];
 
 function SectionEdit({ editing, onClick }: { editing: boolean; onClick: () => void }) {
   return (
@@ -262,6 +376,14 @@ function CaseField({
 function shown(form: Partial<CaseForm> | undefined, key: keyof CaseForm, fallback: string) {
   if (form && Object.prototype.hasOwnProperty.call(form, key)) return form[key] ?? fallback;
   return fallback;
+}
+
+function degreeLabel(borrower?: { degree: string; school: string; graduationYear: string }) {
+  if (!borrower) return "";
+  return [borrower.degree, borrower.school, borrower.graduationYear.trim() ? `Graduated ${borrower.graduationYear.trim()}` : ""]
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .join("\n");
 }
 
 function caseNumberLabel(id: string) {

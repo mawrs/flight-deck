@@ -54,9 +54,52 @@ function asProduct(value: string): OpsProduct {
   return "InSchool";
 }
 
+const PREVIOUS_FEED = new Map<string, string>([
+  [
+    "feed-1",
+    "Called the bursar about Noor Cohen. The fall disbursement date passed and the funds are still scheduled. They can confirm the roster today if we resend the certification request.",
+  ],
+  [
+    "feed-2",
+    "Mateo Ruiz called again. The September 28 disbursement never hit the school account. I told him we are checking with the servicer before we promise a date.",
+  ],
+  [
+    "feed-3",
+    "Spoke with Sana Okoye. She only wanted to know when the spring disbursement shows on the school account. No change to the certified dates.",
+  ],
+  [
+    "feed-4",
+    "Medical College of Wisconsin asked us to resend Claire Adeyemi's certification before the October disbursement. The first disbursement already went out.",
+  ],
+  [
+    "feed-5",
+    "Jonah Ellis's EdMed certification came back reduced. Comparing the certified amount to cost of attendance before we release the September disbursement.",
+  ],
+  [
+    "feed-6",
+    "Priya Raman wants the first disbursement moved. Emory's school date is the same day, so this needs a same-day review if we are going to split it.",
+  ],
+]);
+
 function mergeOpsSeed(saved: OpsState): OpsState {
-  const certifications = saved.certifications.map((item) => ({ ...item, product: asProduct(item.product) }));
-  const loans = saved.loans.map((item) => ({ ...item, product: asProduct(item.product) }));
+  const seedCerts = new Map(opsSeed.certifications.map((item) => [item.id, item]));
+  const seedLoans = new Map(opsSeed.loans.map((item) => [item.id, item]));
+  const certifications = saved.certifications.map((item) => {
+    const seed = seedCerts.get(item.id);
+    return {
+      ...item,
+      product: asProduct(item.product),
+      ...(seed?.applicationId ? { applicationId: seed.applicationId, borrower: seed.borrower } : {}),
+    };
+  });
+  const loans = saved.loans.map((item) => {
+    const seed = seedLoans.get(item.id);
+    return {
+      ...item,
+      product: asProduct(item.product),
+      ...(seed?.applicationId ? { applicationId: seed.applicationId, borrower: seed.borrower } : {}),
+    };
+  });
   const certIds = new Set(certifications.map((item) => item.id));
   const loanIds = new Set(loans.map((item) => item.id));
   const seedCases = new Map(opsSeed.cases.map((item) => [item.id, item]));
@@ -71,12 +114,18 @@ function mergeOpsSeed(saved: OpsState): OpsState {
     };
   });
   const savedFeed = Array.isArray(saved.feed) ? saved.feed : [];
-  const feedIds = new Set(savedFeed.map((item) => item.id));
+  const seedFeed = new Map(opsSeed.feed.map((item) => [item.id, item]));
+  const feed = savedFeed.map((item) => {
+    const seed = seedFeed.get(item.id);
+    if (seed && item.body === PREVIOUS_FEED.get(item.id)) return { ...item, body: seed.body };
+    return item;
+  });
+  const feedIds = new Set(feed.map((item) => item.id));
   return {
     certifications: [...certifications, ...opsSeed.certifications.filter((item) => !certIds.has(item.id))],
     loans: [...loans, ...opsSeed.loans.filter((item) => !loanIds.has(item.id))],
     cases: [...cases, ...opsSeed.cases.filter((item) => !caseIds.has(item.id))],
-    feed: [...savedFeed, ...opsSeed.feed.filter((item) => !feedIds.has(item.id))],
+    feed: [...feed, ...opsSeed.feed.filter((item) => !feedIds.has(item.id))],
     documents: mergeDocuments(saved),
   };
 }

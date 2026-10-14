@@ -7,60 +7,60 @@ import { sampleDocumentHref } from "@/lib/documents";
 import { useOps } from "@/lib/ops-store";
 import type { FeedPost, ServicingCase } from "@/lib/ops-types";
 
-type PanelTab = "feed" | "documents";
-
-export function CaseFeed({ caseId, author }: { caseId: string; author: string }) {
+export function CaseDocuments({ caseId }: { caseId: string }) {
   const ops = useOps();
-  const [tab, setTab] = useState<PanelTab>("feed");
-  const [draft, setDraft] = useState("");
-  const [comments, setComments] = useState<Record<string, string>>({});
-  const item = ops.cases.find((entry) => entry.id === caseId);
-  const posts = postsForCase(ops.feed ?? [], item);
   const documents = [...(ops.documents ?? [])]
     .filter((item) => item.caseId === caseId)
     .sort((a, b) => b.uploadedAt.localeCompare(a.uploadedAt));
 
   return (
-    <aside className="flex h-full min-h-0 w-full flex-col overflow-hidden border-r border-gray-light bg-white">
-      <div className="uw-case-panel-tabs" role="tablist" aria-label="Case panel">
-        <button type="button" role="tab" className="uw-section-tab" aria-selected={tab === "feed"} aria-current={tab === "feed" ? "page" : undefined} onClick={() => setTab("feed")}>
-          Feed
-        </button>
-        <button type="button" role="tab" className="uw-section-tab" aria-selected={tab === "documents"} aria-current={tab === "documents" ? "page" : undefined} onClick={() => setTab("documents")}>
-          Documents
-        </button>
+    <div className="flex flex-col bg-white">
+      <div className="uw-card-header">
+        <h2 className="text-lg text-black">Documents</h2>
       </div>
-      {tab === "documents" ? (
-        <div className="min-h-0 flex-1 overflow-auto" role="tabpanel">
-          {documents.length === 0 ? (
-            <p className="px-lg py-lg text-sm text-gray-medium">No documents have been uploaded for this case.</p>
-          ) : (
-            <table className="uw-case-docs">
-              <thead>
-                <tr>
-                  <th>Document</th>
-                  <th>Uploaded by</th>
-                  <th>Date</th>
-                </tr>
-              </thead>
-              <tbody>
-                {documents.map((item) => (
-                  <tr key={item.id}>
-                    <td>
-                      <a href={sampleDocumentHref(item.fileName)} target="_blank" rel="noreferrer">
-                        {item.name}
-                      </a>
-                    </td>
-                    <td>{item.uploadedBy}</td>
-                    <td>{dateOnly(item.uploadedAt)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
+      {documents.length === 0 ? (
+        <p className="px-xl py-lg text-sm text-gray-medium">No documents have been uploaded for this case.</p>
       ) : (
-      <div className="flex min-h-0 flex-1 flex-col gap-lg overflow-auto px-lg py-lg" role="tabpanel">
+        <table className="uw-case-docs">
+          <thead>
+            <tr>
+              <th>Document</th>
+              <th>Uploaded by</th>
+              <th>Date</th>
+            </tr>
+          </thead>
+          <tbody>
+            {documents.map((item) => (
+              <tr key={item.id}>
+                <td>
+                  <a href={sampleDocumentHref(item.fileName)} target="_blank" rel="noreferrer">
+                    {item.name}
+                  </a>
+                </td>
+                <td>{item.uploadedBy}</td>
+                <td>{dateOnly(item.uploadedAt)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </div>
+  );
+}
+
+export function CaseFeed({ caseId, author }: { caseId: string; author: string }) {
+  const ops = useOps();
+  const [draft, setDraft] = useState("");
+  const [comments, setComments] = useState<Record<string, string>>({});
+  const item = ops.cases.find((entry) => entry.id === caseId);
+  const posts = postsForCase(ops.feed ?? [], item);
+
+  return (
+    <aside className="flex h-full min-h-0 w-full flex-col overflow-hidden border-r border-gray-light bg-white">
+      <div className="uw-card-header shrink-0">
+        <h2 className="text-lg text-black">Feed</h2>
+      </div>
+      <div className="flex min-h-0 flex-1 flex-col gap-lg overflow-auto px-xl py-lg">
         <form
           className="flex flex-col gap-sm"
           onSubmit={(event) => {
@@ -150,7 +150,6 @@ export function CaseFeed({ caseId, author }: { caseId: string; author: string })
           );
         })}
       </div>
-      )}
     </aside>
   );
 }
