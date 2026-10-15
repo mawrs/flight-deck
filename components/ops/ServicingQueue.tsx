@@ -8,6 +8,8 @@ import { FilterBadges, type FilterChip } from "@/components/list/FilterBadges";
 import { ListPagination, usePagedList } from "@/components/list/ListPagination";
 import { SortHeader } from "@/components/list/SortHeader";
 import { CasePreview } from "@/components/ops/CasePreview";
+import { EdMedDisbursements } from "@/components/ops/EdMedDisbursements";
+import { InSchoolDisbursements } from "@/components/ops/InSchoolDisbursements";
 import { OpsBadge } from "@/components/ops/OpsBadge";
 import { OpsViewSelect } from "@/components/ops/OpsViewSelect";
 import { Button } from "@/components/ui/Button";
@@ -174,7 +176,7 @@ export function ServicingQueue() {
   const casePage = usePagedList(caseRows);
   const rosterPage = usePagedList(rosterRows);
   const boardPage = usePagedList(boardRows);
-  const rows = view === "cases" ? caseRows : view === "roster" ? rosterRows : boardRows;
+  const rows = view === "cases" ? caseRows : view === "roster" ? rosterRows : view === "onboarded" ? boardRows : [];
   const [seenView, setSeenView] = useState(view);
   if (seenView !== view) {
     setSeenView(view);
@@ -210,6 +212,12 @@ export function ServicingQueue() {
         </div>
       </div>
       <DataTableCard rules className="uw-list-card">
+        {view === "edmed" ? (
+          <EdMedDisbursements />
+        ) : view === "inschool" ? (
+          <InSchoolDisbursements />
+        ) : (
+          <>
         <div className="uw-list-toolbar">
           <div className="uw-filter-grid uw-filter-grid-queue">
             <SearchField
@@ -320,6 +328,8 @@ export function ServicingQueue() {
             pageSize={boardPage.pageSize}
             onPageChange={boardPage.setPage}
           />
+        )}
+          </>
         )}
       </DataTableCard>
     </div>

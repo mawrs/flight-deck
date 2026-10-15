@@ -44,6 +44,7 @@
   --color-neutral-gray-step: #DDDBDA;
   --color-neutral-gray-step-future: #E8E6EA;
   --color-neutral-gray-lightest: #F5F5F5;
+  --color-neutral-gray-palest: #FCFCFC;
   --color-neutral-gray-extra-light: #FCFCFC;
   --color-neutral-white: #FFFFFF;
 
@@ -119,6 +120,7 @@
   --background: var(--color-primary-blue-background);
   --surface: var(--color-neutral-white);
   --surface-muted: var(--color-neutral-gray-extra-light);
+  --surface-stripe: var(--color-neutral-gray-palest);
   --surface-sunken: var(--color-neutral-gray-lightest);
   --foreground: var(--color-neutral-black);
   --foreground-strong: var(--color-neutral-charcoal);

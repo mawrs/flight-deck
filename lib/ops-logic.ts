@@ -49,6 +49,16 @@ export const SERVICING_VIEWS = [
     label: "Onboarded loans",
     empty: "No onboarded loans match this view.",
   },
+  {
+    id: "edmed",
+    label: "EdMed Disbursements",
+    empty: "No EdMed disbursements match this view.",
+  },
+  {
+    id: "inschool",
+    label: "In-School Disbursement",
+    empty: "No In-School disbursements match this view.",
+  },
 ] as const;
 
 export type ServicingViewId = (typeof SERVICING_VIEWS)[number]["id"];

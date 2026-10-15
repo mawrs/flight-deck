@@ -44,6 +44,11 @@
   line-height: var(--line-height-body-base);
 }
 
+.search .input:focus,
+.search .input:focus-visible {
+  outline: none;
+}
+
 .input::placeholder {
   color: var(--foreground-subtle);
   opacity: 1;
