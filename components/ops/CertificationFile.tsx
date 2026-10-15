@@ -1,45 +1,29 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useCallback, useEffect, useId, useState } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
-import { Button } from "@/components/Button";
+import { Button, buttonClassName } from "@/components/Button";
 import { FactList, FieldGrid, OpsCard, OpsFile, OpsMissing } from "@/components/ops/OpsFile";
 import { OpsBadge } from "@/components/ops/OpsBadge";
 import { FloatInput } from "@/components/ui/FloatInput";
-import { Select } from "@/components/ui/Dropdown";
+import { accountHasRole } from "@/lib/account";
+import { BORROWER_STATUSES } from "@/lib/borrower-status";
 import { dateOnly, money } from "@/lib/format";
 import { applicationBase, certificationHome, servicingLoanHref } from "@/lib/loan-routes";
 import { daysSince, loanForCertification, opsLabel } from "@/lib/ops-logic";
 import { useOps } from "@/lib/ops-store";
-import type { DisbursementStatus, EnrollmentStatus } from "@/lib/ops-types";
 
-const ENROLLMENT = [
-  { id: "full-time", label: "Full time" },
-  { id: "half-time", label: "Half time" },
-  { id: "less-than-half-time", label: "Less than half time" },
-];
-
-type DraftLine = {
-  key: string;
-  id?: string;
-  date: string;
-  amount: string;
-  status: DisbursementStatus | "new";
-};
-
-function dateInput(value: string) {
-  return value.slice(0, 10);
-}
-
-function parseAmount(value: string) {
-  const amount = Number(value.replace(/[^0-9.]/g, ""));
-  return Number.isFinite(amount) ? amount : 0;
-}
+const WITHDRAWAL_REASONS = BORROWER_STATUSES.filter((status) => status.startsWith("Withdrawn"));
 
 export function CertificationFile({ id }: { id: string }) {
   const ops = useOps();
   const cert = ops.certifications.find((item) => item.id === id);
   const loan = cert ? loanForCertification(ops.loans, cert.id) : null;
+  const [withdrawOpen, setWithdrawOpen] = useState(false);
+  const [responseOpen, setResponseOpen] = useState(false);
+  const closeWithdraw = useCallback(() => setWithdrawOpen(false), []);
+  const closeResponse = useCallback(() => setResponseOpen(false), []);
 
   if (!cert) {
     return (
@@ -62,26 +46,72 @@ export function CertificationFile({ id }: { id: string }) {
       title={`${cert.borrower} - ${cert.id}`}
       actions={
         <>
+          {cert.status === "in-review" ? (
+            <Button size="small" variant="primary" onClick={() => setResponseOpen(true)}>
+              Record School Response
+            </Button>
+          ) : null}
           <Button size="small" variant="outline" onClick={() => ops.resendCertification(cert.id)}>
             Resend certification
           </Button>
           <Button
             size="small"
             variant="danger"
-            disabled={cert.status === "rejected"}
-            onClick={() => ops.rejectCertification(cert.id)}
+            disabled={cert.status === "withdrawn" || cert.status === "rejected"}
+            onClick={() => setWithdrawOpen(true)}
           >
-            Reject certification
+            Withdraw Certification
           </Button>
+          <WithdrawCertificationModal
+            open={withdrawOpen}
+            onClose={closeWithdraw}
+            onConfirm={(reason, note) => {
+              ops.withdrawCertification(cert.id, reason, note);
+              setWithdrawOpen(false);
+            }}
+          />
+          <SchoolResponseModal
+            open={responseOpen}
+            onClose={closeResponse}
+            certification={cert}
+            onConfirm={(response) => {
+              ops.recordSchoolResponse(cert.id, response);
+              setResponseOpen(false);
+            }}
+          />
         </>
       }
     >
       {outreach ? (
-        <p className="rounded-xs border border-warning bg-warning-bg px-md py-sm text-sm text-black">
+        <p className="border-b border-warning bg-warning-bg px-xl py-md text-sm text-black">
           Requested {waiting} days ago. Outreach to the school is due if this file is still uncertified.
         </p>
       ) : null}
-      <OpsCard title="School certification">
+      {cert.status === "in-review" ? (
+        <p className="border-b border-warning bg-warning-bg px-xl py-md text-sm text-black">
+          The school asked for a change. Update this file before sending it back.
+        </p>
+      ) : null}
+      <OpsCard
+        title="School certification"
+        action={
+          <div className="flex flex-wrap items-center justify-end gap-sm">
+            {loan ? (
+              <Link href={servicingLoanHref(loan.id)} className={buttonClassName({ variant: "link", size: "small" })}>
+                Open loan account
+              </Link>
+            ) : null}
+            {cert.applicationId ? (
+              <Link
+                href={`${applicationBase(cert.applicationId)}/opportunity`}
+                className={buttonClassName({ variant: "link", size: "small" })}
+              >
+                Open application
+              </Link>
+            ) : null}
+          </div>
+        }
+      >
         <FactList
           items={[
             { label: "Borrower", value: cert.borrower },
@@ -95,23 +125,12 @@ export function CertificationFile({ id }: { id: string }) {
             { label: "Certified amount", value: money(cert.certifiedAmount) },
             { label: "Cost of attendance", value: money(cert.costOfAttendance) },
             { label: "Enrollment", value: cert.enrollment ? opsLabel(cert.enrollment) : "—" },
+            ...(cert.withdrawalReason ? [{ label: "Withdrawal reason", value: cert.withdrawalReason }] : []),
+            ...(cert.withdrawalNote ? [{ label: "Withdrawal note", value: cert.withdrawalNote }] : []),
           ]}
         />
-        <div className="flex flex-wrap gap-md text-sm">
-          {loan ? (
-            <Link href={servicingLoanHref(loan.id)} className="text-primary">
-              Open loan account
-            </Link>
-          ) : null}
-          {cert.applicationId ? (
-            <Link href={`${applicationBase(cert.applicationId)}/opportunity`} className="text-primary">
-              Open application
-            </Link>
-          ) : null}
-        </div>
       </OpsCard>
-      <SchoolCodeCard certificationId={cert.id} schoolCode={cert.schoolCode} />
-      <ResponseCard id={cert.id} />
+      {accountHasRole("Admin") ? <SchoolCodeCard certificationId={cert.id} schoolCode={cert.schoolCode} /> : null}
     </OpsFile>
   );
 }
@@ -120,6 +139,8 @@ function SchoolCodeCard({ certificationId, schoolCode }: { certificationId: stri
   const { editSchoolCode } = useOps();
   const [code, setCode] = useState(schoolCode);
   const [saved, setSaved] = useState(false);
+  const next = code.trim();
+  const changed = next.length > 0 && next !== schoolCode.trim();
 
   return (
     <OpsCard title="School code">
@@ -127,15 +148,24 @@ function SchoolCodeCard({ certificationId, schoolCode }: { certificationId: stri
         className="flex w-full flex-col gap-md"
         onSubmit={(event) => {
           event.preventDefault();
-          editSchoolCode(certificationId, code);
+          if (!changed) return;
+          editSchoolCode(certificationId, next);
+          setCode(next);
           setSaved(true);
         }}
       >
         <FieldGrid>
-          <FloatInput label="School code" value={code} onChange={setCode} />
+          <FloatInput
+            label="School code"
+            value={code}
+            onChange={(value) => {
+              setCode(value);
+              setSaved(false);
+            }}
+          />
         </FieldGrid>
         <div className="flex items-center gap-md">
-          <Button size="small" type="submit" className="whitespace-nowrap">
+          <Button size="small" type="submit" className="whitespace-nowrap" disabled={!changed}>
             Save school code
           </Button>
           {saved ? <span className="text-sm text-gray-medium">Saved on this certification and the loan account.</span> : null}
@@ -145,154 +175,275 @@ function SchoolCodeCard({ certificationId, schoolCode }: { certificationId: stri
   );
 }
 
-function ResponseCard({ id }: { id: string }) {
-  const ops = useOps();
-  const cert = ops.certifications.find((item) => item.id === id);
-  const [enrollment, setEnrollment] = useState<EnrollmentStatus>(cert?.enrollment || "full-time");
-  const [certifiedAmount, setCertifiedAmount] = useState(
-    cert?.certifiedAmount != null ? String(cert.certifiedAmount) : cert ? String(cert.approvedAmount) : "",
-  );
-  const [cost, setCost] = useState(cert?.costOfAttendance != null ? String(cert.costOfAttendance) : "");
-  const [lines, setLines] = useState<DraftLine[]>(() => draftLines(cert?.disbursements ?? []));
-  const [error, setError] = useState("");
+function WithdrawCertificationModal({
+  open,
+  onClose,
+  onConfirm,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onConfirm: (reason: string, note: string) => void;
+}) {
+  const titleId = useId();
+  const [mounted, setMounted] = useState(false);
+  const [reason, setReason] = useState("");
+  const [note, setNote] = useState("");
 
-  if (!cert) return null;
+  useEffect(() => setMounted(true), []);
 
-  function submit(event: FormEvent) {
-    event.preventDefault();
-    if (!enrollment) {
-      setError("Choose an enrollment status.");
-      return;
-    }
-    const amount = parseAmount(certifiedAmount);
-    const attendance = parseAmount(cost);
-    const disbursements = lines
-      .filter((line) => line.status !== "disbursed")
-      .map((line) => ({
-        id: line.id,
-        date: line.date,
-        amount: parseAmount(line.amount),
-        status: "scheduled" as const,
-      }))
-      .filter((line) => line.date && line.amount > 0);
-    const kept = lines.filter((line) => line.status === "disbursed" && line.id);
-    if (amount <= 0 || attendance <= 0) {
-      setError("Enter a certified amount and cost of attendance.");
-      return;
-    }
-    if (disbursements.length + kept.length === 0) {
-      setError("Add at least one disbursement date.");
-      return;
-    }
-    setError("");
-    ops.recordSchoolResponse(cert!.id, {
-      enrollment,
-      certifiedAmount: amount,
-      costOfAttendance: attendance,
-      disbursements: [
-        ...kept.map((line) => ({
-          id: line.id,
-          date: line.date,
-          amount: parseAmount(line.amount),
-          status: "disbursed" as const,
-        })),
-        ...disbursements,
-      ],
-    });
-  }
+  useEffect(() => {
+    if (!open) return;
+    setReason("");
+    setNote("");
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = previous;
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [open, onClose]);
 
-  return (
-    <OpsCard title="Record school response">
-      <form className="flex w-full flex-col gap-lg" onSubmit={submit}>
-        <FieldGrid>
-          <Select
-            label="Enrollment"
-            aria-label="Enrollment"
-            variant="float"
-            value={enrollment}
-            options={ENROLLMENT}
-            onChange={(value) => setEnrollment(value as EnrollmentStatus)}
-          />
-          <FloatInput label="Certified amount" value={certifiedAmount} onChange={setCertifiedAmount} />
-          <FloatInput label="Cost of attendance" value={cost} onChange={setCost} />
-        </FieldGrid>
-        <div className="flex w-full flex-col gap-sm">
-          <h3 className="text-sm font-semibold text-black">Disbursement schedule</h3>
-          {lines.map((line) => (
-            <FieldGrid key={line.key}>
-              <label className="flex min-w-0 flex-col gap-xs text-xs text-gray-medium">
-                Date
-                <input
-                  className="uw-input h-[60px] w-full px-md"
-                  type="date"
-                  value={line.date}
-                  disabled={line.status === "disbursed"}
-                  onChange={(event) => updateLine(line.key, { date: event.target.value })}
-                />
-              </label>
-              <label className="flex min-w-0 flex-col gap-xs text-xs text-gray-medium">
-                Amount
-                <input
-                  className="uw-input h-[60px] w-full px-md"
-                  inputMode="decimal"
-                  value={line.amount}
-                  disabled={line.status === "disbursed"}
-                  onChange={(event) => updateLine(line.key, { amount: event.target.value })}
-                />
-              </label>
-              <span className="flex h-[60px] items-center self-end">
-                <OpsBadge value={line.status === "new" ? "scheduled" : line.status} />
-              </span>
-              {line.status !== "disbursed" ? (
-                <button
-                  type="button"
-                  className="h-[60px] justify-self-start self-end text-sm text-primary"
-                  onClick={() => setLines((current) => current.filter((item) => item.key !== line.key))}
-                >
-                  Remove
-                </button>
-              ) : (
-                <span />
-              )}
-            </FieldGrid>
-          ))}
+  if (!mounted || !open) return null;
+
+  return createPortal(
+    <div className="fixed inset-0 z-[70] flex items-center justify-center p-xl">
+      <button type="button" className="absolute inset-0 bg-charcoal/40" aria-label="Close withdrawal" onClick={onClose} />
+      <div role="dialog" aria-modal="true" aria-labelledby={titleId} className="uw-dialog uw-dialog-withdraw">
+        <div className="flex items-center justify-between gap-md border-b border-gray-light px-xl py-md">
+          <h2 id={titleId} className="text-lg font-semibold text-charcoal">
+            Withdraw Certification
+          </h2>
           <button
             type="button"
-            className="self-start text-sm text-primary"
-            onClick={() =>
-              setLines((current) => [
-                ...current,
-                { key: `new-${current.length}-${Date.now()}`, date: "", amount: "", status: "new" },
-              ])
-            }
+            aria-label="Close"
+            onClick={onClose}
+            className="inline-flex size-8 shrink-0 items-center justify-center rounded-xs text-gray-dark hover:bg-gray-lightest"
           >
-            Add disbursement
+            <CloseIcon />
           </button>
         </div>
-        {error ? <p className="text-sm text-error">{error}</p> : null}
-        <div>
-          <Button size="small" type="submit">
-            Record school response
-          </Button>
-        </div>
-      </form>
-    </OpsCard>
+        <form
+          className="flex min-h-0 flex-col gap-lg overflow-y-auto px-xl py-lg"
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (!reason) return;
+            onConfirm(reason, note);
+          }}
+        >
+          <fieldset className="flex flex-col gap-md">
+            <legend className="mb-sm text-sm text-gray-medium">Reason</legend>
+            {WITHDRAWAL_REASONS.map((item) => (
+              <label key={item} className="flex cursor-pointer items-start gap-md">
+                <input
+                  type="radio"
+                  name="withdrawal-reason"
+                  value={item}
+                  checked={reason === item}
+                  onChange={() => setReason(item)}
+                  className="mt-[3px] size-4 accent-primary"
+                />
+                <span className="text-sm text-charcoal">{item}</span>
+              </label>
+            ))}
+          </fieldset>
+          <FloatInput label="Note (optional)" value={note} multiline onChange={setNote} />
+          <div className="flex justify-end gap-sm">
+            <Button type="button" size="small" variant="outline" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button type="submit" size="small" variant="danger" disabled={!reason}>
+              Confirm withdrawal
+            </Button>
+          </div>
+        </form>
+      </div>
+    </div>,
+    document.body,
   );
-
-  function updateLine(key: string, patch: Partial<DraftLine>) {
-    setLines((current) => current.map((item) => (item.key === key ? { ...item, ...patch } : item)));
-  }
 }
 
-function draftLines(disbursements: { id: string; date: string; amount: number; status: DisbursementStatus }[]): DraftLine[] {
-  if (disbursements.length === 0) {
-    return [{ key: "new-0", date: "", amount: "", status: "new" }];
-  }
-  return disbursements.map((item) => ({
-    key: item.id,
-    id: item.id,
-    date: dateInput(item.date),
-    amount: String(item.amount),
-    status: item.status,
-  }));
+function SchoolResponseModal({
+  open,
+  onClose,
+  certification,
+  onConfirm,
+}: {
+  open: boolean;
+  onClose: () => void;
+  certification: ReturnType<typeof useOps>["certifications"][number];
+  onConfirm: (response: { enrollment: "full-time" | "half-time" | "less-than-half-time"; certifiedAmount: number; costOfAttendance: number; disbursements: { id?: string; date: string; amount: number }[] }) => void;
+}) {
+  const titleId = useId();
+  const [mounted, setMounted] = useState(false);
+  const [enrollment, setEnrollment] = useState<"full-time" | "half-time" | "less-than-half-time">("full-time");
+  const [certifiedAmount, setCertifiedAmount] = useState("");
+  const [costOfAttendance, setCostOfAttendance] = useState("");
+  const [disbursements, setDisbursements] = useState<{ id: string; date: string; amount: string }[]>([]);
+
+  useEffect(() => setMounted(true), []);
+
+  useEffect(() => {
+    if (!open) return;
+    setEnrollment(certification.enrollment || "full-time");
+    setCertifiedAmount(certification.certifiedAmount?.toString() ?? certification.approvedAmount.toString());
+    setCostOfAttendance(certification.costOfAttendance?.toString() ?? "");
+    setDisbursements(
+      certification.disbursements.length > 0
+        ? certification.disbursements.map((d) => ({ id: d.id, date: d.date.split("T")[0], amount: d.amount.toString() }))
+        : [{ id: "", date: "", amount: "" }]
+    );
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = previous;
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [open, onClose, certification]);
+
+  if (!mounted || !open) return null;
+
+  const certAmount = parseFloat(certifiedAmount);
+  const coaAmount = parseFloat(costOfAttendance);
+  const validAmounts = !isNaN(certAmount) && certAmount > 0 && !isNaN(coaAmount) && coaAmount > 0;
+  const validDisbursements = disbursements.every((d) => d.date && !isNaN(parseFloat(d.amount)) && parseFloat(d.amount) > 0);
+
+  return createPortal(
+    <div className="fixed inset-0 z-[70] flex items-center justify-center p-xl">
+      <button type="button" className="absolute inset-0 bg-charcoal/40" aria-label="Close response" onClick={onClose} />
+      <div role="dialog" aria-modal="true" aria-labelledby={titleId} className="uw-dialog uw-dialog-response max-h-[90vh] w-full max-w-2xl overflow-hidden rounded-md bg-white shadow-xl">
+        <div className="flex items-center justify-between gap-md border-b border-gray-light px-xl py-md">
+          <h2 id={titleId} className="text-lg font-semibold text-charcoal">
+            Record School Response
+          </h2>
+          <button
+            type="button"
+            aria-label="Close"
+            onClick={onClose}
+            className="inline-flex size-8 shrink-0 items-center justify-center rounded-xs text-gray-dark hover:bg-gray-lightest"
+          >
+            <CloseIcon />
+          </button>
+        </div>
+        <form
+          className="flex min-h-0 flex-col gap-lg overflow-y-auto px-xl py-lg"
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (!validAmounts || !validDisbursements) return;
+            onConfirm({
+              enrollment,
+              certifiedAmount: certAmount,
+              costOfAttendance: coaAmount,
+              disbursements: disbursements.map((d) => ({
+                id: d.id || undefined,
+                date: d.date,
+                amount: parseFloat(d.amount),
+              })),
+            });
+          }}
+        >
+          <fieldset className="flex flex-col gap-md">
+            <legend className="mb-sm text-sm text-gray-medium">Enrollment Status</legend>
+            {(["full-time", "half-time", "less-than-half-time"] as const).map((item) => (
+              <label key={item} className="flex cursor-pointer items-start gap-md">
+                <input
+                  type="radio"
+                  name="enrollment-status"
+                  value={item}
+                  checked={enrollment === item}
+                  onChange={() => setEnrollment(item)}
+                  className="mt-[3px] size-4 accent-primary"
+                />
+                <span className="text-sm text-charcoal">{opsLabel(item)}</span>
+              </label>
+            ))}
+          </fieldset>
+          <FloatInput
+            label="Certified Amount"
+            value={certifiedAmount}
+            onChange={setCertifiedAmount}
+            type="number"
+            step="0.01"
+          />
+          <FloatInput
+            label="Cost of Attendance"
+            value={costOfAttendance}
+            onChange={setCostOfAttendance}
+            type="number"
+            step="0.01"
+          />
+          <fieldset className="flex flex-col gap-md">
+            <legend className="mb-sm text-sm text-gray-medium">Disbursement Schedule</legend>
+            {disbursements.map((disb, index) => (
+              <div key={index} className="flex gap-md">
+                <FloatInput
+                  label="Date"
+                  value={disb.date}
+                  onChange={(value) => {
+                    const next = [...disbursements];
+                    next[index].date = value;
+                    setDisbursements(next);
+                  }}
+                  type="date"
+                />
+                <FloatInput
+                  label="Amount"
+                  value={disb.amount}
+                  onChange={(value) => {
+                    const next = [...disbursements];
+                    next[index].amount = value;
+                    setDisbursements(next);
+                  }}
+                  type="number"
+                  step="0.01"
+                />
+                {disbursements.length > 1 ? (
+                  <Button
+                    type="button"
+                    size="small"
+                    variant="outline"
+                    onClick={() => setDisbursements(disbursements.filter((_, i) => i !== index))}
+                  >
+                    Remove
+                  </Button>
+                ) : null}
+              </div>
+            ))}
+            <Button
+              type="button"
+              size="small"
+              variant="outline"
+              onClick={() => setDisbursements([...disbursements, { id: "", date: "", amount: "" }])}
+            >
+              Add Disbursement
+            </Button>
+          </fieldset>
+          <div className="flex justify-end gap-sm">
+            <Button type="button" size="small" variant="outline" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button type="submit" size="small" disabled={!validAmounts || !validDisbursements}>
+              Save Response
+            </Button>
+          </div>
+        </form>
+      </div>
+    </div>,
+    document.body,
+  );
+}
+
+function CloseIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden>
+      <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+    </svg>
+  );
 }

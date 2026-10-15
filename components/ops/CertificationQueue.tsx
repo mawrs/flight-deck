@@ -16,7 +16,6 @@ import { certificationHome, certificationHref } from "@/lib/loan-routes";
 import {
   CERT_VIEWS,
   certView,
-  isDisbursementDue,
   matchesCertView,
   nextDisbursement,
   type CertViewId,
@@ -57,8 +56,8 @@ const PRODUCTS = [
 ];
 
 function defaultSort(view: CertViewId): { key: SortKey; direction: SortDirection } {
-  if (view === "pending") return { key: "requestedAt", direction: "asc" };
-  if (view === "due") return { key: "nextDate", direction: "asc" };
+  if (view === "pending" || view === "in-review") return { key: "requestedAt", direction: "asc" };
+  if (view === "completed") return { key: "certifiedAt", direction: "desc" };
   return { key: "requestedAt", direction: "desc" };
 }
 
@@ -106,11 +105,10 @@ export function CertificationQueue() {
         if (!needle) return true;
         return [cert.borrower, cert.school, cert.schoolCode, cert.product].join(" ").toLowerCase().includes(needle);
       })
-      .sort((a, b) => {
-        const dueBoost = Number(isDisbursementDue(b)) - Number(isDisbursementDue(a));
-        if (view === "due" && sort.key === "nextDate" && dueBoost) return dueBoost;
-        return compareSortValues(sortValue(a, sort.key), sortValue(b, sort.key), sort.direction) || a.id.localeCompare(b.id);
-      });
+      .sort(
+        (a, b) =>
+          compareSortValues(sortValue(a, sort.key), sortValue(b, sort.key), sort.direction) || a.id.localeCompare(b.id),
+      );
   }, [certifications, product, query, sort, view]);
 
   const { page, setPage, pageSize, pageItems, count } = usePagedList(rows);

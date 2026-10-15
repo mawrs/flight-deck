@@ -70,7 +70,7 @@ function panelStyle(
     width: fit === "match" ? width : "max-content",
     maxWidth: fit === "match" ? width : cap,
     maxHeight,
-    zIndex: 50,
+    zIndex: 80,
   };
   if (align === "right") {
     style.right = Math.max(8, window.innerWidth - trigger.right);

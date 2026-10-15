@@ -9,6 +9,7 @@ export const SERVICING_SECTIONS = [
   { id: "cda-history", label: "CDA History" },
   { id: "disbursement-history", label: "Disbursement History" },
   { id: "rates-history", label: "Rates History" },
+  { id: "email", label: "Email Communication" },
 ] as const;
 
 export type ServicingSection = (typeof SERVICING_SECTIONS)[number]["id"];

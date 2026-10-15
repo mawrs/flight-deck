@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, useMemo, useSyncExternalStore, type ReactNode } from "react";
+import { accountHasRole } from "./account";
 import { opsSeed } from "./ops-data";
 import { CURRENT_USER, mentionedPeople } from "./mentions";
 import { caseNumberLabel, statusAfterAmounts } from "./ops-logic";
@@ -218,7 +219,7 @@ export interface OpsStore {
   toggleFeedLike: (postId: string) => void;
   recordSchoolResponse: (id: string, response: SchoolResponse) => void;
   resendCertification: (id: string) => void;
-  rejectCertification: (id: string) => void;
+  withdrawCertification: (id: string, reason: string, note: string) => void;
   editSchoolCode: (certificationId: string, schoolCode: string) => void;
   updateDisbursement: (loanId: string, disbursementId: string, amount: number) => void;
   markDisbursed: (loanId: string, disbursementId: string) => void;
@@ -244,6 +245,11 @@ export interface OpsStore {
     caseId: string,
     author: string,
     email: { to: string; cc?: string; bcc?: string; school: string; subject: string; body: string; fileName: string },
+  ) => void;
+  sendCustomerEmail: (
+    caseId: string,
+    author: string,
+    email: { to: string; cc?: string; bcc?: string; subject: string; body: string; applicationId?: string },
   ) => void;
   addCaseDocuments: (caseId: string, files: { id: string; name: string }[]) => void;
 }
@@ -363,16 +369,23 @@ export function OpsProvider({ children }: { children: ReactNode }) {
           if (!cert) return;
           cert.status = "requested";
           cert.requestedAt = new Date().toISOString();
+          cert.withdrawalReason = "";
+          cert.withdrawalNote = "";
         });
       },
-      rejectCertification: (id) => {
+      withdrawCertification: (id, reason, note) => {
+        const withdrawalReason = reason.trim();
+        if (!withdrawalReason) return;
         edit((current) => {
           const cert = current.certifications.find((item) => item.id === id);
-          if (!cert || cert.status === "rejected") return;
-          cert.status = "rejected";
+          if (!cert || cert.status === "withdrawn" || cert.status === "rejected") return;
+          cert.status = "withdrawn";
+          cert.withdrawalReason = withdrawalReason;
+          cert.withdrawalNote = note.trim();
         });
       },
       editSchoolCode: (certificationId, schoolCode) => {
+        if (!accountHasRole("Admin")) return;
         const code = schoolCode.trim();
         if (!code) return;
         edit((current) => {
@@ -405,7 +418,7 @@ export function OpsProvider({ children }: { children: ReactNode }) {
       reassignCase: (id, assignee) => {
         edit((current) => {
           const item = current.cases.find((entry) => entry.id === id);
-          if (!item || item.status === "closed") return;
+          if (!item) return;
           item.assignee = assignee;
         });
       },
@@ -478,6 +491,33 @@ export function OpsProvider({ children }: { children: ReactNode }) {
             uploadedAt: now,
             subject: email.subject,
             emailBody: body,
+            emailTo: email.to,
+            emailCc: cc,
+            emailBcc: bcc,
+          });
+        });
+      },
+      sendCustomerEmail: (caseId, author, email) => {
+        const body = email.body.trim();
+        if (!body) return;
+        edit((current) => {
+          if (!Array.isArray(current.feed)) current.feed = [];
+          const now = new Date().toISOString();
+          const cc = email.cc?.trim() ?? "";
+          const bcc = email.bcc?.trim() ?? "";
+          current.feed.unshift({
+            id: `feed-${Date.now().toString(36)}`,
+            caseId,
+            applicationId: email.applicationId,
+            author,
+            body,
+            createdAt: now,
+            likes: 0,
+            liked: false,
+            comments: [],
+            kind: "email",
+            audience: "customer",
+            subject: email.subject,
             emailTo: email.to,
             emailCc: cc,
             emailBcc: bcc,

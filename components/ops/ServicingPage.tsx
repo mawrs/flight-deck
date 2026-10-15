@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useFileWorkspace } from "@/components/application/file-context";
 import { CaseFeed } from "@/components/ops/CaseFeed";
 import { CaseFile } from "@/components/ops/CaseFile";
+import { CustomerEmails } from "@/components/ops/CustomerEmails";
 import { DisbursementHistory, RatesHistory, SERVICING_SECTIONS, type ServicingSection } from "@/components/ops/ServicingHistory";
 import { Select } from "@/components/ui/Dropdown";
 import { CURRENT_USER } from "@/lib/mentions";
@@ -73,6 +74,8 @@ export function ServicingPage() {
         <DisbursementHistory applicationId={id} />
       ) : section === "rates-history" ? (
         <RatesHistory applicationId={id} />
+      ) : section === "email" ? (
+        <CustomerEmails applicationId={id} />
       ) : (
         <p className="px-xl py-lg text-sm text-gray-medium">No servicing case is open for this application.</p>
       )}

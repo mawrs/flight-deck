@@ -5,6 +5,7 @@ import { NotesModal } from "@/components/application/NotesModal";
 import { Button } from "@/components/Button";
 import { Button as HeaderButton } from "@/components/ui/Button";
 import { CaseDocuments, CaseFeed } from "@/components/ops/CaseFeed";
+import { CustomerEmails } from "@/components/ops/CustomerEmails";
 import { DisbursementHistory, RatesHistory, SERVICING_SECTIONS, type ServicingSection } from "@/components/ops/ServicingHistory";
 import { OpsFile, OpsMissing } from "@/components/ops/OpsFile";
 import { Select } from "@/components/ui/Dropdown";
@@ -17,7 +18,7 @@ import { CDA_DETAILS } from "@/lib/cda-record";
 import { contactForSchool, schoolFileName } from "@/lib/school-contacts";
 import { servicingHome } from "@/lib/loan-routes";
 import { certificationById, opsLabel } from "@/lib/ops-logic";
-import { ADVISORS } from "@/lib/ops-data";
+import { assignableNames, useUsers } from "@/app/dashboard/users/users";
 import { useOps } from "@/lib/ops-store";
 import { useStore } from "@/lib/store";
 import { CASE_ORIGINS, CASE_QUEUES, CASE_REASONS, CASE_REQUEST_TYPES, CASE_SUB_QUEUES, picklist } from "@/lib/case-open";
@@ -56,6 +57,7 @@ export function CaseFile({
   section?: ServicingSection;
 }) {
   const ops = useOps();
+  const users = useUsers();
   const { getApplication, applications } = useStore();
   const item = ops.cases.find((entry) => entry.id === id);
   const loan = item ? ops.loans.find((entry) => entry.id === item.loanId) : null;
@@ -84,6 +86,7 @@ export function CaseFile({
   }
 
   const closed = item.status === "closed";
+  const assigneeOptions = assignableNames(users, item.assignee).map((name) => ({ id: name, label: name }));
   const form = item.form;
   const requestCase = Boolean(shown(form, "requestType", ""));
   const save = (patch: CasePatch) => ops.updateCase(item.id, patch);
@@ -177,6 +180,7 @@ export function CaseFile({
       ) : null}
       {section === "disbursement-history" ? <DisbursementHistory applicationId={applicationId ?? ""} /> : null}
       {section === "rates-history" ? <RatesHistory applicationId={applicationId ?? ""} /> : null}
+      {section === "email" ? <CustomerEmails applicationId={applicationId} caseId={item.id} /> : null}
       {section === "feed" ? (
       <div className="flex min-h-0 flex-1 flex-col bg-white">
         <div className="uw-card-header shrink-0">
@@ -187,7 +191,7 @@ export function CaseFile({
           <section className="uw-case-section">
             <div className="uw-case-grid">
               <CaseField editing={editing.details} label="Case Number" value={shown(form, "caseNumber", caseNumberLabel(item.id))} draft={drafts.caseNumber} onChange={(value) => setField("caseNumber", value)} />
-              <CaseField editing={editing.details} label="Case Owner" value={item.assignee} draft={drafts.assignee} onChange={(value) => setField("assignee", value)} />
+              <CaseField editing={editing.details} label="Case Owner" value={item.assignee} draft={drafts.assignee} options={assigneeOptions} onChange={(value) => setField("assignee", value)} />
               <CaseField editing={editing.details} label="Contact Name" value={shown(form, "contactName", loan.borrower)} draft={drafts.contactName} onChange={(value) => setField("contactName", value)} />
               <CaseField editing={editing.details} label="Contact Phone" value={shown(form, "phone", application?.borrower.phone ?? "")} draft={drafts.phone} onChange={(value) => setField("phone", value)} />
               <CaseField editing={editing.details} label="Opportunity" value={shown(form, "opportunity", application?.opportunityName ?? "")} draft={drafts.opportunity} onChange={(value) => setField("opportunity", value)} />
@@ -285,8 +289,7 @@ export function CaseFile({
                 variant="field"
                 align="right"
                 value={item.assignee}
-                disabled={closed}
-                options={ADVISORS.map((name) => ({ id: name, label: name }))}
+                options={assigneeOptions}
                 onChange={(value) => ops.reassignCase(item.id, value)}
               />
             </div>

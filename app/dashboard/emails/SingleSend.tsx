@@ -54,6 +54,8 @@ export function SingleSend({
   caseId,
   lineLabel,
   applicationId,
+  initialCc,
+  initialBcc,
 }: {
   embedded?: boolean;
   templateTitle?: string;
@@ -74,6 +76,8 @@ export function SingleSend({
   caseId?: string;
   lineLabel?: string;
   applicationId?: string;
+  initialCc?: string;
+  initialBcc?: string;
 } = {}) {
   const router = useRouter();
   const queryTemplate = useSearchParams().get("template");
@@ -85,8 +89,8 @@ export function SingleSend({
   const [mode, setMode] = useState<Mode>("edit");
   const [subject, setSubject] = useState(initialSubject ?? matched?.subject ?? "Your SouthEast Bank Application");
   const [to, setTo] = useState(applicantEmail ?? "");
-  const [cc, setCc] = useState("");
-  const [bcc, setBcc] = useState("");
+  const [cc, setCc] = useState(initialCc ?? "");
+  const [bcc, setBcc] = useState(initialBcc ?? "");
   const [preheader, setPreheader] = useState("");
   const [bodyHtml, setBodyHtml] = useState(startingBody);
   const [sendOpen, setSendOpen] = useState(false);
@@ -305,9 +309,13 @@ export function SingleSend({
               {caseNumber ? <p className={styles.sentWhen}>Case {caseNumber}</p> : null}
               {readOnly && sentLabel ? <p className={styles.sentWhen}>Sent {sentLabel}</p> : null}
               {embedded && applicantEmail && !directSend ? (
-                <p className={styles.sentWhen}>
-                  To {applicantName ? `${applicantName} (${applicantEmail})` : applicantEmail}
-                </p>
+                <>
+                  <p className={styles.sentWhen}>
+                    To {applicantName ? `${applicantName} (${applicantEmail})` : applicantEmail}
+                  </p>
+                  {cc ? <p className={styles.sentWhen}>Cc {cc}</p> : null}
+                  {bcc ? <p className={styles.sentWhen}>Bcc {bcc}</p> : null}
+                </>
               ) : null}
             </div>
             {mode === "preview" && !readOnly ? (
