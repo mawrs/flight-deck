@@ -35,7 +35,7 @@ function row(
   revisedAmount: number,
   estimatedAssistance: number,
   currentYear = true,
-  modified = true,
+  modified = originalAmount !== revisedAmount,
   disbursed = true,
 ): InSchoolDisbursementRow {
   return {
