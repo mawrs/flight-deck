@@ -124,6 +124,12 @@ function emit() {
   listeners.forEach((listener) => listener());
 }
 
+export function assignableNames(records: UserRecord[], current = "") {
+  const names = records.filter((record) => !record.lockedOut).map((record) => record.fullName);
+  if (current && !names.includes(current)) names.push(current);
+  return [...new Set(names)].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" }));
+}
+
 export function useUsers() {
   return useSyncExternalStore(
     (listener) => {

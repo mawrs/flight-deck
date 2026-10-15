@@ -2,10 +2,11 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Button } from "@/components/Button";
+import { Button, buttonClassName } from "@/components/Button";
 import { OpsBadge } from "@/components/ops/OpsBadge";
 import { FactList, FieldGrid, OpsCard, OpsFile, OpsMissing } from "@/components/ops/OpsFile";
 import { FloatInput } from "@/components/ui/FloatInput";
+import { accountHasRole } from "@/lib/account";
 import { dateOnly, money } from "@/lib/format";
 import { applicationBase, certificationHref, servicingCaseHref, servicingHome } from "@/lib/loan-routes";
 import { PRIORITY_RANK, certificationById, disbursementsForLoan } from "@/lib/ops-logic";
@@ -37,11 +38,30 @@ export function LoanAccount({ id }: { id: string }) {
       title={`${loan.borrower} - ${loan.id}`}
     >
       {loan.readOnly ? (
-        <p className="rounded-xs border border-gray-light bg-gray-lightest px-md py-sm text-sm text-black">
+        <p className="border-b border-gray-light bg-gray-lightest px-xl py-md text-sm text-black">
           ReFi loans on the onboarded report stay read-only. InSchool and EdMed loans can be updated here.
         </p>
       ) : null}
-      <OpsCard title="Account">
+      <OpsCard
+        title="Account"
+        action={
+          <div className="flex flex-wrap items-center justify-end gap-sm">
+            {cert ? (
+              <Link href={certificationHref(cert.id)} className={buttonClassName({ variant: "link", size: "small" })}>
+                Open certification
+              </Link>
+            ) : null}
+            {loan.applicationId ? (
+              <Link
+                href={`${applicationBase(loan.applicationId)}/opportunity`}
+                className={buttonClassName({ variant: "link", size: "small" })}
+              >
+                Open application
+              </Link>
+            ) : null}
+          </div>
+        }
+      >
         <FactList
           items={[
             { label: "Borrower", value: loan.borrower },
@@ -57,20 +77,10 @@ export function LoanAccount({ id }: { id: string }) {
             { label: "Balance", value: money(loan.principal + loan.interest) },
           ]}
         />
-        <div className="flex flex-wrap gap-md text-sm">
-          {cert ? (
-            <Link href={certificationHref(cert.id)} className="text-primary">
-              Open certification
-            </Link>
-          ) : null}
-          {loan.applicationId ? (
-            <Link href={`${applicationBase(loan.applicationId)}/opportunity`} className="text-primary">
-              Open application
-            </Link>
-          ) : null}
-        </div>
       </OpsCard>
-      {!loan.readOnly && cert ? <SchoolCodeEditor certificationId={cert.id} schoolCode={loan.schoolCode} /> : null}
+      {!loan.readOnly && cert && accountHasRole("Admin") ? (
+        <SchoolCodeEditor certificationId={cert.id} schoolCode={loan.schoolCode} />
+      ) : null}
       <OpsCard title="Disbursements">
         <div className="flex flex-col gap-md">
           {lines.length === 0 ? <p className="text-sm text-gray-medium">No disbursements on this loan.</p> : null}
@@ -104,6 +114,8 @@ function SchoolCodeEditor({ certificationId, schoolCode }: { certificationId: st
   const { editSchoolCode } = useOps();
   const [code, setCode] = useState(schoolCode);
   const [saved, setSaved] = useState(false);
+  const next = code.trim();
+  const changed = next.length > 0 && next !== schoolCode.trim();
 
   return (
     <OpsCard title="School code">
@@ -111,7 +123,9 @@ function SchoolCodeEditor({ certificationId, schoolCode }: { certificationId: st
         className="flex w-full flex-col gap-md"
         onSubmit={(event) => {
           event.preventDefault();
-          editSchoolCode(certificationId, code);
+          if (!changed) return;
+          editSchoolCode(certificationId, next);
+          setCode(next);
           setSaved(true);
         }}
       >
@@ -126,7 +140,7 @@ function SchoolCodeEditor({ certificationId, schoolCode }: { certificationId: st
           />
         </FieldGrid>
         <div className="flex items-center gap-md">
-          <Button size="small" type="submit">
+          <Button size="small" type="submit" disabled={!changed}>
             Save school code
           </Button>
           {saved ? <span className="text-sm text-gray-medium">Saved on the loan and the certification.</span> : null}

@@ -48,6 +48,8 @@ export function createOpsSeed(): OpsState {
   const refiLoan = refi[0]!;
   const refiPending = refi[1]!;
   const refiDone = refi[2]!;
+  const reviewInSchool = moreInSchool[3]!;
+  const reviewEdMed = edMed[5]!;
 
   const certifications: Certification[] = [
     {
@@ -279,6 +281,38 @@ export function createOpsSeed(): OpsState {
       enrollment: "full-time",
       status: "certified",
       disbursements: [disb("d-1014", "2026-09-20", round2(refi[4]!.amount / 2), "scheduled")],
+    },
+    {
+      id: "cert-1015",
+      applicationId: reviewInSchool.id,
+      borrower: reviewInSchool.borrower.fullName,
+      product: "InSchool",
+      school: reviewInSchool.borrower.school,
+      schoolCode: "001312",
+      requestedAt: at("2026-09-11", 9),
+      certifiedAt: null,
+      approvedAmount: reviewInSchool.amount,
+      certifiedAmount: null,
+      costOfAttendance: null,
+      enrollment: "",
+      status: "in-review",
+      disbursements: [],
+    },
+    {
+      id: "cert-1016",
+      applicationId: reviewEdMed.id,
+      borrower: reviewEdMed.borrower.fullName,
+      product: "EdMed",
+      school: "University of Washington",
+      schoolCode: "003798",
+      requestedAt: at("2026-09-16", 10),
+      certifiedAt: null,
+      approvedAmount: 41000,
+      certifiedAmount: null,
+      costOfAttendance: null,
+      enrollment: "",
+      status: "in-review",
+      disbursements: [],
     },
   ];
 

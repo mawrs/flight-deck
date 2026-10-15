@@ -10,19 +10,19 @@ import {
 
 export const CERT_VIEWS = [
   {
+    id: "completed",
+    label: "Certification completed",
+    empty: "No certifications have been completed.",
+  },
+  {
     id: "pending",
     label: "Pending certification",
     empty: "No certifications are waiting on a school.",
   },
   {
-    id: "due",
-    label: "Disbursement due",
-    empty: "No certified loans have a disbursement date that has arrived.",
-  },
-  {
-    id: "exceptions",
-    label: "Amount exceptions",
-    empty: "No certifications came back below the approved amount.",
+    id: "in-review",
+    label: "In Review",
+    empty: "No certifications are waiting on a change from us.",
   },
   {
     id: "all",
@@ -71,10 +71,12 @@ export const REPORTS = [
 export type ReportId = (typeof REPORTS)[number]["id"];
 
 export const OPS_LABELS: Record<string, string> = {
-  requested: "Requested",
+  requested: "Pending",
+  "in-review": "In Review",
   certified: "Certified",
   reduced: "Reduced",
   rejected: "Rejected",
+  withdrawn: "Withdrawn",
   scheduled: "Scheduled",
   disbursed: "Disbursed",
   high: "High",
@@ -104,6 +106,7 @@ export function opsLabel(value: string) {
 }
 
 export function certView(id: string | undefined): CertViewId {
+  if (id === "approved") return "completed";
   return CERT_VIEWS.some((view) => view.id === id) ? (id as CertViewId) : "pending";
 }
 
@@ -140,20 +143,10 @@ export function nextDisbursement(cert: Pick<Certification, "disbursements">) {
   return scheduledDisbursements(cert)[0] ?? null;
 }
 
-export function isDisbursementDue(cert: Pick<Certification, "status" | "disbursements">) {
-  if (cert.status !== "certified" && cert.status !== "reduced") return false;
-  return cert.disbursements.some((item) => item.status === "scheduled" && isOnOrBeforeToday(item.date));
-}
-
-export function isAmountException(cert: Pick<Certification, "status" | "certifiedAmount" | "approvedAmount">) {
-  if (cert.status !== "reduced" && cert.status !== "certified") return false;
-  return cert.certifiedAmount != null && cert.certifiedAmount < cert.approvedAmount;
-}
-
 export function matchesCertView(cert: Certification, view: CertViewId) {
   if (view === "pending") return cert.status === "requested";
-  if (view === "due") return isDisbursementDue(cert);
-  if (view === "exceptions") return isAmountException(cert);
+  if (view === "in-review") return cert.status === "in-review";
+  if (view === "completed") return cert.status === "certified" || cert.status === "reduced";
   return true;
 }
 

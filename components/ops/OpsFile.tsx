@@ -22,7 +22,7 @@ export function OpsFile({
   flush?: boolean;
   children: ReactNode;
 }) {
-  const record = flush ? children : <div className="flex w-full flex-col gap-lg px-xl py-lg">{children}</div>;
+  const record = flush ? children : <div className="flex w-full flex-col">{children}</div>;
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-white">
       <div className="uw-file-header-row">
@@ -62,12 +62,12 @@ export function OpsCard({
   children: ReactNode;
 }) {
   return (
-    <section className="uw-card w-full">
+    <section className="w-full border-b border-gray-light bg-white">
       <div className="uw-card-header">
         <h2 className="text-lg text-black">{title}</h2>
         {action}
       </div>
-      <div className="flex flex-col gap-md p-lg">{children}</div>
+      <div className="flex flex-col gap-md px-xl py-lg">{children}</div>
     </section>
   );
 }

@@ -574,6 +574,10 @@
   max-width: 720px;
 }
 
+.uw-dialog-withdraw {
+  max-width: 480px;
+}
+
 .uw-toast {
   position: fixed;
   top: var(--space-medium);

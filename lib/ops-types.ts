@@ -1,6 +1,6 @@
 export type OpsProduct = "InSchool" | "ReFi" | "EdMed";
 
-export type CertificationStatus = "requested" | "certified" | "reduced" | "rejected";
+export type CertificationStatus = "requested" | "in-review" | "certified" | "reduced" | "rejected" | "withdrawn";
 
 export type EnrollmentStatus = "" | "full-time" | "half-time" | "less-than-half-time";
 
@@ -27,6 +27,8 @@ export interface Certification {
   costOfAttendance: number | null;
   enrollment: EnrollmentStatus;
   status: CertificationStatus;
+  withdrawalReason?: string;
+  withdrawalNote?: string;
   disbursements: Disbursement[];
 }
 
