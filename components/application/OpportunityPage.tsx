@@ -2,6 +2,7 @@
 
 import { useState, type ReactNode } from "react";
 import { Button } from "@/components/Button";
+import { BorrowerActivity } from "@/components/application/BorrowerActivity";
 import { useFileWorkspace } from "@/components/application/file-context";
 import { ReviewCycleBadge } from "@/components/application/ReviewCycleBadge";
 import { FloatInput } from "@/components/ui/FloatInput";
@@ -137,8 +138,8 @@ export function OpportunityPage() {
   }
 
   return (
-    <div className="flex min-h-full flex-col md:flex-row md:items-stretch">
-      <section className="flex min-w-0 flex-1 flex-col border-b border-gray-light md:border-b-0">
+    <div className="flex min-h-full flex-col min-[1100px]:flex-row min-[1100px]:items-stretch">
+      <section className="flex min-w-0 flex-col border-b border-gray-light min-[1100px]:flex-[1.3] min-[1100px]:border-b-0">
         <PanelHeader
           action={
             readOnly ? null : (
@@ -174,9 +175,12 @@ export function OpportunityPage() {
           </div>
         </div>
       </section>
-      <section className="flex w-full flex-col border-t border-gray-light md:w-[498px] md:shrink-0 md:border-t-0 md:border-l">
+      <section className="flex w-full min-w-0 flex-col border-t border-gray-light min-[1100px]:flex-[0.85] min-[1100px]:border-t-0 min-[1100px]:border-l">
         <PanelHeader as="h2">Summary</PanelHeader>
         <SummaryList application={application} />
+      </section>
+      <section className="flex w-full min-w-0 flex-col border-t border-gray-light min-[1100px]:flex-1 min-[1100px]:border-t-0 min-[1100px]:border-l">
+        <BorrowerActivity application={application} />
       </section>
     </div>
   );
