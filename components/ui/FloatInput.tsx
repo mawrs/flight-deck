@@ -10,6 +10,7 @@ export function FloatInput({
   readOnly,
   autoFocus,
   type = "text",
+  step,
   multiline,
   onKeyDown,
   onFocus,
@@ -21,6 +22,7 @@ export function FloatInput({
   readOnly?: boolean;
   autoFocus?: boolean;
   type?: string;
+  step?: string;
   multiline?: boolean;
   onKeyDown?: (event: KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
   onFocus?: (event: FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
@@ -50,7 +52,7 @@ export function FloatInput({
 
   return (
     <label className="uw-float-field">
-      {multiline ? <textarea {...field} rows={4} /> : <input {...field} type={type} />}
+      {multiline ? <textarea {...field} rows={4} /> : <input {...field} type={type} step={step} />}
       <span className={`uw-float-label ${floated ? "uw-float-label-active" : ""}`}>{label}</span>
     </label>
   );

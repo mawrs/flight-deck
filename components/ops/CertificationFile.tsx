@@ -288,7 +288,7 @@ function SchoolResponseModal({
 
   useEffect(() => {
     if (!open) return;
-    setEnrollment(certification.enrollment && certification.enrollment !== "" ? certification.enrollment : "full-time");
+    setEnrollment(certification.enrollment || "full-time");
     setCertifiedAmount(certification.certifiedAmount?.toString() ?? certification.approvedAmount.toString());
     setCostOfAttendance(certification.costOfAttendance?.toString() ?? "");
     setDisbursements(
