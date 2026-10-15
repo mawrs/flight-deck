@@ -131,6 +131,7 @@ export interface FeedComment {
 export interface FeedPost {
   id: string;
   caseId: string;
+  applicationId?: string;
   author: string;
   body: string;
   createdAt: string;
@@ -147,10 +148,11 @@ export interface FeedPost {
 
 export interface OpsNotification {
   id: string;
-  kind: "mention" | "case-created";
+  kind: "mention" | "case-created" | "change" | "cancellation";
   actor: string;
   body: string;
   caseId: string;
+  href?: string;
   createdAt: string;
   read: boolean;
 }

@@ -1,3 +1,5 @@
+import { REPORTS } from "@/lib/ops-logic";
+
 export const LOAN_HOME = "/dashboard/loan-origination";
 
 export function loanQueueHref(view?: string) {
@@ -29,6 +31,11 @@ export function certificationHref(id: string) {
 export function servicingHome(view?: string) {
   if (!view || view === "cases") return `${LOAN_HOME}/servicing`;
   return `${LOAN_HOME}/servicing?view=${view}`;
+}
+
+export function servicingReportHref(report?: string) {
+  if (!report || report === REPORTS[0].id) return servicingHome("reports");
+  return `${servicingHome("reports")}&report=${report}`;
 }
 
 export function servicingCaseHref(id: string) {

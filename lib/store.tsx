@@ -11,6 +11,7 @@ import {
 } from "react";
 import { calculate } from "./calculations";
 import { hydrateCalculator } from "./calculations/income";
+import { withFileHistory } from "./file-history";
 import { seedApplications } from "./mock-data";
 import { opsSeed } from "./ops-data";
 import type {
@@ -133,7 +134,7 @@ function syncServicingApplications(apps: Application[]) {
 function loadApplications(): Application[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return syncServicingApplications(clone(seedApplications));
+    if (!raw) return withFileHistory(syncServicingApplications(clone(seedApplications)));
     const parsed = JSON.parse(raw) as Application[];
     if (!Array.isArray(parsed) || parsed.length === 0) {
       return clone(seedApplications);
@@ -156,6 +157,8 @@ function loadApplications(): Application[] {
       debtTrades: hydrateTrades(item.debtTrades, item.id),
       fileNotes: item.fileNotes ?? "",
       fileNotesUpdatedAt: item.fileNotesUpdatedAt ?? null,
+      disbursementHistory: Array.isArray(item.disbursementHistory) ? item.disbursementHistory : [],
+      rateHistory: Array.isArray(item.rateHistory) ? item.rateHistory : [],
       payoffs: Array.isArray(item.payoffs)
         ? item.payoffs
         : clone(seedApplications.find((seed) => seed.id === item.id)?.payoffs ?? []),
@@ -173,9 +176,9 @@ function loadApplications(): Application[] {
               }
             : item,
         );
-    return syncServicingApplications(typed.filter((item) => !item.id.startsWith("180300")));
+    return withFileHistory(syncServicingApplications(typed.filter((item) => !item.id.startsWith("180300"))));
   } catch {
-    return syncServicingApplications(clone(seedApplications));
+    return withFileHistory(syncServicingApplications(clone(seedApplications)));
   }
 }
 

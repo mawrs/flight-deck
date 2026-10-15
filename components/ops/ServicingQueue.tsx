@@ -8,8 +8,7 @@ import { FilterBadges, type FilterChip } from "@/components/list/FilterBadges";
 import { ListPagination, usePagedList } from "@/components/list/ListPagination";
 import { SortHeader } from "@/components/list/SortHeader";
 import { CasePreview } from "@/components/ops/CasePreview";
-import { EdMedDisbursements } from "@/components/ops/EdMedDisbursements";
-import { InSchoolDisbursements } from "@/components/ops/InSchoolDisbursements";
+import { ServicingReports } from "@/components/ops/ServicingReports";
 import { OpsBadge } from "@/components/ops/OpsBadge";
 import { OpsViewSelect } from "@/components/ops/OpsViewSelect";
 import { Button } from "@/components/ui/Button";
@@ -22,7 +21,9 @@ import {
   SERVICING_VIEWS,
   disbursementsForLoan,
   isOnOrBeforeToday,
+  isReportView,
   opsLabel,
+  reportView,
   servicingView,
 } from "@/lib/ops-logic";
 import { useOps } from "@/lib/ops-store";
@@ -94,7 +95,10 @@ function rosterPriority(status: string, due: boolean): CasePriority {
 
 export function ServicingQueue() {
   const router = useRouter();
-  const view = servicingView(useSearchParams().get("view") ?? undefined);
+  const search = useSearchParams();
+  const requested = search.get("view") ?? undefined;
+  const view = servicingView(requested);
+  const report = reportView(isReportView(requested) ? requested : search.get("report") ?? undefined);
   const viewMeta = SERVICING_VIEWS.find((item) => item.id === view) ?? SERVICING_VIEWS[0];
   const { cases, loans, certifications } = useOps();
   const [query, setQuery] = useState("");
@@ -212,10 +216,8 @@ export function ServicingQueue() {
         </div>
       </div>
       <DataTableCard rules className="uw-list-card">
-        {view === "edmed" ? (
-          <EdMedDisbursements />
-        ) : view === "inschool" ? (
-          <InSchoolDisbursements />
+        {view === "reports" ? (
+          <ServicingReports report={report} />
         ) : (
           <>
         <div className="uw-list-toolbar">

@@ -5,6 +5,7 @@ import { NotesModal } from "@/components/application/NotesModal";
 import { Button } from "@/components/Button";
 import { Button as HeaderButton } from "@/components/ui/Button";
 import { CaseDocuments, CaseFeed } from "@/components/ops/CaseFeed";
+import { DisbursementHistory, RatesHistory, SERVICING_SECTIONS, type ServicingSection } from "@/components/ops/ServicingHistory";
 import { OpsFile, OpsMissing } from "@/components/ops/OpsFile";
 import { Select } from "@/components/ui/Dropdown";
 import { FloatInput } from "@/components/ui/FloatInput";
@@ -27,14 +28,6 @@ const PRIORITY_OPTIONS: { id: CasePriority; label: string }[] = [
   { id: "medium", label: "Medium" },
   { id: "low", label: "Low" },
 ];
-
-const CASE_SECTIONS = [
-  { id: "feed", label: "Feed" },
-  { id: "documents", label: "Documents" },
-  { id: "cda-history", label: "CDA History" },
-] as const;
-
-type CaseSection = (typeof CASE_SECTIONS)[number]["id"];
 
 const TYPE_OPTIONS: { id: CaseType; label: string }[] = [
   { id: "disbursement-change", label: "Disbursement change" },
@@ -60,7 +53,7 @@ export function CaseFile({
 }: {
   id: string;
   embedded?: boolean;
-  section?: CaseSection;
+  section?: ServicingSection;
 }) {
   const ops = useOps();
   const { getApplication, applications } = useStore();
@@ -77,7 +70,7 @@ export function CaseFile({
   const [editing, setEditing] = useState({ details: false, loan: false, info: false });
   const [drafts, setDrafts] = useState<Partial<Record<DraftKey, string>>>({});
   const [notesOpen, setNotesOpen] = useState(false);
-  const [sectionState, setSection] = useState<CaseSection>("feed");
+  const [sectionState, setSection] = useState<ServicingSection>("feed");
   const section = embedded && sectionProp ? sectionProp : sectionState;
 
   if (!item || !loan) {
@@ -182,6 +175,8 @@ export function CaseFile({
       {section === "cda-history" ? (
         <CdaHistory assignee={item.assignee} />
       ) : null}
+      {section === "disbursement-history" ? <DisbursementHistory applicationId={applicationId ?? ""} /> : null}
+      {section === "rates-history" ? <RatesHistory applicationId={applicationId ?? ""} /> : null}
       {section === "feed" ? (
       <div className="flex min-h-0 flex-1 flex-col bg-white">
         <div className="uw-card-header shrink-0">
@@ -257,7 +252,7 @@ export function CaseFile({
     return (
       <div className="flex h-[720px] overflow-hidden bg-white">
         <div className="flex h-full w-[60%] min-w-0 flex-col overflow-hidden">
-          <CaseFeed caseId={item.id} author={item.assignee} />
+          <CaseFeed caseId={item.id} author={item.assignee} applicationId={applicationId ?? undefined} />
         </div>
         <div className="h-full w-[40%] min-w-0 overflow-auto bg-white">{sections}</div>
       </div>
@@ -274,12 +269,12 @@ export function CaseFile({
         <SectionTabs
           label="Servicing sections"
           current={section}
-          tabs={CASE_SECTIONS.map((item) => ({ id: item.id, label: item.label }))}
-          onSelect={(id) => setSection(id as CaseSection)}
+          tabs={SERVICING_SECTIONS.map((item) => ({ id: item.id, label: item.label }))}
+          onSelect={(id) => setSection(id as ServicingSection)}
         />
       }
       flush
-      aside={section === "feed" ? <CaseFeed caseId={item.id} author={item.assignee} /> : undefined}
+      aside={section === "feed" ? <CaseFeed caseId={item.id} author={item.assignee} applicationId={applicationId ?? undefined} /> : undefined}
       actions={
         <>
           <div className="flex items-center gap-sm">

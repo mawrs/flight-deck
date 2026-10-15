@@ -4,8 +4,9 @@ import { useState } from "react";
 import { useFileWorkspace } from "@/components/application/file-context";
 import { RateOffers } from "@/components/underwriting/RateOffers";
 import { RatesTable } from "@/components/underwriting/RatesTable";
+import { money, percent } from "@/lib/format";
+import { paymentFor, rateFor, type RateProduct, type RateTerm } from "@/lib/calculations/rates";
 import { useApplication } from "@/lib/store";
-import type { RateProduct } from "@/lib/calculations/rates";
 
 const PRODUCTS: { id: RateProduct; label: string }[] = [
   { id: "immediate", label: "Immediate" },
@@ -19,9 +20,30 @@ export function RatesPage() {
   const { application, updateApplication } = useApplication(id);
   const [product, setProduct] = useState<RateProduct>("immediate");
   if (!application) return null;
+  const file = application;
 
   function select(patch: Parameters<typeof updateApplication>[1]) {
-    updateApplication(id, patch);
+    const term = (patch.requestedTerm ?? file.requestedTerm) as RateTerm;
+    const rateType = patch.requestedRateType ?? file.requestedRateType;
+    const rate = rateFor(rateType, term);
+    const payment = patch.income?.estimatedNewPayment ?? paymentFor(file, rateType, term, product);
+    const entry = {
+      id: `rate-${Date.now().toString(36)}`,
+      at: new Date().toISOString(),
+      product,
+      rateType,
+      term,
+      rate: rate == null ? "—" : percent(rate),
+      payment: payment == null ? "—" : money(payment),
+    };
+    const history = file.rateHistory ?? [];
+    const last = history[0];
+    const same =
+      last?.product === entry.product && last.rateType === entry.rateType && last.term === entry.term;
+    updateApplication(id, {
+      ...patch,
+      ...(same ? {} : { rateHistory: [entry, ...history] }),
+    });
   }
 
   return (

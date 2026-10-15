@@ -66,7 +66,7 @@ export function Notifications() {
                     onClick={() => {
                       ops.markNotificationRead(item.id);
                       setOpen(false);
-                      router.push(servicingCaseHref(item.caseId));
+                      router.push(item.href || servicingCaseHref(item.caseId));
                     }}
                   >
                     <Avatar name={item.actor} size={36} />
@@ -90,6 +90,8 @@ export function Notifications() {
 
 function noticeTitle(item: OpsNotification) {
   if (item.kind === "mention") return `${item.actor} mentioned you in a post`;
+  if (item.kind === "cancellation") return "Pending cancellation";
+  if (item.kind === "change") return "Change transaction updated";
   return `${item.actor} posted to your profile`;
 }
 

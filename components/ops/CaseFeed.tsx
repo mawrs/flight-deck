@@ -97,15 +97,23 @@ export function CaseDocuments({ caseId }: { caseId: string }) {
   );
 }
 
-export function CaseFeed({ caseId, author }: { caseId: string; author: string }) {
+export function CaseFeed({
+  caseId,
+  author,
+  applicationId,
+}: {
+  caseId?: string;
+  author: string;
+  applicationId?: string;
+}) {
   const ops = useOps();
   const box = useRef<HTMLTextAreaElement>(null);
   const [draft, setDraft] = useState("");
   const [cursor, setCursor] = useState(0);
   const [comments, setComments] = useState<Record<string, string>>({});
-  const item = ops.cases.find((entry) => entry.id === caseId);
+  const item = caseId ? ops.cases.find((entry) => entry.id === caseId) : undefined;
   const caseNumber = item ? displayCaseNumber(item) : "";
-  const posts = postsForCase(ops.feed ?? [], item);
+  const posts = postsForCase(ops.feed ?? [], item, applicationId);
   const activeMention = mentionQuery(draft, cursor);
   const matches = activeMention ? mentionMatches(activeMention.query) : [];
 
@@ -135,7 +143,7 @@ export function CaseFeed({ caseId, author }: { caseId: string; author: string })
           className="flex flex-col gap-sm"
           onSubmit={(event) => {
             event.preventDefault();
-            ops.addFeedPost(caseId, author, draft);
+            ops.addFeedPost(caseId || `application-${applicationId ?? "file"}`, author, draft);
             setDraft("");
             setCursor(0);
           }}
@@ -269,9 +277,18 @@ function feedBody(post: FeedPost, documents: CaseDocument[], caseNumber = "") {
   return header.length ? `${header.join("\n")}\n\n${post.body}` : post.body;
 }
 
-function postsForCase(feed: FeedPost[], item: ServicingCase | undefined) {
-  if (!item) return [];
-  const posts = feed.filter((post) => post.caseId === item.id);
+function postsForCase(feed: FeedPost[], item: ServicingCase | undefined, applicationId?: string) {
+  const seen = new Set<string>();
+  const posts = feed.filter((post) => {
+    const onCase = Boolean(item && post.caseId === item.id);
+    const onFile = Boolean(
+      applicationId && (post.applicationId === applicationId || post.caseId === `application-${applicationId}`),
+    );
+    if ((!onCase && !onFile) || seen.has(post.id)) return false;
+    seen.add(post.id);
+    return true;
+  });
+  if (!item) return posts.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   const createdId = `created-${item.id}`;
   if (!posts.some((post) => post.id === createdId || post.kind === "created")) {
     posts.push({

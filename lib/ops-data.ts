@@ -1,3 +1,4 @@
+import { cancellationNotices } from "./file-processing";
 import { seedApplications } from "./mock-data";
 import type {
   Certification,
@@ -587,6 +588,7 @@ export function createOpsSeed(): OpsState {
       createdAt: at("2026-10-10", 10),
       read: false,
     },
+    ...cancellationNotices(loans),
   ];
 
   return { certifications, loans, cases, feed, documents, notifications };

@@ -50,18 +50,25 @@ export const SERVICING_VIEWS = [
     empty: "No onboarded loans match this view.",
   },
   {
-    id: "edmed",
-    label: "EdMed Disbursements",
-    empty: "No EdMed disbursements match this view.",
-  },
-  {
-    id: "inschool",
-    label: "In-School Disbursement",
-    empty: "No In-School disbursements match this view.",
+    id: "reports",
+    label: "Reports",
+    empty: "No reports match this view.",
   },
 ] as const;
 
 export type ServicingViewId = (typeof SERVICING_VIEWS)[number]["id"];
+
+export const REPORTS = [
+  { id: "edmed", label: "EdMed Disbursements" },
+  { id: "edmed-boarded", label: "EdMed Boarded Loans" },
+  { id: "inschool", label: "In-School Disbursement" },
+  { id: "inschool-list", label: "In-School List" },
+  { id: "amended-tils", label: "Amended TILs" },
+  { id: "elfi-checks", label: "Outstanding ELFI Checks" },
+  { id: "change-transactions", label: "Change Transaction" },
+] as const;
+
+export type ReportId = (typeof REPORTS)[number]["id"];
 
 export const OPS_LABELS: Record<string, string> = {
   requested: "Requested",
@@ -101,7 +108,16 @@ export function certView(id: string | undefined): CertViewId {
 }
 
 export function servicingView(id: string | undefined): ServicingViewId {
+  if (isReportView(id)) return "reports";
   return SERVICING_VIEWS.some((view) => view.id === id) ? (id as ServicingViewId) : "cases";
+}
+
+export function isReportView(id: string | undefined): id is ReportId {
+  return REPORTS.some((report) => report.id === id);
+}
+
+export function reportView(id: string | undefined): ReportId {
+  return isReportView(id) ? id : REPORTS[0].id;
 }
 
 export function startOfDay(value: string | Date) {

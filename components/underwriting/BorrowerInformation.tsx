@@ -5,17 +5,10 @@ import { useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Dropdown";
 import { FloatInput } from "@/components/ui/FloatInput";
+import { BORROWER_STATUSES } from "@/lib/borrower-status";
 import { calculate } from "@/lib/calculations";
 import { estDateTime } from "@/lib/format";
 import type { Application, ApplicationPatch } from "@/lib/types";
-
-const BORROWER_STATUSES = [
-  "Lead",
-  "Application Not Complete",
-  "Awaiting CoSigner Completion",
-  "UW - PreReview",
-  "In Underwriting",
-];
 
 const UNDERWRITERS = [
   "Dana Whitfield",
@@ -237,7 +230,11 @@ export function BorrowerInformation({
           label="Select Status"
           heading="Borrower Status"
           value={extras.borrowerStatus}
-          options={BORROWER_STATUSES}
+          options={
+            BORROWER_STATUSES.includes(extras.borrowerStatus)
+              ? BORROWER_STATUSES
+              : [extras.borrowerStatus, ...BORROWER_STATUSES]
+          }
           onChange={(borrowerStatus) => patchExtras({ borrowerStatus })}
         />
         <FloatSelect
