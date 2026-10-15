@@ -32,7 +32,7 @@ function activitiesFor(application: Application): ActivityItem[] {
   const approved = application.status === "approved";
   const decisionAt = application.approvedAt ?? application.preReviewAt;
 
-  return [
+  const items: ActivityItem[] = [
     {
       id: `${application.id}-til-approval`,
       kind: "task",
@@ -89,7 +89,8 @@ function activitiesFor(application: Application): ActivityItem[] {
       counterpart: borrower,
       body: "Open the initial Truth in Lending task for this application.",
     },
-  ].sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime());
+  ];
+  return items.sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime());
 }
 
 function sameDay(a: Date, b: Date) {
