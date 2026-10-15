@@ -1,3 +1,4 @@
+import { BORROWER_STATUSES } from "./borrower-status";
 import type {
   Application,
   DebtTrade,
@@ -633,6 +634,8 @@ const elena: Application = {
     primaryHousingTradeId: "",
   },
   fileReview: null,
+  disbursementHistory: [],
+  rateHistory: [],
 };
 
 const sampleCosigner: Person = {
@@ -684,13 +687,6 @@ const STAGE: Record<WorkflowStatus, string> = {
   returned: "Returned to UW",
   approved: "Approved",
 };
-const UW_BORROWER_STATUSES = [
-  "Lead",
-  "Application Not Complete",
-  "Awaiting CoSigner Completion",
-  "UW - PreReview",
-  "In Underwriting",
-];
 const COSIGNER_ON_FILE = ["On file", "Awaiting docs", "Incomplete", "Pending"];
 const COSIGNER_NONE = ["", "Not required"];
 const REFERRERS = ["Credible", "Splash", "Paid Search", "NerdWallet", "Organic", "Partner"];
@@ -891,6 +887,8 @@ function lightApplication(input: {
       primaryHousingTradeId: "",
     },
     fileReview: null,
+    disbursementHistory: [],
+    rateHistory: [],
   };
 }
 
@@ -961,7 +959,7 @@ function buildSeedApplications(): Application[] {
       zip,
       cosignerName,
       cosignerStatus: hasCosigner ? pick(rand, COSIGNER_ON_FILE) : pick(rand, COSIGNER_NONE),
-      borrowerStatus: pick(rand, UW_BORROWER_STATUSES),
+      borrowerStatus: pick(rand, BORROWER_STATUSES),
     });
   });
 }

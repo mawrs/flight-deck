@@ -69,6 +69,10 @@
   border-bottom: 0;
 }
 
+.table tbody tr:nth-child(even) td {
+  background: var(--surface-stripe);
+}
+
 .table tbody tr:hover td {
   background: var(--surface-muted);
 }

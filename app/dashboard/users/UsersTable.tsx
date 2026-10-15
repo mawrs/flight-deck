@@ -36,7 +36,7 @@ function Pencil() {
   );
 }
 
-const COLUMNS = 7;
+const COLUMNS = 8;
 
 export function UsersTable() {
   const users = useUsers();
@@ -53,7 +53,7 @@ export function UsersTable() {
     const rows = [...users].sort((a, b) => a.username.localeCompare(b.username, undefined, { sensitivity: "base" }));
     if (!q) return rows;
     return rows.filter((row) =>
-      [row.username, row.email, row.fullName, row.personNumber].join(" ").toLowerCase().includes(q),
+      [row.username, row.email, row.fullName, row.personNumber, row.roles.join(" ")].join(" ").toLowerCase().includes(q),
     );
   }, [query, users]);
 
@@ -76,7 +76,7 @@ export function UsersTable() {
   }
 
   return (
-    <Page flush>
+    <Page flush className={styles.canvas}>
       <PageHeader className={styles.pageHeader} title="Manage Users" />
       <DataTableCard rules>
         <DataTableToolbar>
@@ -106,6 +106,7 @@ export function UsersTable() {
                 <th>Username</th>
                 <th>Email</th>
                 <th>Full Name</th>
+                <th>Roles</th>
                 <th>Person Number</th>
                 <th>Verified Email</th>
                 <th>Locked Out</th>
@@ -142,6 +143,7 @@ export function UsersTable() {
                         <td className={styles.strong}>{row.username}</td>
                         <td>{row.email}</td>
                         <td>{row.fullName}</td>
+                        <td>{row.roles.join(", ")}</td>
                         <td>{row.personNumber}</td>
                         <td>{row.verifiedEmail ? "True" : "False"}</td>
                         <td>{row.lockedOut ? "True" : "False"}</td>

@@ -2,17 +2,12 @@
 
 import { useState } from "react";
 import { useFileWorkspace } from "@/components/application/file-context";
+import { CaseFeed } from "@/components/ops/CaseFeed";
 import { CaseFile } from "@/components/ops/CaseFile";
+import { DisbursementHistory, RatesHistory, SERVICING_SECTIONS, type ServicingSection } from "@/components/ops/ServicingHistory";
 import { Select } from "@/components/ui/Dropdown";
+import { CURRENT_USER } from "@/lib/mentions";
 import { useOps } from "@/lib/ops-store";
-
-const SECTIONS = [
-  { id: "feed", label: "Feed" },
-  { id: "documents", label: "Documents" },
-  { id: "cda-history", label: "CDA History" },
-] as const;
-
-type SectionId = (typeof SECTIONS)[number]["id"];
 
 function caseNumberLabel(id: string) {
   const match = id.match(/(\d+)$/);
@@ -23,7 +18,7 @@ function caseNumberLabel(id: string) {
 export function ServicingPage() {
   const { id } = useFileWorkspace();
   const ops = useOps();
-  const [section, setSection] = useState<SectionId>("feed");
+  const [section, setSection] = useState<ServicingSection>("feed");
   const [chosenId, setChosenId] = useState("");
   const loanIds = new Set(ops.loans.filter((loan) => loan.applicationId === id).map((loan) => loan.id));
   const cases = ops.cases
@@ -53,7 +48,7 @@ export function ServicingPage() {
         ) : null}
       </div>
       <nav className="uw-section-tabs" aria-label="Servicing sections">
-        {SECTIONS.map((item) => {
+        {SERVICING_SECTIONS.map((item) => {
           const active = item.id === section;
           return (
             <button
@@ -70,6 +65,14 @@ export function ServicingPage() {
       </nav>
       {selected ? (
         <CaseFile key={selected.id} id={selected.id} embedded section={section} />
+      ) : section === "feed" ? (
+        <div className="flex h-[720px] overflow-hidden bg-white">
+          <CaseFeed author={CURRENT_USER} applicationId={id} />
+        </div>
+      ) : section === "disbursement-history" ? (
+        <DisbursementHistory applicationId={id} />
+      ) : section === "rates-history" ? (
+        <RatesHistory applicationId={id} />
       ) : (
         <p className="px-xl py-lg text-sm text-gray-medium">No servicing case is open for this application.</p>
       )}

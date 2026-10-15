@@ -48,7 +48,8 @@ function panelStyle(
   panel: DOMRect | null,
   align: Align,
   minWidth = 0,
-  fit: "trigger" | "content" = "trigger",
+  fit: "trigger" | "content" | "match" = "trigger",
+  maxWidth = 640,
 ): CSSProperties {
   const gap = 4;
   const spaceBelow = window.innerHeight - trigger.bottom - gap - 8;
@@ -57,13 +58,17 @@ function panelStyle(
   const maxHeight = Math.min(360, Math.max(120, openUp ? spaceAbove : spaceBelow));
   const height = panel?.height ?? Math.min(maxHeight, 240);
   const top = openUp ? Math.max(8, trigger.top - gap - height) : trigger.bottom + gap;
-  const width = fit === "content" ? Math.max(320, minWidth) : Math.max(trigger.width, minWidth);
+  const cap = fit === "match" ? trigger.width : Math.min(maxWidth, window.innerWidth - 16);
+  const width =
+    fit === "match"
+      ? trigger.width
+      : Math.min(cap, fit === "content" ? Math.max(320, minWidth) : Math.max(trigger.width, minWidth));
   const style: CSSProperties = {
     position: "fixed",
     top,
     minWidth: width,
-    width: "max-content",
-    maxWidth: Math.min(640, window.innerWidth - 16),
+    width: fit === "match" ? width : "max-content",
+    maxWidth: fit === "match" ? width : cap,
     maxHeight,
     zIndex: 50,
   };
@@ -71,7 +76,8 @@ function panelStyle(
     style.right = Math.max(8, window.innerWidth - trigger.right);
     style.left = "auto";
   } else {
-    style.left = Math.min(Math.max(8, trigger.left), window.innerWidth - trigger.width - 8);
+    const used = Math.min(cap, Math.max(width, panel?.width ?? width));
+    style.left = Math.min(Math.max(8, trigger.left), Math.max(8, window.innerWidth - used - 8));
   }
   return style;
 }
@@ -81,7 +87,8 @@ function useMenu(
   onClose: () => void,
   align: Align,
   minWidth = 0,
-  fit: "trigger" | "content" = "trigger",
+  fit: "trigger" | "content" | "match" = "trigger",
+  maxWidth = 640,
 ) {
   const triggerRef = useRef<HTMLElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -91,8 +98,8 @@ function useMenu(
   const update = useCallback(() => {
     const trigger = triggerRef.current?.getBoundingClientRect();
     if (!trigger) return;
-    setStyle(panelStyle(trigger, panelRef.current?.getBoundingClientRect() ?? null, align, minWidth, fit));
-  }, [align, fit, minWidth]);
+    setStyle(panelStyle(trigger, panelRef.current?.getBoundingClientRect() ?? null, align, minWidth, fit, maxWidth));
+  }, [align, fit, maxWidth, minWidth]);
 
   useLayoutEffect(() => {
     if (!open) {
@@ -102,6 +109,10 @@ function useMenu(
     update();
     setReady(true);
   }, [open, update]);
+
+  useLayoutEffect(() => {
+    if (open && ready) update();
+  }, [open, ready, update]);
 
   useEffect(() => {
     if (!open) return;
@@ -189,6 +200,7 @@ export function Dropdown({
   align = "left",
   disabled,
   minWidth = 208,
+  maxWidth = 640,
   panelClassName = "",
 }: {
   trigger: ReactElement<ButtonHTMLAttributes<HTMLButtonElement>>;
@@ -196,11 +208,12 @@ export function Dropdown({
   align?: Align;
   disabled?: boolean;
   minWidth?: number;
+  maxWidth?: number;
   panelClassName?: string;
 }) {
   const [open, setOpen] = useState(false);
   const close = useCallback(() => setOpen(false), []);
-  const { triggerRef, panelRef, style, ready } = useMenu(open, close, align, minWidth);
+  const { triggerRef, panelRef, style, ready } = useMenu(open, close, align, minWidth, "trigger", maxWidth);
   const triggerEl = isValidElement(trigger)
     ? cloneElement(trigger, {
         disabled: disabled || trigger.props.disabled,
@@ -261,7 +274,13 @@ export function Select({
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(value);
   const close = useCallback(() => setOpen(false), []);
-  const { triggerRef, panelRef, style, ready } = useMenu(open, close, align);
+  const { triggerRef, panelRef, style, ready } = useMenu(
+    open,
+    close,
+    align,
+    0,
+    variant === "float" ? "match" : "trigger",
+  );
 
   useEffect(() => {
     if (open) setActive(value);
@@ -387,6 +406,7 @@ export function ComboSearch<T extends string>({
   options,
   placeholder,
   fields,
+  matchWidth = false,
 }: {
   value: string;
   onChange: (value: string) => void;
@@ -395,6 +415,7 @@ export function ComboSearch<T extends string>({
   options: ReadonlyArray<SelectOption>;
   placeholder?: string;
   fields: ReadonlyArray<SearchChoice<T>>;
+  matchWidth?: boolean;
 }) {
   const listId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -405,7 +426,7 @@ export function ComboSearch<T extends string>({
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState("");
   const close = useCallback(() => setOpen(false), []);
-  const { triggerRef, panelRef, style, ready } = useMenu(open, close, "left", 0, "content");
+  const { triggerRef, panelRef, style, ready } = useMenu(open, close, "left", 0, matchWidth ? "match" : "content");
   const selectedField = fields.find((item) => item.id === field) ?? fields[0];
   const fieldLabel = selectedField?.label ?? "Borrower";
   const inputPlaceholder = placeholder ?? `Search ${fieldLabel.toLowerCase()}`;
@@ -477,7 +498,7 @@ export function ComboSearch<T extends string>({
           aria-expanded={open}
           aria-controls={open ? listId : undefined}
           aria-activedescendant={open && active ? `${listId}-${active}` : undefined}
-          className="h-7 min-w-0 flex-1 bg-transparent text-base text-gray-dark outline-none placeholder:text-gray-dark"
+          className="uw-list-field-input h-7 min-w-0 flex-1 bg-transparent text-base text-gray-dark outline-none placeholder:text-gray-dark"
         />
         {value ? (
           <button
@@ -496,29 +517,31 @@ export function ComboSearch<T extends string>({
       {open && ready
         ? createPortal(
             <div ref={panelRef} style={style} className="uw-dropdown min-w-[320px]">
-              <div className="flex flex-col gap-[6px]">
-                <p className="px-xs text-[10px] font-semibold tracking-wide text-gray-medium uppercase">Search in</p>
-                <div role="radiogroup" aria-label="Search in" className="flex w-fit overflow-hidden rounded-xs border border-gray-light">
-                  {fields.map((item, index) => {
-                    const selected = item.id === field;
-                    return (
-                      <button
-                        key={item.id}
-                        type="button"
-                        role="radio"
-                        aria-checked={selected}
-                        onMouseDown={(event) => event.preventDefault()}
-                        onClick={() => changeField(item.id)}
-                        className={`px-md py-[6px] text-xs whitespace-nowrap ${
-                          selected ? "bg-primary text-white" : "bg-white text-gray-dark hover:bg-gray-lightest"
-                        } ${index > 0 ? "border-l border-gray-light" : ""}`}
-                      >
-                        {item.label}
-                      </button>
-                    );
-                  })}
+              {fields.length > 1 ? (
+                <div className="flex flex-col gap-[6px]">
+                  <p className="px-xs text-[10px] font-semibold tracking-wide text-gray-medium uppercase">Search in</p>
+                  <div role="radiogroup" aria-label="Search in" className="flex w-fit overflow-hidden rounded-xs border border-gray-light">
+                    {fields.map((item, index) => {
+                      const selected = item.id === field;
+                      return (
+                        <button
+                          key={item.id}
+                          type="button"
+                          role="radio"
+                          aria-checked={selected}
+                          onMouseDown={(event) => event.preventDefault()}
+                          onClick={() => changeField(item.id)}
+                          className={`px-md py-[6px] text-xs whitespace-nowrap ${
+                            selected ? "bg-primary text-white" : "bg-white text-gray-dark hover:bg-gray-lightest"
+                          } ${index > 0 ? "border-l border-gray-light" : ""}`}
+                        >
+                          {item.label}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
+              ) : null}
               <div id={listId} role="listbox" aria-label="Suggestions">
                 {matches.map((item) => (
                   <DropdownItem

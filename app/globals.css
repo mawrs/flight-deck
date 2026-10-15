@@ -213,3 +213,7 @@ textarea {
   outline: var(--focus-ring-width) solid var(--primary);
   outline-offset: var(--focus-ring-offset);
 }
+
+table tbody tr:nth-child(even) td {
+  background: var(--surface-stripe);
+}

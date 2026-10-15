@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { Notifications } from "@/components/ops/Notifications";
+import { CURRENT_ACCOUNT } from "@/lib/account";
 import styles from "./dashboard.module.css";
 
 const NAV = [
@@ -101,7 +102,7 @@ export function ConsoleShell({ children, initialExpanded = false }: { children: 
             aria-haspopup="menu"
             onClick={() => setUserMenuOpen((open) => !open)}
           >
-            Demo Account
+            {CURRENT_ACCOUNT.fullName}
             <img
               className={userMenuOpen ? styles.userChevronOpen : undefined}
               src="/dashboard/chevron-down.svg"
@@ -112,6 +113,7 @@ export function ConsoleShell({ children, initialExpanded = false }: { children: 
           </button>
           {userMenuOpen ? (
             <div className={styles.userMenuPanel} role="menu">
+              <p className={styles.userMenuRole}>{CURRENT_ACCOUNT.roles.join(", ")}</p>
               <button className={styles.userMenuItem} type="button" role="menuitem" onClick={() => router.push("/")}>
                 Sign Out
               </button>

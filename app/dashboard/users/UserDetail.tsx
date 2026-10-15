@@ -204,7 +204,7 @@ export function UserDetail({ username }: { username: string }) {
 
   if (!isNew && !existing) {
     return (
-      <Page flush>
+      <Page flush className={styles.canvas}>
         <PageHeader className={styles.pageHeader} title="User not found" />
         <p className={styles.missing}>That user is no longer in the list.</p>
       </Page>
@@ -212,7 +212,7 @@ export function UserDetail({ username }: { username: string }) {
   }
 
   return (
-    <Page flush>
+    <Page flush className={styles.canvas}>
       <PageHeader className={styles.pageHeader} title={isNew ? "Create User" : existing?.fullName} />
       <UserForm
         key={username}

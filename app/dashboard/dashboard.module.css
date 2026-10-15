@@ -68,6 +68,14 @@
   z-index: 2;
 }
 
+.userMenuRole {
+  margin: 0;
+  padding: var(--space-small) var(--space-medium);
+  color: var(--foreground-muted);
+  font-size: var(--font-size-body-extra-small);
+  line-height: var(--line-height-body-extra-small);
+}
+
 .userMenuItem {
   display: block;
   width: 100%;

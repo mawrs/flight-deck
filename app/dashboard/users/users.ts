@@ -1,6 +1,9 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
+import { CURRENT_ACCOUNT, ROLES } from "@/lib/account";
+
+export { ROLES };
 
 export type UserRecord = {
   username: string;
@@ -14,17 +17,16 @@ export type UserRecord = {
   nmlsId: string;
 };
 
-export const ROLES = ["Admin", "LoanOfficer", "Reviewer", "User"] as const;
-
 const SEED: UserRecord[] = [
+  user(CURRENT_ACCOUNT.username, CURRENT_ACCOUNT.email, CURRENT_ACCOUNT.fullName, "1", true, [...CURRENT_ACCOUNT.roles]),
   user("aauser", "jhart@southeastbank.com", "Aardvark User", "294", true),
   user("abotts", "abotts@southeastbank.com", "Amanda Botts", "37", true),
-  user("abrewer", "abrewer@southeastbank.com", "Aniko Brewer", "3", true, ["Admin", "User"]),
+  user("abrewer", "abrewer@southeastbank.com", "Aniko Brewer", "3", true, ["Admin", "Viewer"]),
   user("aeads", "aeads@southeastbank.com", "Alice Eads", "10", true),
   user("agardner", "rgardner@southeastbank.com", "Randi Gardner", "359", false),
-  user("apiservice", "apiservice@southeastbank.com", "API Service", "5", true, ["User"]),
-  user("atest", "jhart@southeastbank.com", "Aaron Test", "247", false, ["LoanOfficer", "User"]),
-  user("avermette", "avermette@southeastbank.com", "Austen Vermette", "331", true, ["LoanOfficer", "User"]),
+  user("apiservice", "apiservice@southeastbank.com", "API Service", "5", true, ["Viewer"]),
+  user("atest", "jhart@southeastbank.com", "Aaron Test", "247", false, ["Underwriter"]),
+  user("avermette", "avermette@southeastbank.com", "Austen Vermette", "331", true, ["Underwriter"]),
   user("ayork", "ayork@southeastbank.com", "Ashley York", "164", true),
   user("bbTest", "jhart@southeastbank.com", "bb Test", "309", false),
 ];
@@ -84,7 +86,7 @@ function user(
   fullName: string,
   personNumber: string,
   verifiedEmail: boolean,
-  roles: string[] = ["User"],
+  roles: string[] = ["Viewer"],
 ): UserRecord {
   return {
     username,
@@ -106,7 +108,7 @@ const extras: UserRecord[] = EXTRA.map(([first, last], index) =>
     `${first} ${last}`,
     String(400 + index),
     index % 4 !== 0,
-    index % 5 === 0 ? ["LoanOfficer", "User"] : ["User"],
+    index % 7 === 0 ? ["SLA"] : index % 5 === 0 ? ["Underwriter"] : ["Viewer"],
   ),
 );
 
@@ -141,7 +143,7 @@ export function blankUser(): UserRecord {
     personNumber: "",
     verifiedEmail: false,
     lockedOut: false,
-    roles: ["User"],
+    roles: ["Viewer"],
     dnaPersonNumber: "0",
     nmlsId: "",
   };

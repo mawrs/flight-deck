@@ -243,6 +243,24 @@ export interface UnderwritingExtras {
   primaryHousingTradeId: string;
 }
 
+export interface DisbursementHistoryLine {
+  id: string;
+  date: string;
+  amount: string;
+  status: "SCHEDULED" | "CANCELLED" | "DISBURSED";
+  statusUpdatedAt: string;
+}
+
+export interface RateHistoryEntry {
+  id: string;
+  at: string;
+  product: string;
+  rateType: "Fixed" | "Variable";
+  term: number;
+  rate: string;
+  payment: string;
+}
+
 export interface FileReview {
   recordTypeId: string;
   recordType: string;
@@ -331,6 +349,8 @@ export interface Application {
   opportunity: OpportunityFields;
   underwriting: UnderwritingExtras;
   fileReview: FileReview | null;
+  disbursementHistory: DisbursementHistoryLine[];
+  rateHistory: RateHistoryEntry[];
 }
 
 export type OpportunityField =
@@ -387,5 +407,7 @@ export type ApplicationPatch = Partial<
     | "opportunity"
     | "underwriting"
     | "fileReview"
+    | "disbursementHistory"
+    | "rateHistory"
   >
 >;

@@ -210,8 +210,10 @@ export interface OpsStore {
   documents: OpsState["documents"];
   notifications: OpsState["notifications"];
   addFeedPost: (caseId: string, author: string, body: string) => void;
+  addApplicationFeedNote: (applicationId: string, author: string, body: string) => void;
   markNotificationRead: (id: string) => void;
   markAllNotificationsRead: () => void;
+  addNotification: (input: { kind: OpsNotification["kind"]; actor: string; body: string; caseId?: string; href?: string }) => void;
   addFeedComment: (postId: string, author: string, body: string) => void;
   toggleFeedLike: (postId: string) => void;
   recordSchoolResponse: (id: string, response: SchoolResponse) => void;
@@ -263,31 +265,25 @@ export function OpsProvider({ children }: { children: ReactNode }) {
         const note = body.trim();
         if (!note) return;
         edit((current) => {
-          if (!Array.isArray(current.feed)) current.feed = [];
-          const createdAt = new Date().toISOString();
-          current.feed.unshift({
-            id: `feed-${Date.now().toString(36)}`,
-            caseId,
+          pushFeedNote(current, { caseId, author, body: note });
+        });
+      },
+      addApplicationFeedNote: (applicationId, author, body) => {
+        const note = body.trim();
+        if (!note || !applicationId) return;
+        edit((current) => {
+          const loanIds = new Set(
+            current.loans.filter((loan) => loan.applicationId === applicationId).map((loan) => loan.id),
+          );
+          const match = current.cases
+            .filter((item) => loanIds.has(item.loanId))
+            .sort((a, b) => b.openedAt.localeCompare(a.openedAt))[0];
+          pushFeedNote(current, {
+            caseId: match?.id ?? `application-${applicationId}`,
+            applicationId,
             author,
             body: note,
-            createdAt,
-            likes: 0,
-            liked: false,
-            comments: [],
-            kind: "note",
-            audience: "Southeast Bank Only",
           });
-          if (mentionedPeople(note).includes(CURRENT_USER)) {
-            pushNotification(current, {
-              id: `note-${Date.now().toString(36)}`,
-              kind: "mention",
-              actor: author,
-              body: note,
-              caseId,
-              createdAt,
-              read: false,
-            });
-          }
         });
       },
       markNotificationRead: (id) => {
@@ -299,6 +295,22 @@ export function OpsProvider({ children }: { children: ReactNode }) {
       markAllNotificationsRead: () => {
         edit((current) => {
           for (const item of noteList(current)) item.read = true;
+        });
+      },
+      addNotification: ({ kind, actor, body, caseId = "", href }) => {
+        const note = body.trim();
+        if (!note) return;
+        edit((current) => {
+          pushNotification(current, {
+            id: `notice-${Date.now().toString(36)}`,
+            kind,
+            actor,
+            body: note,
+            caseId,
+            href,
+            createdAt: new Date().toISOString(),
+            read: false,
+          });
         });
       },
       addFeedComment: (postId, author, body) => {
@@ -548,6 +560,38 @@ export function OpsProvider({ children }: { children: ReactNode }) {
 function noteList(current: OpsState) {
   if (!Array.isArray(current.notifications)) current.notifications = [];
   return current.notifications;
+}
+
+function pushFeedNote(
+  current: OpsState,
+  post: { caseId: string; applicationId?: string; author: string; body: string },
+) {
+  if (!Array.isArray(current.feed)) current.feed = [];
+  const createdAt = new Date().toISOString();
+  current.feed.unshift({
+    id: `feed-${Date.now().toString(36)}`,
+    caseId: post.caseId,
+    applicationId: post.applicationId,
+    author: post.author,
+    body: post.body,
+    createdAt,
+    likes: 0,
+    liked: false,
+    comments: [],
+    kind: "note",
+    audience: "Southeast Bank Only",
+  });
+  if (mentionedPeople(post.body).includes(CURRENT_USER)) {
+    pushNotification(current, {
+      id: `note-${Date.now().toString(36)}`,
+      kind: "mention",
+      actor: post.author,
+      body: post.body,
+      caseId: post.caseId,
+      createdAt,
+      read: false,
+    });
+  }
 }
 
 function pushNotification(current: OpsState, item: OpsNotification) {

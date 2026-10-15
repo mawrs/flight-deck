@@ -8,6 +8,9 @@ import { FilterBadges, type FilterChip } from "@/components/list/FilterBadges";
 import { ListPagination, usePagedList } from "@/components/list/ListPagination";
 import { SortHeader } from "@/components/list/SortHeader";
 import { QueueViewSelect } from "@/components/queue/QueueViewSelect";
+import { DisbursementModification } from "@/components/queue/DisbursementModification";
+import { FileProcessing } from "@/components/queue/FileProcessing";
+import { Recertification } from "@/components/queue/Recertification";
 import { ComboSearch, Select } from "@/components/ui/Dropdown";
 import { dateOnly, money, shortDate } from "@/lib/format";
 import { compareSortValues, timeValue, type SortDirection } from "@/lib/list-sort";
@@ -218,6 +221,27 @@ export function QueueTable() {
 
   if (!ready) {
     return <p className="uw-page-status">Loading queue…</p>;
+  }
+
+  if (view.tool) {
+    return (
+      <div className="uw-list-page uw-list-page-flush">
+        <div className="uw-list-header">
+          <QueueViewSelect value={view.id} />
+        </div>
+        <DataTableCard rules className="uw-list-card">
+          {view.tool === "recertification" ? (
+            <Recertification />
+          ) : view.tool === "disbursement-modification" ? (
+            <DisbursementModification />
+          ) : view.tool === "file-processing" ? (
+            <FileProcessing />
+          ) : (
+            <p className="uw-list-empty">{view.empty}</p>
+          )}
+        </DataTableCard>
+      </div>
+    );
   }
 
   return (
