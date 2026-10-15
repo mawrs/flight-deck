@@ -369,6 +369,8 @@ export function OpsProvider({ children }: { children: ReactNode }) {
           if (!cert) return;
           cert.status = "requested";
           cert.requestedAt = new Date().toISOString();
+          cert.withdrawalReason = "";
+          cert.withdrawalNote = "";
         });
       },
       withdrawCertification: (id, reason, note) => {

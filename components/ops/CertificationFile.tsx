@@ -21,7 +21,9 @@ export function CertificationFile({ id }: { id: string }) {
   const cert = ops.certifications.find((item) => item.id === id);
   const loan = cert ? loanForCertification(ops.loans, cert.id) : null;
   const [withdrawOpen, setWithdrawOpen] = useState(false);
+  const [responseOpen, setResponseOpen] = useState(false);
   const closeWithdraw = useCallback(() => setWithdrawOpen(false), []);
+  const closeResponse = useCallback(() => setResponseOpen(false), []);
 
   if (!cert) {
     return (
@@ -44,6 +46,11 @@ export function CertificationFile({ id }: { id: string }) {
       title={`${cert.borrower} - ${cert.id}`}
       actions={
         <>
+          {cert.status === "in-review" ? (
+            <Button size="small" variant="primary" onClick={() => setResponseOpen(true)}>
+              Record School Response
+            </Button>
+          ) : null}
           <Button size="small" variant="outline" onClick={() => ops.resendCertification(cert.id)}>
             Resend certification
           </Button>
@@ -61,6 +68,15 @@ export function CertificationFile({ id }: { id: string }) {
             onConfirm={(reason, note) => {
               ops.withdrawCertification(cert.id, reason, note);
               setWithdrawOpen(false);
+            }}
+          />
+          <SchoolResponseModal
+            open={responseOpen}
+            onClose={closeResponse}
+            certification={cert}
+            onConfirm={(response) => {
+              ops.recordSchoolResponse(cert.id, response);
+              setResponseOpen(false);
             }}
           />
         </>
@@ -241,6 +257,180 @@ function WithdrawCertificationModal({
             </Button>
             <Button type="submit" size="small" variant="danger" disabled={!reason}>
               Confirm withdrawal
+            </Button>
+          </div>
+        </form>
+      </div>
+    </div>,
+    document.body,
+  );
+}
+
+function SchoolResponseModal({
+  open,
+  onClose,
+  certification,
+  onConfirm,
+}: {
+  open: boolean;
+  onClose: () => void;
+  certification: ReturnType<typeof useOps>["certifications"][number];
+  onConfirm: (response: { enrollment: "full-time" | "half-time" | "less-than-half-time"; certifiedAmount: number; costOfAttendance: number; disbursements: { id?: string; date: string; amount: number }[] }) => void;
+}) {
+  const titleId = useId();
+  const [mounted, setMounted] = useState(false);
+  const [enrollment, setEnrollment] = useState<"full-time" | "half-time" | "less-than-half-time">("full-time");
+  const [certifiedAmount, setCertifiedAmount] = useState("");
+  const [costOfAttendance, setCostOfAttendance] = useState("");
+  const [disbursements, setDisbursements] = useState<{ id: string; date: string; amount: string }[]>([]);
+
+  useEffect(() => setMounted(true), []);
+
+  useEffect(() => {
+    if (!open) return;
+    setEnrollment(certification.enrollment && certification.enrollment !== "" ? certification.enrollment : "full-time");
+    setCertifiedAmount(certification.certifiedAmount?.toString() ?? certification.approvedAmount.toString());
+    setCostOfAttendance(certification.costOfAttendance?.toString() ?? "");
+    setDisbursements(
+      certification.disbursements.length > 0
+        ? certification.disbursements.map((d) => ({ id: d.id, date: d.date.split("T")[0], amount: d.amount.toString() }))
+        : [{ id: "", date: "", amount: "" }]
+    );
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = previous;
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [open, onClose, certification]);
+
+  if (!mounted || !open) return null;
+
+  const certAmount = parseFloat(certifiedAmount);
+  const coaAmount = parseFloat(costOfAttendance);
+  const validAmounts = !isNaN(certAmount) && certAmount > 0 && !isNaN(coaAmount) && coaAmount > 0;
+  const validDisbursements = disbursements.every((d) => d.date && !isNaN(parseFloat(d.amount)) && parseFloat(d.amount) > 0);
+
+  return createPortal(
+    <div className="fixed inset-0 z-[70] flex items-center justify-center p-xl">
+      <button type="button" className="absolute inset-0 bg-charcoal/40" aria-label="Close response" onClick={onClose} />
+      <div role="dialog" aria-modal="true" aria-labelledby={titleId} className="uw-dialog uw-dialog-response max-h-[90vh] w-full max-w-2xl overflow-hidden rounded-md bg-white shadow-xl">
+        <div className="flex items-center justify-between gap-md border-b border-gray-light px-xl py-md">
+          <h2 id={titleId} className="text-lg font-semibold text-charcoal">
+            Record School Response
+          </h2>
+          <button
+            type="button"
+            aria-label="Close"
+            onClick={onClose}
+            className="inline-flex size-8 shrink-0 items-center justify-center rounded-xs text-gray-dark hover:bg-gray-lightest"
+          >
+            <CloseIcon />
+          </button>
+        </div>
+        <form
+          className="flex min-h-0 flex-col gap-lg overflow-y-auto px-xl py-lg"
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (!validAmounts || !validDisbursements) return;
+            onConfirm({
+              enrollment,
+              certifiedAmount: certAmount,
+              costOfAttendance: coaAmount,
+              disbursements: disbursements.map((d) => ({
+                id: d.id || undefined,
+                date: d.date,
+                amount: parseFloat(d.amount),
+              })),
+            });
+          }}
+        >
+          <fieldset className="flex flex-col gap-md">
+            <legend className="mb-sm text-sm text-gray-medium">Enrollment Status</legend>
+            {(["full-time", "half-time", "less-than-half-time"] as const).map((item) => (
+              <label key={item} className="flex cursor-pointer items-start gap-md">
+                <input
+                  type="radio"
+                  name="enrollment-status"
+                  value={item}
+                  checked={enrollment === item}
+                  onChange={() => setEnrollment(item)}
+                  className="mt-[3px] size-4 accent-primary"
+                />
+                <span className="text-sm text-charcoal">{opsLabel(item)}</span>
+              </label>
+            ))}
+          </fieldset>
+          <FloatInput
+            label="Certified Amount"
+            value={certifiedAmount}
+            onChange={setCertifiedAmount}
+            type="number"
+            step="0.01"
+          />
+          <FloatInput
+            label="Cost of Attendance"
+            value={costOfAttendance}
+            onChange={setCostOfAttendance}
+            type="number"
+            step="0.01"
+          />
+          <fieldset className="flex flex-col gap-md">
+            <legend className="mb-sm text-sm text-gray-medium">Disbursement Schedule</legend>
+            {disbursements.map((disb, index) => (
+              <div key={index} className="flex gap-md">
+                <FloatInput
+                  label="Date"
+                  value={disb.date}
+                  onChange={(value) => {
+                    const next = [...disbursements];
+                    next[index].date = value;
+                    setDisbursements(next);
+                  }}
+                  type="date"
+                />
+                <FloatInput
+                  label="Amount"
+                  value={disb.amount}
+                  onChange={(value) => {
+                    const next = [...disbursements];
+                    next[index].amount = value;
+                    setDisbursements(next);
+                  }}
+                  type="number"
+                  step="0.01"
+                />
+                {disbursements.length > 1 ? (
+                  <Button
+                    type="button"
+                    size="small"
+                    variant="outline"
+                    onClick={() => setDisbursements(disbursements.filter((_, i) => i !== index))}
+                  >
+                    Remove
+                  </Button>
+                ) : null}
+              </div>
+            ))}
+            <Button
+              type="button"
+              size="small"
+              variant="outline"
+              onClick={() => setDisbursements([...disbursements, { id: "", date: "", amount: "" }])}
+            >
+              Add Disbursement
+            </Button>
+          </fieldset>
+          <div className="flex justify-end gap-sm">
+            <Button type="button" size="small" variant="outline" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button type="submit" size="small" disabled={!validAmounts || !validDisbursements}>
+              Save Response
             </Button>
           </div>
         </form>

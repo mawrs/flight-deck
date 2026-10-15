@@ -38,6 +38,9 @@ export function CustomerEmails({
         title: post.subject?.trim() || "Email",
         sentAt: post.createdAt,
         body: post.body,
+        emailTo: post.emailTo,
+        emailCc: post.emailCc,
+        emailBcc: post.emailBcc,
       }),
     );
 
@@ -97,7 +100,9 @@ export function CustomerEmails({
           body={emailHtml(open.body)}
           sentLabel={sentStamp(open.sentAt)}
           applicantName={application?.borrower.fullName}
-          applicantEmail={borrowerEmail}
+          applicantEmail={open.emailTo || borrowerEmail}
+          initialCc={open.emailCc}
+          initialBcc={open.emailBcc}
           hideFooter
           onCancel={() => setOpenId(null)}
         />

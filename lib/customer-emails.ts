@@ -5,6 +5,9 @@ export type CustomerEmail = {
   title: string;
   sentAt: string;
   body: string;
+  emailTo?: string;
+  emailCc?: string;
+  emailBcc?: string;
 };
 
 function atTime(value: string, days: number, hour: number, minute: number) {
