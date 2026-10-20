@@ -99,7 +99,7 @@ export function AccountOpeningWorkspace({ id }: { id: string }) {
   }
 
   function startTranscription() {
-    if (opening.transcript.length === 0) loadSampleCall(opening.id);
+    if (opening && opening.transcript.length === 0) loadSampleCall(opening.id);
     replayCall();
   }
 
