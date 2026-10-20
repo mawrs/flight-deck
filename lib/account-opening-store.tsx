@@ -343,7 +343,7 @@ export function signOpening(id: string) {
   update(id, (opening) => {
     if (opening.handoff === "not-sent" || opening.status === "opened") return opening;
     const product = productById(opening.fields.productId.value);
-    const amount = Number(opening.fields.transferAmount.value);
+    const amount = parseMoney(opening.fields.transferAmount.value) ?? 0;
     const accountNumber = issuedAccountNumber(opening);
     const disclosureCount = disclosuresFor(opening.fields.productId.value).length;
     return {

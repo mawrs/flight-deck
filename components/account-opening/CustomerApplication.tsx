@@ -51,11 +51,11 @@ const SCREEN_META: Record<Exclude<Screen, "email" | "submitted-loading" | "submi
   phone: { section: 2, step: 8 },
   "phone-code": { section: 2, step: 9 },
   questionnaire: { section: 3, step: 10 },
-  "bank-details-loading": { section: 4, step: 12 },
-  "initial-deposit": { section: 4, step: 11 },
+  "bank-details-loading": { section: 4, step: 11 },
+  "initial-deposit": { section: 4, step: 12 },
   "deposit-amount": { section: 4, step: 12 },
-  submitting: { section: 5, step: 14 },
-  review: { section: 5, step: 13 },
+  submitting: { section: 5, step: 13 },
+  review: { section: 5, step: 14 },
 };
 
 const SECTION_LABELS = ["Application Ownership", "About You", "Account Security", "Bank Details", "Summary"];

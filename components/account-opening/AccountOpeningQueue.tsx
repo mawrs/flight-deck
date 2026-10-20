@@ -6,7 +6,7 @@ import { buttonClassName } from "@/components/Button";
 import { DataTable, DataTableCard, DataTableScroll } from "@/components/DataTable";
 import { SortHeader } from "@/components/list/SortHeader";
 import { Select } from "@/components/ui/Dropdown";
-import { channelLabel, openingAmountLabel, openingProductName, PRODUCTS, statusLabel } from "@/lib/account-opening-data";
+import { channelLabel, openingAmountLabel, openingProductName, parseMoney, PRODUCTS, statusLabel } from "@/lib/account-opening-data";
 import { shortDate } from "@/lib/format";
 import { compareSortValues, timeValue, type SortDirection } from "@/lib/list-sort";
 import { useAccountOpenings } from "@/lib/account-opening-store";
@@ -37,7 +37,7 @@ function sortValue(opening: AccountOpening, key: SortKey): string | number {
     case "product":
       return openingProductName(opening);
     case "amount":
-      return Number(opening.fields.transferAmount.value) || 0;
+      return parseMoney(opening.fields.transferAmount.value) ?? 0;
     case "status":
       return statusLabel(opening.status);
     case "started":
