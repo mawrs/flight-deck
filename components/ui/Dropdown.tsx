@@ -22,7 +22,7 @@ import { FloatInput } from "@/components/ui/FloatInput";
 import type { SearchChoice } from "@/lib/search";
 import "./dropdown.css";
 
-export type SelectOption = { id: string; label: string; disabled?: boolean };
+export type SelectOption = { id: string; label: string; detail?: string; disabled?: boolean };
 
 type Align = "left" | "right";
 type SelectVariant = "field" | "input" | "float" | "plain" | "compact" | "box";
@@ -572,26 +572,39 @@ export function ComboSearch<T extends string>({
 export function Combobox({
   value,
   onChange,
+  onSelect,
+  onQueryChange,
+  selectedId,
   options,
   label,
   autoFocus,
+  initiallyOpen = true,
 }: {
   value: string;
   onChange: (value: string) => void;
+  onSelect?: (option: SelectOption) => void;
+  onQueryChange?: (query: string) => void;
+  selectedId?: string;
   options: ReadonlyArray<string | SelectOption>;
   label: string;
   autoFocus?: boolean;
+  initiallyOpen?: boolean;
 }) {
   const listId = useId();
   const rootRef = useRef<HTMLDivElement>(null);
   const items = useMemo(() => toOptions(options), [options]);
   const [query, setQuery] = useState(value);
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(initiallyOpen);
   const [active, setActive] = useState("");
   const needle = query.trim().toLowerCase();
   const filtering = needle !== value.trim().toLowerCase();
   const matches = filtering
-    ? items.filter((item) => item.label.toLowerCase().includes(needle)).slice(0, 12)
+    ? items
+        .filter((item) => {
+          const detail = item.detail?.toLowerCase() ?? "";
+          return item.label.toLowerCase().includes(needle) || detail.includes(needle);
+        })
+        .slice(0, 12)
     : items.slice(0, 12);
 
   useEffect(() => {
@@ -620,6 +633,7 @@ export function Combobox({
     const item = items.find((entry) => entry.id === id);
     if (!item) return;
     onChange(item.label);
+    onSelect?.(item);
     setQuery(item.label);
     setOpen(false);
   }
@@ -659,6 +673,7 @@ export function Combobox({
         autoFocus={autoFocus}
         onChange={(next) => {
           setQuery(next);
+          onQueryChange?.(next);
           setOpen(true);
         }}
         onFocus={() => setOpen(true)}
@@ -672,11 +687,18 @@ export function Combobox({
                 key={item.id}
                 id={`${listId}-${item.id}`}
                 role="option"
-                selected={item.label === value}
+                selected={selectedId ? item.id === selectedId : item.label === value}
                 active={item.id === active}
                 onClick={() => choose(item.id)}
               >
-                {item.label}
+                {item.detail ? (
+                  <span className="flex min-w-0 flex-col">
+                    <span>{item.label}</span>
+                    <span className="text-xs text-gray-medium">{item.detail}</span>
+                  </span>
+                ) : (
+                  item.label
+                )}
               </DropdownItem>
             ))}
             {matches.length === 0 ? (

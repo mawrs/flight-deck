@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { FileActions } from "@/components/application/FileActions";
+import { AccountOpeningHeader } from "@/components/account-opening/AccountOpeningHeader";
 import { LOAN_HOME, fileRoute } from "@/lib/loan-routes";
 import { useApplication } from "@/lib/store";
 
@@ -10,13 +11,19 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const file = fileRoute(pathname);
   const workbook = pathname.includes("/workbook/");
-  const workspace = Boolean(file || workbook);
+  const opening = pathname.match(/\/loan-origination\/account-opening\/([^/]+)/);
+  const workspace = Boolean(file || workbook || opening);
 
   return (
     <div className={workspace ? "uw-shell uw-shell-workspace" : "uw-shell uw-shell-page"}>
       {file ? (
         <div className="uw-file-header">
           <FileHeader id={file.id} />
+        </div>
+      ) : null}
+      {opening ? (
+        <div className="uw-file-header">
+          <AccountOpeningHeader id={opening[1]} />
         </div>
       ) : null}
       {workspace ? (

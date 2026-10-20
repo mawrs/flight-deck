@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type FocusEvent, type KeyboardEvent } from "react";
+import { useState, type FocusEvent, type KeyboardEvent, type Ref } from "react";
 import "./float-input.css";
 
 export function FloatInput({
@@ -15,10 +15,11 @@ export function FloatInput({
   onKeyDown,
   onFocus,
   onBlur,
+  inputRef,
 }: {
   label: string;
   value: string;
-  onChange?: (value: string) => void;
+  onChange?: (value: string, caret: number) => void;
   readOnly?: boolean;
   autoFocus?: boolean;
   type?: string;
@@ -27,6 +28,7 @@ export function FloatInput({
   onKeyDown?: (event: KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
   onFocus?: (event: FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
   onBlur?: (event: FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
+  inputRef?: Ref<HTMLInputElement | HTMLTextAreaElement>;
 }) {
   const [focused, setFocused] = useState(Boolean(autoFocus));
   const floated = focused || value.trim().length > 0;
@@ -36,7 +38,8 @@ export function FloatInput({
     readOnly,
     autoFocus,
     placeholder: " ",
-    onChange: (event: { target: { value: string } }) => onChange?.(event.target.value),
+    onChange: (event: { target: { value: string; selectionStart: number | null } }) =>
+      onChange?.(event.target.value, event.target.selectionStart ?? event.target.value.length),
     onKeyDown,
     onClick: () => setFocused(true),
     onFocus: (event: FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -52,7 +55,11 @@ export function FloatInput({
 
   return (
     <label className="uw-float-field">
-      {multiline ? <textarea {...field} rows={4} /> : <input {...field} type={type} step={step} />}
+      {multiline ? (
+        <textarea {...field} ref={inputRef as Ref<HTMLTextAreaElement>} rows={4} />
+      ) : (
+        <input {...field} ref={inputRef as Ref<HTMLInputElement>} type={type} step={step} />
+      )}
       <span className={`uw-float-label ${floated ? "uw-float-label-active" : ""}`}>{label}</span>
     </label>
   );
