@@ -53,15 +53,20 @@ function load(): AccountOpening[] {
     if (!raw) return seedAccountOpenings;
     const parsed = JSON.parse(raw) as unknown;
     if (!Array.isArray(parsed) || parsed.length === 0 || !parsed.every(isAccountOpening)) return seedAccountOpenings;
-    const refreshed = new Map(
-      seedAccountOpenings.filter((opening) => opening.id !== "AO-10482").map((opening) => [opening.id, opening]),
-    );
+    const refreshed = new Map(seedAccountOpenings.map((opening) => [opening.id, opening]));
     const seen = new Set<string>();
     const next = parsed.map((opening) => {
       const seed = refreshed.get(opening.id);
       if (seed) {
         seen.add(opening.id);
-        return structuredClone(seed);
+        return {
+          ...structuredClone(seed),
+          status: opening.status,
+          handoff: opening.handoff,
+          openedAt: opening.openedAt,
+          newAccountNumber: opening.newAccountNumber,
+          activity: opening.activity,
+        };
       }
       if (!opening.transcript.some((line) => line.id.startsWith("sample-"))) return opening;
       return {
@@ -342,11 +347,28 @@ export function markOpeningReviewing(id: string) {
 
 export function signOpening(id: string) {
   update(id, (opening) => {
-    if (opening.handoff === "not-sent" || opening.status === "opened") return opening;
-    const product = productById(opening.fields.productId.value);
-    const amount = parseMoney(opening.fields.transferAmount.value) ?? 0;
+    if (opening.handoff === "not-sent" || opening.status === "opened" || opening.handoff === "signed") return opening;
     const accountNumber = issuedAccountNumber(opening);
     const disclosureCount = disclosuresFor(opening.fields.productId.value).length;
+    return {
+      ...opening,
+      handoff: "signed",
+      status: "awaiting-signature",
+      newAccountNumber: accountNumber,
+      activity: [
+        ...opening.activity,
+        activity(`${opening.fields.fullName.value || "The customer"} confirmed the amounts, signed ${disclosureCount} disclosures, and submitted the application.`),
+      ],
+    };
+  });
+}
+
+export function completeOpening(id: string) {
+  update(id, (opening) => {
+    if (opening.status === "opened") return { ...opening };
+    const product = productById(opening.fields.productId.value);
+    const amount = parseMoney(opening.fields.transferAmount.value) ?? 0;
+    const accountNumber = opening.newAccountNumber || issuedAccountNumber(opening);
     return {
       ...opening,
       handoff: "signed",
@@ -355,7 +377,6 @@ export function signOpening(id: string) {
       newAccountNumber: accountNumber,
       activity: [
         ...opening.activity,
-        activity(`${opening.fields.fullName.value || "The customer"} confirmed the amounts, signed ${disclosureCount} disclosures, and submitted the application.`),
         activity(`Opened ${product?.name ?? "account"} ${accountNumber} for ${money(amount)}.`),
       ],
     };

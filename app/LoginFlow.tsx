@@ -8,7 +8,13 @@ import styles from "./page.module.css";
 
 type Step = "login" | "sent";
 
-export function LoginFlow() {
+export function LoginFlow({
+  onAuthenticated,
+  showBadge = true,
+}: {
+  onAuthenticated?: () => void;
+  showBadge?: boolean;
+}) {
   const [step, setStep] = useState<Step>("login");
   const [email, setEmail] = useState("");
   const [sending, setSending] = useState(false);
@@ -33,7 +39,7 @@ export function LoginFlow() {
 
   return (
     <main className={styles.main}>
-      <Logo />
+      <Logo showBadge={showBadge} />
       {step === "login" ? (
         <div className={styles.panel}>
           <Card>
@@ -47,7 +53,7 @@ export function LoginFlow() {
       ) : null}
       {step === "sent" ? (
         <div className={styles.panel}>
-          <CheckEmail email={email} onBack={() => setStep("login")} />
+          <CheckEmail email={email} onBack={() => setStep("login")} onAuthenticated={onAuthenticated} />
         </div>
       ) : null}
     </main>

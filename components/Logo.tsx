@@ -1,6 +1,6 @@
 import styles from "./Logo.module.css";
 
-export function Logo() {
+export function Logo({ showBadge = true }: { showBadge?: boolean }) {
   return (
     <div className={styles.wrapper}>
       <img
@@ -10,7 +10,7 @@ export function Logo() {
         width={265}
         height={71}
       />
-      <span className={styles.badge}>ADMIN</span>
+      {showBadge ? <span className={styles.badge}>ADMIN</span> : null}
     </div>
   );
 }
