@@ -307,8 +307,9 @@ export function handoffSteps(channel: AccountOpeningChannel) {
 }
 
 export function handoffStep(opening: AccountOpening) {
-  if (opening.status === "opened" || opening.handoff === "signed") return 4;
-  if (opening.handoff === "reviewing") return 3;
+  if (opening.status === "opened") return 4;
+  if (opening.handoff === "signed") return 3;
+  if (opening.handoff === "reviewing") return 2;
   if (opening.handoff === "sent") return 2;
   if (missingSendRequirements(opening).length === 0) return 1;
   return 0;
@@ -463,12 +464,7 @@ function baseOpening(input: {
 
 function jordanOpening(): AccountOpening {
   const customer = KNOWN_CUSTOMERS[0];
-  const fields = {
-    ...withCustomer(emptyFields(), customer, customer.accountNumber),
-    availableFunds: sourced("", "conversation"),
-    transferAmount: sourced("", "conversation"),
-    productId: sourced("", "conversation"),
-  };
+  const fields = filledSample("50000", "15000", "cd-12", withCustomer(emptyFields(), customer, customer.accountNumber));
   return baseOpening({
     id: "AO-10482",
     channel: "call-center",
@@ -479,11 +475,11 @@ function jordanOpening(): AccountOpening {
     openedAt: null,
     fields,
     transcript: SAMPLE_TRANSCRIPT.map((line) => ({ ...line })),
-    insights: cloneInsights(),
+    insights: cloneInsights("accepted"),
     activity: [
       event("AO-10482-1", "2026-10-20T09:14:00", "Kate answered a call center request to move $15,000."),
       event("AO-10482-2", "2026-10-20T09:15:00", "Kate entered account 0048219931. Customer profile verified for Jordan Hale."),
-      event("AO-10482-3", "2026-10-20T09:15:00", "The call detected available funds, the opening amount, and a 12-month CD."),
+      event("AO-10482-3", "2026-10-20T09:16:00", "Kate accepted the detected 12-month CD for $15,000."),
     ],
   });
 }

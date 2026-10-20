@@ -8,9 +8,10 @@ import styles from "./check-email.module.css";
 type CheckEmailProps = {
   email: string;
   onBack: () => void;
+  onAuthenticated?: () => void;
 };
 
-export function CheckEmail({ email, onBack }: CheckEmailProps) {
+export function CheckEmail({ email, onBack, onAuthenticated }: CheckEmailProps) {
   const router = useRouter();
   const [passcode, setPasscode] = useState("");
   const [loading, setLoading] = useState(false);
@@ -26,7 +27,8 @@ export function CheckEmail({ email, onBack }: CheckEmailProps) {
     if (passcode.length !== 6 || loading) return;
     setLoading(true);
     timer.current = window.setTimeout(() => {
-      router.push("/dashboard");
+      if (onAuthenticated) onAuthenticated();
+      else router.push("/dashboard");
     }, 1500);
   }
 

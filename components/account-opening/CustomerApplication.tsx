@@ -2,11 +2,18 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import { applicationLink, disclosuresFor, parseMoney, productById } from "@/lib/account-opening-data";
+import { Roboto } from "next/font/google";
+import { FooterDisclaimer } from "@/components";
+import { LoginFlow } from "@/app/LoginFlow";
+import loginPage from "@/app/page.module.css";
+
+const gmailFont = Roboto({ weight: ["400", "500", "700"], subsets: ["latin"] });
+import { PRODUCTS, disclosuresFor, parseMoney, productById } from "@/lib/account-opening-data";
 import { money, percent } from "@/lib/format";
 import type { AccountOpening } from "@/lib/account-opening-types";
 import {
   markOpeningReviewing,
+  completeOpening,
   signOpening,
   updateOpeningField,
   useAccountOpening,
@@ -15,6 +22,7 @@ import "./customer-application.css";
 
 type Screen =
   | "email"
+  | "login"
   | "ownership-loading"
   | "ownership"
   | "joint-owner-details"
@@ -37,9 +45,34 @@ type Screen =
 type Answer = "" | "yes" | "no";
 type Funding = "" | "internal" | "plaid" | "manual";
 
+type OwnerDraft = {
+  first: string;
+  middle: string;
+  last: string;
+  suffix: string;
+  productId: string;
+  phone: string;
+  email: string;
+  birthDate: string;
+  street: string;
+  unit: string;
+  city: string;
+  state: string;
+  zip: string;
+  ssn: string;
+  idType: string;
+  idNumber: string;
+  idState: string;
+  issueDate: string;
+  expirationDate: string;
+  uploadedFile: string;
+  employer: string;
+  occupation: string;
+};
+
 const STATES = ["AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "FL", "GA", "HI", "ID", "IL", "IN", "IA", "KS", "KY", "LA", "ME", "MD", "MA", "MI", "MN", "MS", "MO", "MT", "NE", "NV", "NH", "NJ", "NM", "NY", "NC", "ND", "OH", "OK", "OR", "PA", "RI", "SC", "SD", "TN", "TX", "UT", "VT", "VA", "WA", "WV", "WI", "WY"];
 
-const SCREEN_META: Record<Exclude<Screen, "email" | "submitted-loading" | "submitted">, { section: number; step: number }> = {
+const SCREEN_META: Record<Exclude<Screen, "email" | "login" | "submitted-loading" | "submitted">, { section: number; step: number }> = {
   "ownership-loading": { section: 1, step: 1 },
   ownership: { section: 1, step: 1 },
   "joint-owner-details": { section: 1, step: 2 },
@@ -60,21 +93,21 @@ const SCREEN_META: Record<Exclude<Screen, "email" | "submitted-loading" | "submi
 
 const SECTION_LABELS = ["Application Ownership", "About You", "Account Security", "Bank Details", "Summary"];
 
-export function CustomerApplication({ id }: { id: string }) {
+export function CustomerApplication({ id, startAtLogin = false }: { id: string; startAtLogin?: boolean }) {
   const opening = useAccountOpening(id);
 
   if (!opening) {
     return <div className="customer-application customer-application-message">Application {id} was not found.</div>;
   }
 
-  return <CustomerApplicationFlow key={opening.id} opening={opening} />;
+  return <CustomerApplicationFlow key={opening.id} opening={opening} startAtLogin={startAtLogin} />;
 }
 
-function CustomerApplicationFlow({ opening }: { opening: AccountOpening }) {
+function CustomerApplicationFlow({ opening, startAtLogin }: { opening: AccountOpening; startAtLogin: boolean }) {
   const id = opening.id;
   const initialAddress = parseAddress(opening.fields.address.value);
   const initialAmount = parseMoney(opening.fields.transferAmount.value);
-  const [screen, setScreen] = useState<Screen>("email");
+  const [screen, setScreen] = useState<Screen>(startAtLogin ? "login" : "email");
   const [ownership, setOwnership] = useState<"Individual" | "Joint" | "">("");
   const [jointOwners, setJointOwners] = useState([{ firstName: "", lastName: "", email: "" }]);
   const [street, setStreet] = useState(initialAddress.street);
@@ -114,6 +147,16 @@ function CustomerApplicationFlow({ opening }: { opening: AccountOpening }) {
   const [electronicConsent, setElectronicConsent] = useState(false);
   const [agreementConsent, setAgreementConsent] = useState(false);
   const [navOpen, setNavOpen] = useState(false);
+  const [ownerDraft, setOwnerDraft] = useState<OwnerDraft | null>(null);
+  const [callSnapshot] = useState(() => ({
+    productId: opening.fields.productId.source === "conversation" ? opening.fields.productId.value : "",
+    transferAmount: opening.fields.transferAmount.source === "conversation" ? opening.fields.transferAmount.value : "",
+    fullName: opening.relationship === "new" ? opening.fields.fullName.value.trim() : "",
+    email: opening.relationship === "new" ? opening.fields.email.value.trim() : "",
+    phone: opening.relationship === "new" ? opening.fields.phone.value.trim() : "",
+    birthDate: opening.relationship === "new" ? opening.fields.birthDate.value.trim() : "",
+    address: opening.relationship === "new" ? opening.fields.address.value.trim() : "",
+  }));
 
   const product = productById(opening.fields.productId.value);
   const disclosures = disclosuresFor(opening.fields.productId.value);
@@ -122,15 +165,19 @@ function CustomerApplicationFlow({ opening }: { opening: AccountOpening }) {
   const firstName = opening.fields.fullName.value.split(" ")[0] || "Customer";
   const name = opening.fields.fullName.value || "Customer";
   const amountValue = parseMoney(amount);
-
+  const shownAddress = formatAddress(street, unit, city, state, zip);
+  const fromCall = {
+    name: matchesCall(callSnapshot.fullName, opening.fields.fullName.value),
+    product: matchesCall(callSnapshot.productId, opening.fields.productId.value),
+    phone: matchesCall(callSnapshot.phone, opening.fields.phone.value),
+    email: matchesCall(callSnapshot.email, opening.fields.email.value),
+    birthDate: matchesCall(callSnapshot.birthDate, opening.fields.birthDate.value),
+    address: matchesCall(callSnapshot.address, shownAddress),
+    amount: Boolean(callSnapshot.transferAmount) && sameMoney(callSnapshot.transferAmount, amount),
+  };
   function openApplication() {
     markOpeningReviewing(id);
-    if (opening.status === "opened") {
-      setScreen("submitted");
-      return;
-    }
-    go("ownership-loading");
-    window.setTimeout(() => go("ownership"), 1500);
+    go("review");
   }
 
   function go(next: Screen) {
@@ -149,6 +196,57 @@ function CustomerApplicationFlow({ opening }: { opening: AccountOpening }) {
   function beginBankDetails() {
     go("bank-details-loading");
     window.setTimeout(() => go("initial-deposit"), 1500);
+  }
+
+  function beginOwnerEdit() {
+    const parts = splitName(opening.fields.fullName.value);
+    setOwnerDraft({
+      ...parts,
+      productId: opening.fields.productId.value,
+      phone: opening.fields.phone.value,
+      email: opening.fields.email.value,
+      birthDate: opening.fields.birthDate.value,
+      street,
+      unit,
+      city,
+      state,
+      zip,
+      ssn,
+      idType,
+      idNumber,
+      idState,
+      issueDate,
+      expirationDate,
+      uploadedFile,
+      employer,
+      occupation,
+    });
+  }
+
+  function saveOwnerEdit() {
+    if (!ownerDraft) return;
+    const fullName = [ownerDraft.first, ownerDraft.middle, ownerDraft.last, ownerDraft.suffix].filter(Boolean).join(" ");
+    updateOpeningField(id, "fullName", fullName);
+    updateOpeningField(id, "phone", ownerDraft.phone);
+    updateOpeningField(id, "email", ownerDraft.email);
+    updateOpeningField(id, "birthDate", ownerDraft.birthDate);
+    updateOpeningField(id, "address", formatAddress(ownerDraft.street, ownerDraft.unit, ownerDraft.city, ownerDraft.state, ownerDraft.zip));
+    updateOpeningField(id, "productId", ownerDraft.productId);
+    setStreet(ownerDraft.street);
+    setUnit(ownerDraft.unit);
+    setCity(ownerDraft.city);
+    setState(ownerDraft.state);
+    setZip(ownerDraft.zip);
+    setSsn(ownerDraft.ssn);
+    setIdType(ownerDraft.idType);
+    setIdNumber(ownerDraft.idNumber);
+    setIdState(ownerDraft.idState);
+    setIssueDate(ownerDraft.issueDate);
+    setExpirationDate(ownerDraft.expirationDate);
+    setUploadedFile(ownerDraft.uploadedFile);
+    setEmployer(ownerDraft.employer);
+    setOccupation(ownerDraft.occupation);
+    setOwnerDraft(null);
   }
 
   function submitApplication() {
@@ -171,9 +269,17 @@ function CustomerApplicationFlow({ opening }: { opening: AccountOpening }) {
         email={opening.fields.email.value}
         product={product?.name || "new account"}
         amount={agreedAmount}
-        href={applicationLink(opening.id)}
-        onOpen={openApplication}
+        applyHref={`/account-opening/customer/${opening.id}?apply=1`}
       />
+    );
+  }
+
+  if (screen === "login") {
+    return (
+      <div className={loginPage.page}>
+        <LoginFlow showBadge={false} onAuthenticated={openApplication} />
+        <FooterDisclaimer />
+      </div>
     );
   }
 
@@ -193,18 +299,21 @@ function CustomerApplicationFlow({ opening }: { opening: AccountOpening }) {
   if (screen === "submitted") {
     const openedAmount = parseMoney(opening.fields.transferAmount.value);
     return (
-      <StandaloneLayout name={name}>
+      <StandaloneLayout name={name} complete>
         <div className="customer-submitted">
-          <div className="customer-submitted-mark">✓</div>
-          <h1>Your account is open</h1>
+          <OpenAccountMark />
+          <h1>Your account is now open</h1>
           <p>
-            Thank you for submitting your application. Your {product?.name || "new account"} is ready to use.
+            Your new <strong>{product?.name || "account"}</strong> account has been opened.
           </p>
           <div className="customer-review-card customer-submitted-card">
             <ReviewRow label="Account number" value={opening.newAccountNumber || "Opening…"} />
             <ReviewRow label="Product" value={product?.name || "—"} />
             <ReviewRow label="Initial deposit" value={openedAmount == null ? "—" : money(openedAmount)} />
           </div>
+          <button type="button" className="customer-btn customer-btn-primary customer-btn-large customer-submitted-action" onClick={() => completeOpening(id)}>
+            Go to Application Overview
+          </button>
         </div>
       </StandaloneLayout>
     );
@@ -720,17 +829,63 @@ function CustomerApplicationFlow({ opening }: { opening: AccountOpening }) {
               title="Does everything look good?"
               subtitle="Please note your account deposits will not be processed until account gets approved."
             />
-            <ReviewSection title="Primary Owner" action="Edit" onAction={() => go("address")}>
-              <ReviewRow label="Name" value={name} />
-              <ReviewRow label="Account Type" value={product?.name || "—"} />
-              <ReviewRow label="Phone Number" value={opening.fields.phone.value} />
-              <ReviewRow label="Email Address" value={opening.fields.email.value} />
-              <ReviewRow label="Date of Birth" value={opening.fields.birthDate.value} />
-              <ReviewRow label="Primary Address" value={[street, unit, `${city}, ${state} ${zip}`].filter(Boolean).join("\n")} />
-              <ReviewRow label="Social Security" value={`*** - ** - ${ssn.slice(-4)}`} />
-              <ReviewRow label="Politically Exposed" value={pep === "yes" ? "Yes" : "No"} />
-              <ReviewRow label="Government ID" value={`${idType}: #${idNumber}\nIssued: ${issueDate}\nExpires: ${expirationDate}`} />
-              <ReviewRow label="Job Status" value={`${occupation} at ${employer}`} />
+            <ReviewSection
+              title="Primary Owner"
+              action={ownerDraft ? undefined : "Edit"}
+              onAction={beginOwnerEdit}
+              actions={
+                ownerDraft ? (
+                  <div className="customer-review-edit-actions">
+                    <button type="button" className="customer-btn customer-btn-secondary" onClick={() => setOwnerDraft(null)}>
+                      Cancel
+                    </button>
+                    <button type="button" className="customer-btn customer-btn-primary" onClick={saveOwnerEdit}>
+                      Save Changes
+                    </button>
+                  </div>
+                ) : null
+              }
+            >
+              {ownerDraft ? (
+                <OwnerEditor
+                  draft={ownerDraft}
+                  fromCall={{
+                    name: matchesCall(callSnapshot.fullName, [ownerDraft.first, ownerDraft.middle, ownerDraft.last, ownerDraft.suffix].filter(Boolean).join(" ")),
+                    product: matchesCall(callSnapshot.productId, ownerDraft.productId),
+                    phone: matchesCall(callSnapshot.phone, ownerDraft.phone),
+                    email: matchesCall(callSnapshot.email, ownerDraft.email),
+                    birthDate: matchesCall(callSnapshot.birthDate, ownerDraft.birthDate),
+                    address: matchesCall(
+                      callSnapshot.address,
+                      formatAddress(ownerDraft.street, ownerDraft.unit, ownerDraft.city, ownerDraft.state, ownerDraft.zip),
+                    ),
+                  }}
+                  onChange={(partial) => setOwnerDraft((current) => (current ? { ...current, ...partial } : current))}
+                />
+              ) : (
+                <>
+                  <ReviewRow label="Name" value={name} fromCall={fromCall.name} />
+                  <ReviewRow label="Account Type" value={product?.name || "—"} fromCall={fromCall.product} />
+                  <ReviewRow label="Phone Number" value={opening.fields.phone.value} fromCall={fromCall.phone} />
+                  <ReviewRow label="Email Address" value={opening.fields.email.value} fromCall={fromCall.email} />
+                  <ReviewRow label="Date of Birth" value={opening.fields.birthDate.value} fromCall={fromCall.birthDate} />
+                  <ReviewRow
+                    label="Primary Address"
+                    value={[street, unit, `${city}, ${state} ${zip}`.trim()].filter(Boolean).join("\n")}
+                    fromCall={fromCall.address}
+                  />
+                  <ReviewRow label="Social Security" value={ssn ? `*** - ** - ${ssn.slice(-4)}` : ""} />
+                  <ReviewRow
+                    label="Government ID"
+                    value={
+                      idType
+                        ? `${idType}: #${idNumber}\nIssued: ${issueDate}\nExpires: ${expirationDate}${uploadedFile ? `\n${uploadedFile}` : ""}`
+                        : ""
+                    }
+                  />
+                  <ReviewRow label="Job Status" value={occupation || employer ? `${occupation} at ${employer}` : ""} />
+                </>
+              )}
             </ReviewSection>
             {ownership === "Joint" ? (
               <ReviewSection title="Joint Owner(s)">
@@ -744,7 +899,7 @@ function CustomerApplicationFlow({ opening }: { opening: AccountOpening }) {
               </ReviewSection>
             ) : null}
             <ReviewSection title="Initial Deposit Requests" action="Change Funding Information" onAction={() => go("initial-deposit")}>
-              <ReviewRow label="Funding Amount" value={amountValue == null ? "—" : money(amountValue)} />
+              <ReviewRow label="Funding Amount" value={amountValue == null ? "—" : money(amountValue)} fromCall={fromCall.amount} />
               <ReviewRow
                 label="Funding Source"
                 value={
@@ -758,9 +913,9 @@ function CustomerApplicationFlow({ opening }: { opening: AccountOpening }) {
               <h2>Legal Agreements</h2>
               <div className="customer-review-card customer-legal-card">
                 <p>
-                  Finish your application by carefully reviewing the following legal information. You may open each
-                  document to review it. By clicking &quot;Accept &amp; Close&quot; you are attesting that you have read and
-                  agree to that agreement.
+                  Finish your application by carefully reviewing the following legal information. Please open documents
+                  in a new tab to print or save for your records. By clicking Agree &amp; Submit you are attesting that
+                  you have read and agree to each agreement.
                 </p>
                 <div className="customer-disclosure-links">
                   {disclosures.map((item) => (
@@ -770,20 +925,24 @@ function CustomerApplicationFlow({ opening }: { opening: AccountOpening }) {
                       className={accepted.includes(item.id) ? "accepted" : ""}
                       onClick={() => setActiveDisclosure(item.id)}
                     >
-                      {item.title} {accepted.includes(item.id) ? "✓" : ""}
+                      <i>{accepted.includes(item.id) ? "✓" : ""}</i>
+                      {item.title}
                     </button>
                   ))}
                 </div>
-                <p>I also certify under the penalty of perjury that:</p>
-                <ul>
-                  <li>I am a U.S. Citizen or Resident Alien and the information in this application is correct.</li>
-                  <li>I authorize the initial funding transfer identified above.</li>
-                  <li>By submitting, I agree to the Account Terms and Conditions and Disclosures.</li>
-                </ul>
-                <Consent checked={electronicConsent} onClick={() => setElectronicConsent((current) => !current)}>
-                  I consent to the electronic delivery of the Account Agreements and Disclosures.
+                <div>
+                  <p>I also certify under the penalty of perjury that:</p>
+                  <ul>
+                    <li>I can confirm that I am a U.S. Citizen or Resident Alien, that the information I provide in this application is correct, and that I am not subject to backup withholding by the IRS.</li>
+                    <li>Consumer ACH Authorization and Agreement: As an authorized signer on the financial institution account identified below, I authorize SouthEast Bank to perform a single EFT withdrawal from my account for the initial funding into my SouthEast Bank account. I understand the funds will be deposited into the account(s) I have specified. I understand and agree that if the EFT withdrawal from my account is returned unpaid for any reason, SouthEast Bank may charge my account a fee.</li>
+                    <li>By submitting your application, you agree to the Account Terms and Conditions and Disclosures.</li>
+                    <li>I have read and agree to the site terms and disclosures.</li>
+                  </ul>
+                </div>
+                <Consent box checked={electronicConsent} onClick={() => setElectronicConsent((current) => !current)}>
+                  I consent to the electronic delivery of the Account Agreements and Disclosures. I confirm that I am able to access the information in an electronic form.
                 </Consent>
-                <Consent checked={agreementConsent} onClick={() => setAgreementConsent((current) => !current)}>
+                <Consent box checked={agreementConsent} onClick={() => setAgreementConsent((current) => !current)}>
                   I have read and agree to the statements, agreements, and disclosures above.
                 </Consent>
               </div>
@@ -799,7 +958,7 @@ function CustomerApplicationFlow({ opening }: { opening: AccountOpening }) {
                 }
                 onClick={submitApplication}
               >
-                Submit my application
+                Submit Application
               </button>
             </div>
           </section>
@@ -853,74 +1012,127 @@ function EmailPreview({
   email,
   product,
   amount,
-  href,
-  onOpen,
+  applyHref,
 }: {
   name: string;
   email: string;
   product: string;
   amount: number | null;
-  href: string;
-  onOpen: () => void;
+  applyHref: string;
 }) {
   return (
-    <div className="customer-email-shell">
-      <header>
-        <strong>Mail</strong>
-        <span>{email}</span>
+    <div className={`customer-gmail ${gmailFont.className}`}>
+      <header className="customer-gmail-top">
+        <button type="button" aria-label="Main menu"><MailIcon name="menu" /></button>
+        <div className="customer-gmail-logo">
+          <Image src="/brand/gmail-logo.png" alt="Gmail" width={109} height={40} priority />
+        </div>
+        <div className="customer-gmail-search"><MailIcon name="search" /> Search mail</div>
+        <div className="customer-gmail-tools">
+          <button type="button" aria-label="Support"><MailIcon name="help" /></button>
+          <button type="button" aria-label="Settings"><MailIcon name="settings" /></button>
+          <button type="button" aria-label="Google apps"><MailIcon name="apps" /></button>
+          <span title={email}>{name.split(" ")[0]?.[0] || "C"}</span>
+        </div>
       </header>
-      <div className="customer-email-layout">
+      <div className="customer-gmail-layout">
         <aside>
-          <button type="button">Compose</button>
-          <strong>Inbox <span>1</span></strong>
-          <span>Starred</span>
-          <span>Sent</span>
-          <span>Drafts</span>
+          <button type="button" className="customer-gmail-compose"><MailIcon name="compose" /> Compose</button>
+          <nav>
+            <strong><MailIcon name="inbox" /> Inbox <em>1</em></strong>
+            <span><MailIcon name="star" /> Starred</span>
+            <span><MailIcon name="snooze" /> Snoozed</span>
+            <span><MailIcon name="send" /> Sent</span>
+            <span><MailIcon name="draft" /> Drafts <em>1</em></span>
+            <span><MailIcon name="spam" /> Spam <em>3</em></span>
+            <span><MailIcon name="trash" /> Trash</span>
+          </nav>
         </aside>
         <main>
-          <div className="customer-email-toolbar">‹ Inbox</div>
-          <article className="customer-email-message">
-            <h1>Your SouthEast Bank application is ready</h1>
-            <div className="customer-email-sender">
-              <SebMark />
+          <div className="customer-gmail-toolbar">
+            <div className="customer-gmail-toolbar-actions">
+              <button type="button" aria-label="Back to inbox"><MailIcon name="back" /></button>
+              <i />
+              <button type="button" aria-label="Archive"><MailIcon name="archive" /></button>
+              <button type="button" aria-label="Report spam"><MailIcon name="spam" /></button>
+              <button type="button" aria-label="Delete"><MailIcon name="trash" /></button>
+              <i />
+              <button type="button" aria-label="Mark as unread"><MailIcon name="unread" /></button>
+              <button type="button" aria-label="Snooze"><MailIcon name="snooze" /></button>
+              <button type="button" aria-label="Add to tasks"><MailIcon name="tasks" /></button>
+              <button type="button" aria-label="Move to"><MailIcon name="move" /></button>
+              <button type="button" aria-label="Labels"><MailIcon name="label" /></button>
+              <button type="button" aria-label="More"><MailIcon name="more" /></button>
+            </div>
+            <div className="customer-gmail-pagination">
+              <span>1–1 of 1</span>
+              <button type="button" aria-label="Newer"><MailIcon name="back" /></button>
+              <button type="button" aria-label="Older"><MailIcon name="forward" /></button>
+            </div>
+          </div>
+          <article className="customer-gmail-message">
+            <div className="customer-gmail-subject">
+              <h1>Your SouthEast Bank application is ready <span>Inbox <i>×</i></span></h1>
               <div>
-                <strong>SouthEast Bank</strong>
-                <span>applications@southeastbank.com</span>
+                <button type="button" aria-label="Print"><MailIcon name="print" /></button>
+                <button type="button" aria-label="Open in new window"><MailIcon name="open" /></button>
               </div>
             </div>
-            <div className="customer-email-body">
-              <Image src="/dashboard/logo.png" alt="SouthEast Bank" width={224} height={60} />
+            <div className="customer-gmail-sender">
+              <span className="customer-gmail-avatar">
+                <Image src="/brand/seb-avatar.png" alt="SouthEast Bank" width={40} height={40} />
+              </span>
+              <div>
+                <p><strong>SouthEast Bank</strong> <span>&lt;applications@southeastbank.com&gt;</span></p>
+                <small>to {email}</small>
+              </div>
+              <time>9:14 AM</time>
+              <button type="button" aria-label="Star"><MailIcon name="star" /></button>
+              <button type="button" aria-label="Reply"><MailIcon name="reply" /></button>
+              <button type="button" aria-label="More"><MailIcon name="more" /></button>
+            </div>
+            <div className="customer-gmail-letter">
               <p>Hi {name},</p>
               <p>
                 Thank you for speaking with Kate. We prepared your {product} application using the information you
                 confirmed on the call.
               </p>
-              <div className="customer-email-summary">
+              <div className="customer-gmail-summary">
                 <span>Product</span>
                 <strong>{product}</strong>
                 <span>Amount to open</span>
                 <strong>{amount == null ? "Confirm in application" : money(amount)}</strong>
               </div>
               <p>Review the application, complete the remaining details, confirm the amount, and sign your disclosures.</p>
-              <button type="button" className="customer-email-cta" onClick={onOpen}>
+              <a className="customer-gmail-cta" href={applyHref} target="_blank" rel="noopener noreferrer">
                 Review and submit application
-              </button>
-              <p className="customer-email-link-label">Or open this secure application link:</p>
-              <a
-                href={href}
-                onClick={(event) => {
-                  event.preventDefault();
-                  onOpen();
-                }}
-              >
-                {href}
               </a>
-              <p className="customer-email-signature">SouthEast Bank<br />Customer Care</p>
+              <p className="customer-gmail-signature">SouthEast Bank<br />Customer Care</p>
+            </div>
+            <div className="customer-gmail-replies">
+              <button type="button"><MailIcon name="reply" /> Reply</button>
+              <button type="button"><MailIcon name="forward" /> Forward</button>
             </div>
           </article>
         </main>
+        <div className="customer-gmail-rail">
+          <button type="button" className="customer-gmail-rail-calendar" aria-label="Calendar"><MailIcon name="calendar" /></button>
+          <button type="button" className="customer-gmail-rail-keep" aria-label="Keep"><MailIcon name="keep" /></button>
+          <button type="button" className="customer-gmail-rail-tasks" aria-label="Tasks"><MailIcon name="tasks" /></button>
+          <button type="button" className="customer-gmail-rail-contacts" aria-label="Contacts"><MailIcon name="contacts" /></button>
+          <i />
+          <button type="button" aria-label="Get add-ons"><MailIcon name="plus" /></button>
+        </div>
       </div>
     </div>
+  );
+}
+
+function ChevronDown() {
+  return (
+    <svg className="customer-chevron" viewBox="0 0 16 16" aria-hidden="true">
+      <path d="M11.9393 5L7.99997 8.89995L4.06056 5L3 6.05004L7.99997 11L13 6.05004L11.9393 5Z" />
+    </svg>
   );
 }
 
@@ -929,7 +1141,7 @@ function CustomerHeader({ name, progress }: { name: string; progress: number }) 
     <header className="customer-app-header">
       <Image src="/dashboard/logo.png" alt="SouthEast Bank" width={224} height={60} priority />
       <button type="button">
-        {name} <span>⌄</span>
+        {name} <ChevronDown />
       </button>
       <div className="customer-progress">
         <span style={{ width: `${progress}%` }} />
@@ -955,7 +1167,7 @@ function SectionNav({
   return (
     <div className="customer-section-nav">
       <button type="button" onClick={onToggle}>
-        {current} of 5 — {SECTION_LABELS[current - 1]} <span>⌄</span>
+        {current} of 5 — {SECTION_LABELS[current - 1]} <ChevronDown />
       </button>
       {open ? (
         <div>
@@ -1126,36 +1338,148 @@ function ReviewSection({
   title,
   action,
   onAction,
+  actions,
   children,
 }: {
   title: string;
   action?: string;
   onAction?: () => void;
+  actions?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
     <div className="customer-review-section">
       <div className="customer-review-section-header">
         <h2>{title}</h2>
-        {action ? <button type="button" className="customer-btn customer-btn-secondary" onClick={onAction}>{action}</button> : null}
+        {actions || (action ? <button type="button" className="customer-btn customer-btn-secondary" onClick={onAction}>{action}</button> : null)}
       </div>
       <div className="customer-review-card">{children}</div>
     </div>
   );
 }
 
-function ReviewRow({ label, value }: { label: string; value: string }) {
+function ReviewRow({ label, value, fromCall = false }: { label: string; value: string; fromCall?: boolean }) {
   return (
-    <div className="customer-review-row">
-      <span>{label}</span>
+    <div className={`customer-review-row${fromCall ? " from-call" : ""}`}>
+      <span>{label}{fromCall ? <em>From your call</em> : null}</span>
       <strong>{value || "—"}</strong>
     </div>
   );
 }
 
-function Consent({ checked, onClick, children }: { checked: boolean; onClick: () => void; children: React.ReactNode }) {
+function CallFields({ active, children }: { active: boolean; children: React.ReactNode }) {
   return (
-    <button type="button" className={`customer-consent ${checked ? "checked" : ""}`} onClick={onClick}>
+    <div className={active ? "customer-call-field" : undefined}>
+      {children}
+      {active ? <em>From your call</em> : null}
+    </div>
+  );
+}
+
+function OwnerEditor({
+  draft,
+  fromCall,
+  onChange,
+}: {
+  draft: OwnerDraft;
+  fromCall: { name: boolean; product: boolean; phone: boolean; email: boolean; birthDate: boolean; address: boolean };
+  onChange: (partial: Partial<OwnerDraft>) => void;
+}) {
+  return (
+    <div className="customer-form customer-owner-editor">
+      <CallFields active={fromCall.name}>
+        <div className="customer-form-row customer-form-row-four">
+          <AppInput label="First Name" value={draft.first} onChange={(value) => onChange({ first: value })} />
+          <AppInput label="Middle Initial" value={draft.middle} onChange={(value) => onChange({ middle: value })} />
+          <AppInput label="Last Name" value={draft.last} onChange={(value) => onChange({ last: value })} />
+          <AppInput label="Suffix" value={draft.suffix} onChange={(value) => onChange({ suffix: value })} />
+        </div>
+      </CallFields>
+      <CallFields active={fromCall.product}>
+        <AppSelect
+          label="Account Type"
+          value={productById(draft.productId)?.name || ""}
+          onChange={(value) => onChange({ productId: PRODUCTS.find((item) => item.name === value)?.id || draft.productId })}
+          options={PRODUCTS.map((item) => item.name)}
+        />
+      </CallFields>
+      <CallFields active={fromCall.phone}>
+        <AppInput label="Phone Number" value={draft.phone} onChange={(value) => onChange({ phone: value })} />
+      </CallFields>
+      <CallFields active={fromCall.email}>
+        <AppInput label="Email Address" value={draft.email} onChange={(value) => onChange({ email: value })} />
+      </CallFields>
+      <CallFields active={fromCall.birthDate}>
+        <AppInput label="Date of Birth" value={draft.birthDate} onChange={(value) => onChange({ birthDate: value })} />
+      </CallFields>
+      <CallFields active={fromCall.address}>
+        <div className="customer-form">
+          <AppInput label="Primary Street Address" value={draft.street} onChange={(value) => onChange({ street: value })} />
+          <AppInput label="Unit (Optional)" value={draft.unit} onChange={(value) => onChange({ unit: value })} />
+          <div className="customer-form-row">
+            <AppInput label="City" value={draft.city} onChange={(value) => onChange({ city: value })} />
+            <AppSelect label="State" value={draft.state} onChange={(value) => onChange({ state: value })} options={STATES} />
+          </div>
+          <AppInput label="Zip Code" value={draft.zip} onChange={(value) => onChange({ zip: value })} />
+        </div>
+      </CallFields>
+      <AppInput label="Social Security Number" value={draft.ssn} onChange={(value) => onChange({ ssn: formatSsn(value) })} />
+      <div className="customer-form-row">
+        <AppSelect
+          label="ID Type"
+          value={draft.idType}
+          onChange={(value) => onChange({ idType: value })}
+          options={["Driver's License", "Passport", "State ID"]}
+        />
+        <AppInput label="ID Number" value={draft.idNumber} onChange={(value) => onChange({ idNumber: value })} />
+      </div>
+      <div className="customer-form-row customer-form-row-three">
+        <AppSelect label="Issuing State" value={draft.idState} onChange={(value) => onChange({ idState: value })} options={STATES} />
+        <AppInput label="Issue Date" value={draft.issueDate} onChange={(value) => onChange({ issueDate: value })} />
+        <AppInput label="Expiration Date" value={draft.expirationDate} onChange={(value) => onChange({ expirationDate: value })} />
+      </div>
+      <div className="customer-upload customer-upload-compact">
+        {draft.uploadedFile ? (
+          <div className="customer-upload-file">
+            <DocumentIcon />
+            <div>
+              <strong>{draft.uploadedFile}</strong>
+              <span>Completed</span>
+            </div>
+            <button type="button" aria-label="Remove file" onClick={() => onChange({ uploadedFile: "" })}>×</button>
+          </div>
+        ) : (
+          <>
+            <UploadIcon />
+            <strong>Choose a file or drag & drop it here</strong>
+            <span>JPEG, PNG, and PDF formats up to 10MB</span>
+            <button type="button" className="customer-btn customer-btn-secondary" onClick={() => onChange({ uploadedFile: "drivers-license.pdf" })}>
+              Browse files
+            </button>
+          </>
+        )}
+      </div>
+      <div className="customer-form-row">
+        <AppInput label="Employer" value={draft.employer} onChange={(value) => onChange({ employer: value })} />
+        <AppInput label="Occupation" value={draft.occupation} onChange={(value) => onChange({ occupation: value })} />
+      </div>
+    </div>
+  );
+}
+
+function Consent({
+  checked,
+  onClick,
+  box = false,
+  children,
+}: {
+  checked: boolean;
+  onClick: () => void;
+  box?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <button type="button" className={`customer-consent${box ? " customer-consent-box" : ""} ${checked ? "checked" : ""}`} onClick={onClick}>
       <span>{checked ? "✓" : ""}</span> {children}
     </button>
   );
@@ -1209,14 +1533,54 @@ function CustomerFooter() {
   );
 }
 
-function StandaloneLayout({ name, children }: { name: string; children: React.ReactNode }) {
+function OpenAccountMark() {
   return (
-    <div className="customer-application">
+    <div className="customer-submitted-art" aria-hidden="true">
+      <span className="flag-slot flag-back">
+        <img src="/brand/open-flag-blue.svg" alt="" />
+      </span>
+      <span className="flag-slot flag-front">
+        <img src="/brand/open-flag-white.svg" alt="" />
+      </span>
+      <img className="check-fill" src="/brand/open-check-fill.svg" alt="" />
+      <img className="check-ring" src="/brand/open-check-ring.svg" alt="" />
+      <img className="check-mark" src="/brand/open-check-mark.svg" alt="" />
+    </div>
+  );
+}
+
+function StandaloneLayout({ name, children, complete = false }: { name: string; children: React.ReactNode; complete?: boolean }) {
+  return (
+    <div className={`customer-application${complete ? " customer-application-complete" : ""}`}>
       <CustomerHeader name={name} progress={100} />
       <main className="customer-page-content">{children}</main>
       <CustomerFooter />
     </div>
   );
+}
+
+function splitName(full: string) {
+  const suffixes = new Set(["Jr", "Jr.", "Sr", "Sr.", "II", "III", "IV"]);
+  const parts = full.trim().split(/\s+/).filter(Boolean);
+  let suffix = "";
+  if (parts.length > 2 && suffixes.has(parts[parts.length - 1])) suffix = parts.pop() || "";
+  const first = parts.shift() || "";
+  const last = parts.pop() || "";
+  return { first, middle: parts.join(" "), last, suffix };
+}
+
+function formatAddress(street: string, unit: string, city: string, state: string, zip: string) {
+  return [street, unit, city, `${state} ${zip}`.trim()].map((part) => part.trim()).filter(Boolean).join(", ");
+}
+
+function matchesCall(original: string, current: string) {
+  return Boolean(original.trim()) && original.trim() === current.trim();
+}
+
+function sameMoney(original: string, current: string) {
+  const left = parseMoney(original);
+  const right = parseMoney(current);
+  return left != null && right != null && left === right;
 }
 
 function parseAddress(address: string) {
@@ -1271,4 +1635,44 @@ function PeopleIcon() {
 
 function SebMark() {
   return <span className="customer-seb-mark"><b>S</b><i>E</i><em>B</em></span>;
+}
+
+function MailIcon({ name }: { name: string }) {
+  const paths: Record<string, string> = {
+    back: "M14 6 8 12l6 6",
+    forward: "M10 6l6 6-6 6",
+    refresh: "M19 12a7 7 0 1 1-2-4.9M19 4v4h-4",
+    lock: "M8 11V8a4 4 0 0 1 8 0v3M7 11h10v8H7z",
+    menu: "M4 7h16M4 12h16M4 17h16",
+    search: "M11 18a7 7 0 1 1 0-14 7 7 0 0 1 0 14ZM16 16l4 4",
+    help: "M12 18h.01M9.5 9a2.5 2.5 0 1 1 3.2 2.4c-.7.3-1.2.9-1.2 1.6V14",
+    settings: "M12 15.5A3.5 3.5 0 1 0 12 8.5a3.5 3.5 0 0 0 0 7ZM4 12h2M18 12h2M12 4v2M12 18v2M6.3 6.3l1.4 1.4M16.3 16.3l1.4 1.4M17.7 6.3l-1.4 1.4M7.7 16.3l-1.4 1.4",
+    apps: "M6 6h2v2H6zM11 6h2v2h-2zM16 6h2v2h-2zM6 11h2v2H6zM11 11h2v2h-2zM16 11h2v2h-2zM6 16h2v2H6zM11 16h2v2h-2zM16 16h2v2h-2z",
+    compose: "M12 5v14M5 12h14",
+    inbox: "M4 13h4l2 3h4l2-3h4v6H4zM4 13V6h16v7",
+    star: "m12 4 2.2 4.6 5 .7-3.6 3.5.9 5.1L12 15.8 7.5 18l.9-5.1L4.8 9.3l5-.7L12 4Z",
+    snooze: "M12 20a7 7 0 1 1 0-14 7 7 0 0 1 0 14ZM12 8v5l3 2",
+    send: "m5 12 14-7-4 14-3-5-7-2Z",
+    draft: "M7 4h7l5 5v11H7zM14 4v5h5",
+    spam: "M12 4 3 19h18L12 4ZM12 10v4M12 16h.01",
+    trash: "M5 8h14M9 8V5h6v3M8 8l1 12h6l1-12",
+    unread: "M4 7h16v10H4zM4 7l8 6 8-6",
+    archive: "M4 8h16v3H4zM6 11v8h12v-8",
+    tasks: "M5 6h2l1 2 3-4M13 7h6M5 12h2l1 2 3-4M13 13h6M5 18h2l1 2 3-4M13 19h6",
+    move: "M4 6h16v13H4zM4 6l3-3h5l2 3",
+    label: "M4 6h10l6 6-8 8-8-8V6ZM8 10h.01",
+    calendar: "M5 5h14v14H5zM5 9h14M8 3v4M16 3v4M9 13h2M13 13h2M9 16h2M13 16h2",
+    keep: "M8 4h8l2 7-6 8-6-8 2-7ZM9 19v2h6v-2",
+    contacts: "M5 5h14v14H5zM12 12a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM7 17c.7-2.4 2.3-4 5-4s4.3 1.6 5 4",
+    plus: "M12 5v14M5 12h14",
+    print: "M7 8V4h10v4M7 16H5V10h14v6h-2M7 14h10v6H7z",
+    open: "M14 5h5v5M19 5l-8 8M10 6H5v13h13v-5",
+    reply: "M9 8 4 12l5 4M4 12h9a6 6 0 0 1 6 6",
+    more: "M6 12h.01M12 12h.01M18 12h.01",
+  };
+  return (
+    <svg className="customer-gmail-icon" viewBox="0 0 24 24" aria-hidden="true">
+      <path d={paths[name]} />
+    </svg>
+  );
 }

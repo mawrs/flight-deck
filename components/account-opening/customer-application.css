@@ -48,10 +48,17 @@
   padding: 8px 0;
   border: 0;
   background: transparent;
-  color: var(--ca-gray-dark);
+  color: #535459;
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
+}
+
+.customer-chevron {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+  fill: currentColor;
 }
 
 .customer-progress {
@@ -67,7 +74,7 @@
 .customer-progress > span {
   position: absolute;
   inset: 0 auto 0 0;
-  background: var(--ca-green);
+  background: var(--ca-blue);
   transition: width 0.4s ease;
 }
 
@@ -100,14 +107,18 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 5px 8px;
-  border: 1px solid var(--ca-gray-medium);
+  padding: 5px 9px;
+  border: 1px solid #888a8d;
   border-radius: 4px;
   background: var(--ca-white);
-  color: var(--ca-gray-dark);
+  color: #535459;
   font-size: 16px;
-  font-weight: 600;
+  font-weight: 400;
   cursor: pointer;
+}
+
+.customer-section-nav > button .customer-chevron {
+  fill: #272829;
 }
 
 .customer-section-nav > div {
@@ -326,6 +337,10 @@
 .customer-form-row-three {
   grid-template-columns: 1fr 1fr 1fr;
   gap: 8px;
+}
+
+.customer-form-row-four {
+  grid-template-columns: 1.3fr 1fr 1.3fr 0.7fr;
 }
 
 .customer-joint-owner-block {
@@ -946,17 +961,71 @@
   border-bottom: 0;
 }
 
+.customer-review-row.from-call {
+  margin-inline: -8px;
+  padding: 8px;
+  border-radius: 4px;
+  background: #fff6cc;
+}
+
 .customer-review-row span {
   color: var(--ca-gray-dark);
   font-size: 14px;
 }
 
+.customer-review-row span em,
+.customer-call-field > em {
+  margin-left: 8px;
+  color: #8a6a00;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 600;
+}
+
 .customer-review-row strong {
   color: var(--ca-black);
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 700;
   line-height: 1.42;
   white-space: pre-line;
+}
+
+.customer-review-edit-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.customer-review-section-header .customer-btn {
+  padding: 8px 16px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.customer-review-section-header .customer-btn-secondary {
+  border-color: #535459;
+  color: #535459;
+}
+
+.customer-owner-editor {
+  gap: 12px;
+}
+
+.customer-call-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  border-radius: 4px;
+  background: #fff6cc;
+}
+
+.customer-call-field > em {
+  margin-left: 0;
+}
+
+.customer-upload-compact {
+  min-height: 160px;
+  padding: 20px;
 }
 
 .customer-legal-card {
@@ -980,18 +1049,36 @@
 }
 
 .customer-disclosure-links button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   border: 0;
   background: transparent;
-  color: var(--ca-blue);
+  color: var(--ca-black);
   font-size: 16px;
-  font-weight: 600;
+  font-weight: 700;
   text-align: left;
   text-decoration: underline;
   cursor: pointer;
 }
 
-.customer-disclosure-links button.accepted {
-  color: var(--ca-success);
+.customer-disclosure-links button i {
+  display: inline-flex;
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--ca-blue);
+  border-radius: 4px;
+  color: var(--ca-white);
+  font-style: normal;
+  font-size: 14px;
+  text-decoration: none;
+}
+
+.customer-disclosure-links button.accepted i {
+  background: var(--ca-blue);
 }
 
 .customer-consent {
@@ -1030,6 +1117,28 @@
   border-color: var(--ca-success);
   background: var(--ca-success);
   color: var(--ca-white);
+}
+
+.customer-consent-box {
+  border-width: 2px;
+  border-radius: 4px;
+}
+
+.customer-consent-box > span {
+  width: 22px;
+  height: 22px;
+  border: 2px solid var(--ca-blue);
+  border-radius: 4px;
+}
+
+.customer-consent-box.checked {
+  border-color: var(--ca-blue);
+  background: var(--ca-white);
+}
+
+.customer-consent-box.checked > span {
+  border-color: var(--ca-blue);
+  background: var(--ca-blue);
 }
 
 .customer-submit {
@@ -1122,9 +1231,19 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 16px;
-  padding-top: 64px;
+  gap: 32px;
+  padding-top: 8px;
   text-align: center;
+}
+
+.customer-application-complete .customer-progress {
+  height: 6px;
+  background: var(--ca-blue);
+}
+
+.customer-application-complete .customer-progress > span,
+.customer-application-complete .customer-progress > i {
+  display: none;
 }
 
 .customer-shimmer {
@@ -1159,33 +1278,91 @@
   to { background-position: 800px 0; }
 }
 
-.customer-submitted-mark {
+.customer-submitted-art {
+  position: relative;
+  width: 220px;
+  height: 249px;
+}
+
+.customer-submitted-art img {
+  position: absolute;
+  display: block;
+  max-width: none;
+}
+
+.flag-slot {
+  position: absolute;
   display: flex;
-  width: 120px;
-  height: 120px;
+  width: 65.11%;
+  height: 77.66%;
   align-items: center;
   justify-content: center;
-  border-radius: 50%;
-  background: var(--ca-success-bg);
-  color: var(--ca-success);
-  font-size: 56px;
+}
+
+.flag-back {
+  top: 0;
+  left: 0;
+}
+
+.flag-front {
+  top: 12.74%;
+  left: 20.51%;
+}
+
+.flag-slot img {
+  position: relative;
+  width: 82.07%;
+  height: 91.84%;
+  transform: rotate(-8.75deg);
+}
+
+.check-fill {
+  top: 65.84%;
+  left: 56.96%;
+  width: 37.62%;
+  height: 32.29%;
+}
+
+.check-ring {
+  top: 65.07%;
+  left: 59.37%;
+  width: 40.63%;
+  height: 34.89%;
+}
+
+.check-mark {
+  top: 76.11%;
+  left: 68.39%;
+  width: 23.19%;
+  height: 15.05%;
 }
 
 .customer-submitted h1 {
-  font-size: 32px;
+  max-width: 514px;
+  font-size: 42px;
   font-weight: 600;
+  line-height: 1.23;
 }
 
 .customer-submitted > p {
   max-width: 560px;
-  color: var(--ca-gray-dark);
-  line-height: 1.5;
+  color: #535459;
+  font-size: 16px;
+  line-height: 1.4;
+}
+
+.customer-submitted > p strong {
+  color: #535459;
+  font-weight: 700;
 }
 
 .customer-submitted-card {
   width: 100%;
-  margin-top: 24px;
   text-align: left;
+}
+
+.customer-submitted-action {
+  width: 100%;
 }
 
 .customer-app-footer {
@@ -1216,143 +1393,307 @@
   background: var(--ca-gray-light);
 }
 
-.customer-email-shell {
+.customer-gmail {
   min-height: 100vh;
-  background: #f6f8fc;
-  color: #202124;
-  font-family: Arial, sans-serif;
-}
-
-.customer-email-shell > header {
-  display: flex;
-  height: 64px;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 28px;
-  border-bottom: 1px solid #e0e0e0;
-  background: #fff;
-}
-
-.customer-email-shell > header strong {
-  color: #4b5563;
-  font-size: 22px;
-}
-
-.customer-email-shell > header span {
-  color: #5f6368;
-  font-size: 14px;
-}
-
-.customer-email-layout {
-  display: grid;
-  min-height: calc(100vh - 64px);
-  grid-template-columns: 240px 1fr;
-}
-
-.customer-email-layout aside {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  padding: 20px 12px;
+  background: #fff;
+  color: #202124;
 }
 
-.customer-email-layout aside > button {
-  width: 140px;
-  margin-bottom: 12px;
-  padding: 14px 22px;
+.customer-gmail-icon {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+}
+
+.customer-gmail-top {
+  display: grid;
+  height: 64px;
+  grid-template-columns: 40px 109px minmax(280px, 720px) minmax(160px, 1fr);
+  align-items: center;
+  gap: 16px;
+  padding: 8px 16px;
+}
+
+.customer-gmail-top > button,
+.customer-gmail-tools button,
+.customer-gmail-toolbar button,
+.customer-gmail-subject button,
+.customer-gmail-sender > button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  background: transparent;
+  color: #5f6368;
+  cursor: pointer;
+}
+
+.customer-gmail-logo {
+  display: flex;
+  width: 109px;
+  height: 40px;
+  flex: 0 0 109px;
+  align-items: center;
+}
+
+.customer-gmail-logo img {
+  width: 109px;
+  height: 40px;
+}
+
+.customer-gmail-search {
+  display: flex;
+  height: 46px;
+  align-items: center;
+  gap: 12px;
+  padding: 0 18px;
+  border-radius: 24px;
+  background: #eaf1fb;
+  color: #5f6368;
+  font-size: 16px;
+}
+
+.customer-gmail-tools {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.customer-gmail-tools > span {
+  display: flex;
+  width: 32px;
+  height: 32px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #1a73e8;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.customer-gmail-layout {
+  display: grid;
+  min-height: 0;
+  flex: 1;
+  grid-template-columns: 256px minmax(0, 1fr) 56px;
+}
+
+.customer-gmail-layout > aside {
+  padding: 8px 12px;
+}
+
+.customer-gmail-compose {
+  display: inline-flex;
+  height: 56px;
+  align-items: center;
+  gap: 12px;
+  margin: 8px 0 16px;
+  padding: 0 24px;
   border: 0;
   border-radius: 16px;
-  background: #c2e7ff;
-  color: #001d35;
-  text-align: left;
-}
-
-.customer-email-layout aside > span,
-.customer-email-layout aside > strong {
-  display: flex;
-  justify-content: space-between;
-  padding: 8px 16px;
-  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 1px 3px rgb(60 64 67 / 30%), 0 4px 8px 3px rgb(60 64 67 / 15%);
+  color: #444746;
   font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
 }
 
-.customer-email-layout aside > strong {
-  background: #d3e3fd;
+.customer-gmail-compose svg {
+  width: 22px;
+  height: 22px;
+  stroke: #1a73e8;
 }
 
-.customer-email-layout > main {
-  margin: 16px 16px 16px 0;
-  overflow: hidden;
-  border-radius: 16px;
+.customer-gmail-layout nav {
+  display: flex;
+  flex-direction: column;
+}
+
+.customer-gmail-layout nav > span,
+.customer-gmail-layout nav > strong {
+  display: grid;
+  height: 32px;
+  grid-template-columns: 20px 1fr auto;
+  align-items: center;
+  gap: 16px;
+  padding: 0 16px 0 12px;
+  border-radius: 0 16px 16px 0;
+  color: #202124;
+  font-size: 14px;
+  font-weight: 400;
+}
+
+.customer-gmail-layout nav > strong {
+  background: #fce8e6;
+  color: #d93025;
+  font-weight: 700;
+}
+
+.customer-gmail-layout nav em {
+  font-style: normal;
+  font-weight: 700;
+}
+
+.customer-gmail-layout > main {
+  min-width: 0;
   background: #fff;
 }
 
-.customer-email-toolbar {
-  padding: 16px 24px;
-  border-bottom: 1px solid #eee;
+.customer-gmail-toolbar {
+  display: flex;
+  height: 48px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 12px;
+  border-bottom: 1px solid #f1f3f4;
   color: #5f6368;
-  font-size: 14px;
+  font-size: 12px;
 }
 
-.customer-email-message {
-  max-width: 940px;
-  padding: 24px 40px 64px;
+.customer-gmail-toolbar-actions,
+.customer-gmail-pagination {
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
-.customer-email-message > h1 {
-  margin-bottom: 24px;
+.customer-gmail-toolbar-actions > i {
+  width: 1px;
+  height: 20px;
+  margin: 0 7px;
+  background: #dadce0;
+}
+
+.customer-gmail-pagination {
+  gap: 8px;
+}
+
+.customer-gmail-pagination > span {
+  margin-right: 8px;
+}
+
+.customer-gmail-pagination button {
+  padding: 4px;
+}
+
+.customer-gmail-pagination svg {
+  width: 17px;
+  height: 17px;
+}
+
+.customer-gmail-message {
+  padding: 16px 24px 32px 56px;
+}
+
+.customer-gmail-subject {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.customer-gmail-subject h1 {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
   font-size: 22px;
   font-weight: 400;
 }
 
-.customer-email-sender {
+.customer-gmail-subject h1 > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: #f1f3f4;
+  color: #3c4043;
+  font-size: 12px;
+}
+
+.customer-gmail-subject h1 i {
+  font-style: normal;
+}
+
+.customer-gmail-subject > div,
+.customer-gmail-sender {
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin-bottom: 28px;
+  gap: 8px;
 }
 
-.customer-email-sender > .customer-seb-mark {
+.customer-gmail-subject > div {
+  flex: 0 0 auto;
+}
+
+.customer-gmail-sender {
+  margin: 18px 0 24px;
+}
+
+.customer-gmail-avatar {
+  display: inline-flex;
   width: 40px;
   height: 40px;
+  margin-right: 8px;
+  flex: 0 0 40px;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border: 1px solid #e8eaed;
   border-radius: 50%;
-  background: #f1f3f4;
+  background: #fff;
 }
 
-.customer-email-sender div {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  font-size: 13px;
+.customer-gmail-avatar img {
+  width: 30px;
+  height: 30px;
+  object-fit: contain;
 }
 
-.customer-email-sender div span {
+.customer-gmail-sender > div {
+  min-width: 0;
+  flex: 1;
+}
+
+.customer-gmail-sender p {
+  font-size: 14px;
+}
+
+.customer-gmail-sender p span,
+.customer-gmail-sender small,
+.customer-gmail-sender time {
   color: #5f6368;
+  font-size: 12px;
 }
 
-.customer-email-body {
-  max-width: 620px;
-  margin-left: 52px;
-  padding: 32px;
-  border: 1px solid #e6e6e6;
-  border-radius: 8px;
-  color: #333;
+.customer-gmail-sender small {
+  display: block;
+}
+
+.customer-gmail-letter {
+  max-width: 680px;
+  margin-left: 56px;
+  color: #202124;
   font-family: var(--font-figtree), Figtree, sans-serif;
-  font-size: 15px;
+  font-size: 14px;
   line-height: 1.55;
 }
 
-.customer-email-body > img {
-  width: auto;
-  height: 42px;
-  margin-bottom: 24px;
-}
-
-.customer-email-body > p {
+.customer-gmail-letter > p {
   margin-bottom: 18px;
 }
 
-.customer-email-summary {
+.customer-gmail-summary {
   display: grid;
   grid-template-columns: 140px 1fr;
   gap: 8px 20px;
@@ -1362,37 +1703,85 @@
   background: #f5f5f5;
 }
 
-.customer-email-summary span {
+.customer-gmail-summary span {
   color: #666;
 }
 
-.customer-email-cta {
+.customer-gmail-cta {
   display: inline-flex;
-  margin: 6px 0 22px;
+  margin: 6px 0 8px;
   padding: 12px 20px;
   border: 0;
   border-radius: 4px;
   background: #1779ba;
   color: #fff;
   font-weight: 600;
+  text-decoration: none;
   cursor: pointer;
 }
 
-.customer-email-link-label {
-  margin-bottom: 4px !important;
-  color: #666;
-  font-size: 13px;
-}
-
-.customer-email-body a {
-  color: #1779ba;
-  text-decoration: underline;
-  overflow-wrap: anywhere;
-}
-
-.customer-email-signature {
+.customer-gmail-signature {
   margin-top: 28px;
   color: #666;
+}
+
+.customer-gmail-replies {
+  display: flex;
+  width: fit-content;
+  gap: 12px;
+  margin: 28px 0 0 56px;
+  padding-top: 16px;
+  border-top: 1px solid #f1f3f4;
+}
+
+.customer-gmail-replies button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 20px;
+  border: 1px solid #dadce0;
+  border-radius: 18px;
+  background: #fff;
+  color: #444746;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.customer-gmail-rail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding-top: 18px;
+  border-left: 1px solid #e0e0e0;
+}
+
+.customer-gmail-rail button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #5f6368;
+  cursor: pointer;
+}
+
+.customer-gmail-rail svg {
+  width: 20px;
+  height: 20px;
+}
+
+.customer-gmail-rail-calendar { color: #1a73e8 !important; }
+.customer-gmail-rail-keep { color: #fbbc04 !important; }
+.customer-gmail-rail-tasks { color: #1a73e8 !important; }
+.customer-gmail-rail-contacts { color: #4285f4 !important; }
+
+.customer-gmail-rail > i {
+  width: 20px;
+  height: 1px;
+  margin-top: 6px;
+  background: #dadce0;
 }
 
 @media (max-width: 768px) {
@@ -1426,7 +1815,8 @@
   }
 
   .customer-form-row,
-  .customer-form-row-three {
+  .customer-form-row-three,
+  .customer-form-row-four {
     grid-template-columns: 1fr;
   }
 
@@ -1465,24 +1855,29 @@
     flex-wrap: wrap;
   }
 
-  .customer-email-layout {
-    grid-template-columns: 1fr;
-  }
-
-  .customer-email-layout aside {
+  .customer-gmail-rail,
+  .customer-gmail-layout > aside {
     display: none;
   }
 
-  .customer-email-layout > main {
-    margin: 8px;
+  .customer-gmail-top,
+  .customer-gmail-layout {
+    grid-template-columns: 1fr;
   }
 
-  .customer-email-message {
-    padding: 20px;
+  .customer-gmail-search,
+  .customer-gmail-logo {
+    display: none;
   }
 
-  .customer-email-body {
+  .customer-gmail-message,
+  .customer-gmail-replies {
     margin-left: 0;
-    padding: 20px;
+    padding-right: 16px;
+    padding-left: 16px;
+  }
+
+  .customer-gmail-letter {
+    margin-left: 0;
   }
 }
