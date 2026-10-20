@@ -9,12 +9,14 @@ import styles from "./dashboard.module.css";
 const NAV = [
   { id: "flight-deck", label: "Flight Deck", icon: "/dashboard/windows.svg", light: true },
   { id: "loan-origination", label: "Loan Origination", icon: "/dashboard/loan.svg", light: false },
+  { id: "account-opening", label: "Account Opening", icon: "/dashboard/activity.svg", light: false },
   { id: "users", label: "Manage Users", icon: "/dashboard/myspace.svg", light: false },
   { id: "emails", label: "Emails", icon: "/dashboard/email.svg", light: false },
   { id: "settings", label: "System Configuration", icon: "/dashboard/gear.svg", light: false },
 ] as const;
 
 function selectionFor(pathname: string) {
+  if (pathname.startsWith("/dashboard/loan-origination/account-opening")) return "account-opening";
   if (pathname.startsWith("/dashboard/loan-origination")) return "loan-origination";
   if (pathname.startsWith("/dashboard/users")) return "users";
   if (pathname.startsWith("/dashboard/emails/suppression")) return "suppression";
@@ -24,6 +26,7 @@ function selectionFor(pathname: string) {
 }
 
 function loanChild(pathname: string) {
+  if (pathname.startsWith("/dashboard/loan-origination/account-opening")) return "";
   if (pathname.startsWith("/dashboard/loan-origination/certification")) return "certification";
   if (pathname.startsWith("/dashboard/loan-origination/servicing")) return "servicing";
   if (pathname.startsWith("/dashboard/loan-origination")) return "applications";
@@ -53,11 +56,13 @@ export function ConsoleShell({ children, initialExpanded = false }: { children: 
       return value;
     });
   }
-  const section = pathname.startsWith("/dashboard/loan-origination")
-    ? "loans"
-    : pathname.startsWith("/dashboard/emails")
-      ? "emails"
-      : "other";
+  const section = pathname.startsWith("/dashboard/loan-origination/account-opening")
+    ? "other"
+    : pathname.startsWith("/dashboard/loan-origination")
+      ? "loans"
+      : pathname.startsWith("/dashboard/emails")
+        ? "emails"
+        : "other";
   const [menuSection, setMenuSection] = useState(section);
   const [emailsMenu, setEmailsMenu] = useState<boolean | null>(null);
   const [loansMenu, setLoansMenu] = useState<boolean | null>(null);
@@ -180,6 +185,9 @@ export function ConsoleShell({ children, initialExpanded = false }: { children: 
                       }
                       setEmailsMenu(false);
                       setLoansMenu(false);
+                      if (item.id === "account-opening" && pathname !== "/dashboard/loan-origination/account-opening") {
+                        router.push("/dashboard/loan-origination/account-opening");
+                      }
                       if (item.id === "users" && pathname !== "/dashboard/users") {
                         router.push("/dashboard/users");
                       }
