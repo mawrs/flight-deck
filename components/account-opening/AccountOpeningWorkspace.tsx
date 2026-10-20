@@ -21,6 +21,7 @@ import {
   acceptAllInsights,
   acceptInsight,
   dismissInsight,
+  loadSampleCall,
   setOpeningChannel,
   updateOpeningField,
   useAccountOpening,
@@ -97,6 +98,11 @@ export function AccountOpeningWorkspace({ id }: { id: string }) {
     setReplaying(true);
   }
 
+  function startTranscription() {
+    if (opening.transcript.length === 0) loadSampleCall(opening.id);
+    replayCall();
+  }
+
   return (
     <div className="flex min-h-full flex-col bg-white">
       <SectionTabs label="Account opening sections" current={section} tabs={TABS} onSelect={(next) => setSection(next as SectionId)} />
@@ -109,12 +115,13 @@ export function AccountOpeningWorkspace({ id }: { id: string }) {
             shownLines={replaying ? shownLines : opening.transcript.length}
             typedCharacters={typedCharacters}
             onReplay={replayCall}
+            onStart={startTranscription}
           />
           <section className="flex min-w-0 flex-col border-t border-gray-light min-[1100px]:flex-1 min-[1100px]:border-t-0 min-[1100px]:border-l">
             <PanelHeader
               action={
                 replaying ? (
-                  <span className="text-sm text-primary">Updating from Twilio…</span>
+                  <span className="text-sm text-primary">Updating from the call…</span>
                 ) : suggested.length > 0 && !locked ? (
                   <button className="uw-btn-link" type="button" onClick={() => acceptAllInsights(opening.id)}>
                     Add all
@@ -319,6 +326,7 @@ function Conversation({
   shownLines,
   typedCharacters,
   onReplay,
+  onStart,
 }: {
   opening: AccountOpening;
   locked: boolean;
@@ -326,6 +334,7 @@ function Conversation({
   shownLines: number;
   typedCharacters: number;
   onReplay: () => void;
+  onStart: () => void;
 }) {
   const lines = opening.transcript.slice(0, shownLines).map((line) => ({ ...line, partial: false }));
   const activeLine = replaying ? opening.transcript[shownLines] : null;
@@ -336,18 +345,19 @@ function Conversation({
       partial: true,
     });
   }
-  const status =
-    opening.transcript.length === 0
-      ? "Twilio · waiting for the call"
-      : replaying
-        ? "Twilio real-time transcription · live"
-        : "Twilio real-time transcription";
+  const status = replaying ? "Transcribing…" : "Transcript";
   return (
     <section className="flex min-w-0 flex-1 flex-col border-b border-gray-light min-[1100px]:border-b-0">
       <PanelHeader
         action={
           <span className="flex items-center gap-md">
-            <span className={`text-sm ${replaying ? "text-primary" : "text-gray-medium"}`}>{status}</span>
+            {opening.transcript.length === 0 && !locked ? (
+              <button className="uw-btn-link" type="button" onClick={onStart}>
+                Start transcription
+              </button>
+            ) : (
+              <span className={`text-sm ${replaying ? "text-primary" : "text-gray-medium"}`}>{status}</span>
+            )}
             {opening.transcript.length > 0 && !locked ? (
               <button className="uw-btn-link" type="button" disabled={replaying} onClick={onReplay}>
                 Replay live call
@@ -360,7 +370,7 @@ function Conversation({
       </PanelHeader>
       {lines.length === 0 ? (
         <p className="p-lg text-sm text-gray-medium">
-          {replaying ? "Call connected. Waiting for Twilio to return the first words…" : "No conversation yet."}
+          {replaying ? "Starting transcription…" : "No conversation yet."}
         </p>
       ) : (
         <ul aria-live="polite">

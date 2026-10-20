@@ -58,7 +58,7 @@ export function ProvenanceField({
   });
 
   return (
-    <div id={id} className={`flex flex-col gap-xs ${focused ? "rounded-xs ring-2 ring-primary" : ""}`}>
+    <div id={id} className={`flex flex-col gap-xs ${focused ? "rounded-xs bg-warning-bg px-[2px]" : ""}`}>
       {readOnly ? (
         <div className="flex flex-col gap-xs">
           <span className="text-xs text-gray-medium">{label}</span>

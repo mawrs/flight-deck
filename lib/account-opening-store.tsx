@@ -296,7 +296,7 @@ export function loadSampleCall(id: string) {
       },
       activity: [
         ...opening.activity,
-        activity("Sample call attached. $50,000 available, $15,000 to open, and a 12-month CD are waiting for Kate to accept."),
+        activity("Transcription started. $50,000 available, $15,000 to open, and a 12-month CD are waiting for Kate to accept."),
       ],
     };
   });
