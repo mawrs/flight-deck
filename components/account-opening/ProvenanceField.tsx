@@ -17,6 +17,7 @@ export function ProvenanceField({
   type = "text",
   options,
   focused = false,
+  keepControl = false,
   moneyInput = false,
   onChange,
   onAccept,
@@ -32,6 +33,7 @@ export function ProvenanceField({
   type?: "text" | "email" | "tel";
   options?: SelectOption[];
   focused?: boolean;
+  keepControl?: boolean;
   moneyInput?: boolean;
   onChange: (value: string) => void;
   onAccept?: () => void;
@@ -58,9 +60,9 @@ export function ProvenanceField({
   });
 
   return (
-    <div id={id} className={`flex flex-col gap-xs ${focused ? "rounded-xs bg-warning-bg px-[2px]" : ""}`}>
-      {readOnly ? (
-        <div className="flex flex-col gap-xs">
+    <div id={id} className="flex flex-col gap-xs">
+      {readOnly && !keepControl ? (
+        <div className={`flex flex-col gap-xs ${focused ? "rounded-xs bg-warning-bg px-[2px]" : ""}`}>
           <span className="text-xs text-gray-medium">{label}</span>
           <span className="flex min-h-5 items-center text-sm text-black">{(moneyInput ? moneyDisplay : displayValue) || "—"}</span>
         </div>
@@ -72,6 +74,7 @@ export function ProvenanceField({
           placeholder="Select a product"
           options={options}
           disabled={readOnly}
+          highlighted={focused}
           onChange={onChange}
         />
       ) : (
@@ -80,6 +83,8 @@ export function ProvenanceField({
           value={moneyValue}
           type={type}
           readOnly={readOnly}
+          quiet={readOnly}
+          highlighted={focused}
           inputRef={inputRef}
           onChange={(next, caret) => {
             if (!moneyInput) {

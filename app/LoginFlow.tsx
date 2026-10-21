@@ -10,9 +10,11 @@ type Step = "login" | "sent";
 
 export function LoginFlow({
   onAuthenticated,
+  onSignUp,
   showBadge = true,
 }: {
   onAuthenticated?: () => void;
+  onSignUp?: () => void;
   showBadge?: boolean;
 }) {
   const [step, setStep] = useState<Step>("login");
@@ -46,9 +48,15 @@ export function LoginFlow({
             <h1 className={styles.title}>Secure login</h1>
             <LoginForm onSubmit={sendPasscode} sending={sending} />
           </Card>
-          <Button variant="link" size="small" href="#signup">
-            New to SouthEast Bank? Sign up
-          </Button>
+          {onSignUp ? (
+            <Button variant="link" size="small" onClick={onSignUp}>
+              New to SouthEast Bank? Sign up
+            </Button>
+          ) : (
+            <Button variant="link" size="small" href="#signup">
+              New to SouthEast Bank? Sign up
+            </Button>
+          )}
         </div>
       ) : null}
       {step === "sent" ? (

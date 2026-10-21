@@ -6,7 +6,7 @@ import { buttonClassName } from "@/components/Button";
 import { DataTable, DataTableCard, DataTableScroll } from "@/components/DataTable";
 import { SortHeader } from "@/components/list/SortHeader";
 import { Select } from "@/components/ui/Dropdown";
-import { channelLabel, openingAmountLabel, openingProductName, parseMoney, PRODUCTS, statusLabel } from "@/lib/account-opening-data";
+import { branchName, channelLabel, openingAmountLabel, openingProductName, parseMoney, PRODUCTS, statusLabel } from "@/lib/account-opening-data";
 import { shortDate } from "@/lib/format";
 import { compareSortValues, timeValue, type SortDirection } from "@/lib/list-sort";
 import { useAccountOpenings } from "@/lib/account-opening-store";
@@ -14,12 +14,13 @@ import type { AccountOpening, AccountOpeningChannel, AccountOpeningStatus } from
 
 type StatusFilter = "all" | AccountOpeningStatus;
 type ChannelFilter = "all" | AccountOpeningChannel;
-type SortKey = "applicant" | "id" | "channel" | "product" | "amount" | "status" | "started";
+type SortKey = "applicant" | "id" | "channel" | "branch" | "product" | "amount" | "status" | "started";
 
 const COLUMNS: { key: SortKey; label: string }[] = [
   { key: "applicant", label: "Applicant" },
   { key: "id", label: "Application" },
   { key: "channel", label: "Channel" },
+  { key: "branch", label: "Branch" },
   { key: "product", label: "Product" },
   { key: "amount", label: "Amount" },
   { key: "status", label: "Status" },
@@ -34,6 +35,8 @@ function sortValue(opening: AccountOpening, key: SortKey): string | number {
       return opening.id;
     case "channel":
       return channelLabel(opening.channel);
+    case "branch":
+      return branchName(opening.branchId);
     case "product":
       return openingProductName(opening);
     case "amount":
@@ -60,7 +63,7 @@ export function AccountOpeningQueue() {
         if (channel !== "all" && opening.channel !== channel) return false;
         if (product !== "all" && !productIds(opening).has(product)) return false;
         if (!needle) return true;
-        return [opening.id, opening.fields.fullName.value, opening.fields.phone.value, opening.fields.email.value, opening.fields.accountNumber.value]
+        return [opening.id, opening.fields.fullName.value, opening.fields.phone.value, opening.fields.email.value, opening.fields.accountNumber.value, branchName(opening.branchId)]
           .join(" ")
           .toLowerCase()
           .includes(needle);
@@ -155,6 +158,7 @@ export function AccountOpeningQueue() {
                     </td>
                     <td className="uw-list-td">{opening.id}</td>
                     <td className="uw-list-td">{channelLabel(opening.channel)}</td>
+                    <td className="uw-list-td">{branchName(opening.branchId) || "—"}</td>
                     <td className="uw-list-td">{openingProductName(opening)}</td>
                     <td className="uw-list-td">{openingAmountLabel(opening)}</td>
                     <td className="uw-list-td">{statusLabel(opening.status)}</td>

@@ -4,6 +4,10 @@ import { useSyncExternalStore } from "react";
 import {
   SAMPLE_INSIGHTS,
   SAMPLE_TRANSCRIPT,
+  applyLineCaptures,
+  newCustomerTranscript,
+  branchLocation,
+  branchName,
   buildOpening,
   customerByAccount,
   disclosuresFor,
@@ -21,6 +25,7 @@ import type {
   AccountOpening,
   AccountOpeningChannel,
   ActivityEvent,
+  CallIntake,
   CreateAccountOpeningInput,
   OpeningField,
 } from "@/lib/account-opening-types";
@@ -66,16 +71,27 @@ function load(): AccountOpening[] {
           openedAt: opening.openedAt,
           newAccountNumber: opening.newAccountNumber,
           activity: opening.activity,
+          branchId: branchName(opening.branchId) ? opening.branchId : seed.branchId,
         };
       }
-      if (!opening.transcript.some((line) => line.id.startsWith("sample-"))) return opening;
+      if (!opening.transcript.some((line) => line.id.startsWith("sample-"))) return { ...opening, branchId: opening.branchId || "" };
+      const insights = opening.insights.map((insight) => {
+        const sample = SAMPLE_INSIGHTS.find((item) => item.id === insight.id);
+        return sample ? { ...sample, status: insight.status } : insight;
+      });
+      if (opening.relationship === "new") {
+        return applyLineCaptures({
+          ...opening,
+          branchId: opening.branchId || "",
+          transcript: newCustomerTranscript(opening.fields.fullName.value),
+          insights,
+        });
+      }
       return {
         ...opening,
+        branchId: opening.branchId || "",
         transcript: structuredClone(SAMPLE_TRANSCRIPT),
-        insights: opening.insights.map((insight) => {
-          const sample = SAMPLE_INSIGHTS.find((item) => item.id === insight.id);
-          return sample ? { ...sample, status: insight.status } : insight;
-        }),
+        insights,
       };
     });
     for (const [id, seed] of refreshed) {
@@ -144,9 +160,11 @@ function applyAccountNumber(opening: AccountOpening, value: string): AccountOpen
     if (current.source === "agent" && current.value.trim() && current.value !== profileValue) return current;
     return { value: profileValue, source: "profile" as const, profileValue };
   }
+  const branchId = opening.branchId || customer.branchId;
   return {
     ...opening,
     relationship: "existing",
+    branchId,
     fields: {
       ...fields,
       accountNumber: { value: customer.accountNumber, source: "agent" },
@@ -160,7 +178,11 @@ function applyAccountNumber(opening: AccountOpening, value: string): AccountOpen
     },
     activity: [
       ...opening.activity,
-      activity(`Kate entered account ${customer.accountNumber}. Customer profile verified for ${customer.fullName}.`),
+      activity(
+        `Kate entered account ${customer.accountNumber}. Customer profile verified for ${customer.fullName}.${
+          opening.branchId ? "" : ` Home branch is ${branchName(customer.branchId)}.`
+        }`,
+      ),
     ],
   };
 }
@@ -267,6 +289,22 @@ export function acceptAllInsights(id: string) {
   });
 }
 
+export function setOpeningCallIntake(id: string, intake: CallIntake) {
+  update(id, (opening) => (opening.status === "opened" ? opening : { ...opening, callIntake: intake }));
+}
+
+export function setOpeningBranch(id: string, branchId: string) {
+  update(id, (opening) => {
+    if (opening.branchId === branchId || opening.status === "opened") return opening;
+    const name = branchName(branchId);
+    return {
+      ...opening,
+      branchId,
+      activity: [...opening.activity, activity(name ? `Kate assigned this account to ${name}.` : "Kate cleared the branch.")],
+    };
+  });
+}
+
 export function setOpeningChannel(id: string, channel: AccountOpeningChannel) {
   update(id, (opening) => {
     if (opening.channel === channel || opening.status === "opened") return opening;
@@ -284,9 +322,13 @@ export function setOpeningChannel(id: string, channel: AccountOpeningChannel) {
 export function loadSampleCall(id: string) {
   update(id, (opening) => {
     if (opening.transcript.length > 0 || opening.status === "opened") return opening;
-    return {
+    const transcript =
+      opening.relationship === "new"
+        ? newCustomerTranscript(opening.fields.fullName.value)
+        : SAMPLE_TRANSCRIPT.map((line) => ({ ...line }));
+    const next: AccountOpening = {
       ...opening,
-      transcript: SAMPLE_TRANSCRIPT.map((line) => ({ ...line })),
+      transcript,
       insights: SAMPLE_INSIGHTS.map((insight) => ({ ...insight })),
       fields: {
         ...opening.fields,
@@ -296,9 +338,14 @@ export function loadSampleCall(id: string) {
       },
       activity: [
         ...opening.activity,
-        activity("Transcription started. $50,000 available, $15,000 to open, and a 12-month CD are waiting for Kate to accept."),
+        activity(
+          opening.relationship === "new"
+            ? "Transcription started. The call includes the product, the deposit, and the application details."
+            : "Transcription started. $50,000 available, $15,000 to open, and a 12-month CD are waiting for Kate to accept.",
+        ),
       ],
     };
+    return opening.relationship === "new" ? applyLineCaptures(next) : next;
   });
 }
 
@@ -369,6 +416,7 @@ export function completeOpening(id: string) {
     const product = productById(opening.fields.productId.value);
     const amount = parseMoney(opening.fields.transferAmount.value) ?? 0;
     const accountNumber = opening.newAccountNumber || issuedAccountNumber(opening);
+    const branch = branchLocation(opening.branchId);
     return {
       ...opening,
       handoff: "signed",
@@ -377,7 +425,7 @@ export function completeOpening(id: string) {
       newAccountNumber: accountNumber,
       activity: [
         ...opening.activity,
-        activity(`Opened ${product?.name ?? "account"} ${accountNumber} for ${money(amount)}.`),
+        activity(`Opened ${product?.name ?? "account"} ${accountNumber}${branch ? ` at ${branch}` : ""} for ${money(amount)}.`),
       ],
     };
   });

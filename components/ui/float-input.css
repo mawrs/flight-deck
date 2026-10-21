@@ -33,6 +33,17 @@
   background: var(--surface-sunken);
 }
 
+.uw-float-input.uw-float-input-quiet:read-only {
+  background: var(--surface);
+}
+
+.uw-float-input.uw-float-input-highlight,
+.uw-float-input.uw-float-input-highlight:read-only,
+.uw-float-input.uw-float-input-highlight:hover {
+  background: var(--warning-background);
+  border-color: var(--warning);
+}
+
 textarea.uw-float-input-multiline {
   height: auto;
   min-height: 120px;

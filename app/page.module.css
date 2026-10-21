@@ -69,3 +69,10 @@
   font-size: var(--font-size-body-base);
   line-height: var(--line-height-body-base);
 }
+
+.note {
+  margin: 0;
+  color: var(--foreground-muted);
+  font-size: var(--font-size-body-small);
+  line-height: var(--line-height-body-small);
+}
