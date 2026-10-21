@@ -340,62 +340,6 @@
   border: 0;
 }
 
-.customer-page-content.customer-product-page {
-  width: 100%;
-  max-width: none;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: flex-start;
-  padding: 120px 24px 64px;
-}
-
-.customer-product-sheet {
-  display: flex;
-  width: max-content;
-  max-width: 100%;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 32px;
-  margin: 0 auto;
-}
-
-.customer-product-sheet .customer-select {
-  width: 0;
-  min-width: 100%;
-}
-
-.customer-product-facts {
-  display: grid;
-  grid-template-columns: 180px 1fr;
-  gap: 12px 20px;
-  margin: 0;
-}
-
-.customer-product-facts dt {
-  color: var(--ca-gray-dark);
-}
-
-.customer-product-facts dd {
-  margin: 0;
-  font-weight: 600;
-}
-
-.customer-product-features {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding-left: 18px;
-  color: var(--ca-gray-dark);
-  font-size: 16px;
-  line-height: 1.4;
-}
-
-.customer-product-continue {
-  width: fit-content;
-  text-decoration: none;
-}
-
 .customer-ownership-info ul {
   display: flex;
   flex-direction: column;

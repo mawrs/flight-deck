@@ -40,7 +40,6 @@ type Screen =
   | "initial-deposit"
   | "deposit-amount"
   | "submitting"
-  | "product"
   | "review"
   | "submitted-loading"
   | "submitted"
@@ -76,7 +75,7 @@ type OwnerDraft = {
 
 const STATES = ["AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "FL", "GA", "HI", "ID", "IL", "IN", "IA", "KS", "KY", "LA", "ME", "MD", "MA", "MI", "MN", "MS", "MO", "MT", "NE", "NV", "NH", "NJ", "NM", "NY", "NC", "ND", "OH", "OK", "OR", "PA", "RI", "SC", "SD", "TN", "TX", "UT", "VT", "VA", "WA", "WV", "WI", "WY"];
 
-const SCREEN_META: Record<Exclude<Screen, "email" | "login" | "product" | "submitted-loading" | "submitted" | "overview">, { section: number; step: number }> = {
+const SCREEN_META: Record<Exclude<Screen, "email" | "login" | "submitted-loading" | "submitted" | "overview">, { section: number; step: number }> = {
   "ownership-loading": { section: 1, step: 1 },
   ownership: { section: 1, step: 1 },
   "joint-owner-details": { section: 1, step: 2 },
@@ -203,7 +202,7 @@ function CustomerApplicationFlow({ opening, startAtLogin }: { opening: AccountOp
     : captured;
   function openApplication() {
     markOpeningReviewing(id);
-    go("product");
+    go("review");
   }
 
   function chooseProduct(productId: string) {
@@ -272,6 +271,7 @@ function CustomerApplicationFlow({ opening, startAtLogin }: { opening: AccountOp
     updateOpeningField(id, "email", ownerDraft.email);
     updateOpeningField(id, "birthDate", formatDate(ownerDraft.birthDate));
     updateOpeningField(id, "address", formatAddress(ownerDraft.street, ownerDraft.unit, ownerDraft.city, ownerDraft.state, ownerDraft.zip));
+    if (ownerDraft.productId !== opening.fields.productId.value) setAccepted([]);
     updateOpeningField(id, "productId", ownerDraft.productId);
     setStreet(ownerDraft.street);
     setUnit(ownerDraft.unit);
@@ -313,21 +313,6 @@ function CustomerApplicationFlow({ opening, startAtLogin }: { opening: AccountOp
         term={product ? productTermLabel(product) : ""}
         amount={agreedAmount}
         applyHref={`/account-opening/customer/${opening.id}?apply=1`}
-      />
-    );
-  }
-
-  if (screen === "product") {
-    return (
-      <ProductSheet
-        opening={opening}
-        onProductChange={(productId) => {
-          if (productId !== opening.fields.productId.value) {
-            updateOpeningField(id, "productId", productId);
-            setAccepted([]);
-          }
-        }}
-        onContinue={() => go("review")}
       />
     );
   }
@@ -1128,73 +1113,6 @@ function ApplicationStepSkeleton({ variant }: { variant: "ownership" | "bank" })
   );
 }
 
-function ProductSheet({
-  opening,
-  onProductChange,
-  onContinue,
-}: {
-  opening: AccountOpening;
-  onProductChange: (productId: string) => void;
-  onContinue: () => void;
-}) {
-  const product = productById(opening.fields.productId.value);
-  const name = opening.fields.fullName.value || "Customer";
-  const amount = parseMoney(opening.fields.transferAmount.value);
-  return (
-    <div className="customer-application">
-      <CustomerHeader name={name} />
-      <main className="customer-page-content customer-product-page">
-        {product ? (
-          <div className="customer-product-sheet">
-            <PageHeading title={product.name} subtitle="Change the product here, or continue to your application." />
-            <AppSelect
-              label="Product"
-              value={product.name}
-              onChange={(value) => {
-                const next = PRODUCTS.find((item) => item.name === value);
-                if (next) onProductChange(next.id);
-              }}
-              options={PRODUCTS.map((item) => item.name)}
-              details={Object.fromEntries(PRODUCTS.map((item) => [item.name, ownershipDetails(item)]))}
-            />
-            <dl className="customer-product-facts">
-              <dt>APY</dt>
-              <dd>{percent(product.apy)}</dd>
-              <dt>Term</dt>
-              <dd>{productTermLabel(product)}</dd>
-              <dt>Minimum deposit</dt>
-              <dd>{money(product.minimum)}</dd>
-              {amount != null ? (
-                <>
-                  <dt>Amount to open</dt>
-                  <dd>{money(amount)}</dd>
-                </>
-              ) : null}
-              {branchName(opening.branchId) ? (
-                <>
-                  <dt>Branch</dt>
-                  <dd>{branchName(opening.branchId)}</dd>
-                </>
-              ) : null}
-            </dl>
-            <ul className="customer-product-features">
-              {product.features.map((feature) => (
-                <li key={feature}>{feature}</li>
-              ))}
-            </ul>
-            <button type="button" className="customer-btn customer-btn-primary customer-btn-large customer-product-continue" onClick={onContinue}>
-              Continue
-            </button>
-          </div>
-        ) : (
-          <PageHeading title="Product details" subtitle="A product has not been selected for this application yet." />
-        )}
-      </main>
-      <CustomerFooter />
-    </div>
-  );
-}
-
 function EmailPreview({
   name,
   email,
@@ -1307,7 +1225,7 @@ function EmailPreview({
                 <span>Amount to open</span>
                 <strong>{amount == null ? "Confirm in application" : money(amount)}</strong>
               </div>
-              <p>Review the product, complete the remaining details, confirm the amount, and sign your disclosures. You can change the product once you open the application.</p>
+              <p>Review the product, complete the remaining details, confirm the amount, and sign your disclosures. You can change the product from the summary.</p>
               <a className="customer-gmail-cta" href={applyHref} target="_blank" rel="noopener noreferrer">
                 Review and submit application
               </a>
