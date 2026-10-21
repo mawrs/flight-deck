@@ -102,6 +102,15 @@ export type KnownCustomer = {
   address: string;
   existingAccount: string;
   branchId: string;
+  ssn: string;
+  idType: string;
+  idNumber: string;
+  idState: string;
+  issueDate: string;
+  expirationDate: string;
+  idDocument: string;
+  employer: string;
+  occupation: string;
 };
 
 export type YesNo = "" | "yes" | "no";

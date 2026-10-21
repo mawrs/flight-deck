@@ -106,6 +106,15 @@ export const KNOWN_CUSTOMERS: KnownCustomer[] = [
     address: "418 Church St, Nashville, TN 37219",
     existingAccount: "Rewards Checking · $2,140.18",
     branchId: "chattanooga",
+    ssn: "412-88-1934",
+    idType: "Driver's License",
+    idNumber: "883412901",
+    idState: "TN",
+    issueDate: "06/18/2022",
+    expirationDate: "04/12/2030",
+    idDocument: "drivers-license.pdf",
+    employer: "Unum Group",
+    occupation: "Account Manager",
   },
   {
     accountNumber: "0048102204",
@@ -117,6 +126,15 @@ export const KNOWN_CUSTOMERS: KnownCustomer[] = [
     address: "90 Division St, Nashville, TN 37203",
     existingAccount: "Savings · $22,400.00",
     branchId: "farragut",
+    ssn: "301-44-8821",
+    idType: "Driver's License",
+    idNumber: "441902883",
+    idState: "TN",
+    issueDate: "01/09/2023",
+    expirationDate: "03/02/2031",
+    idDocument: "drivers-license.pdf",
+    employer: "Oak Ridge National Laboratory",
+    occupation: "Research Associate",
   },
   {
     accountNumber: "0048066118",
@@ -128,6 +146,15 @@ export const KNOWN_CUSTOMERS: KnownCustomer[] = [
     address: "12 Acklen Ave, Nashville, TN 37212",
     existingAccount: "Money Market · $40,118.55",
     branchId: "bearden",
+    ssn: "409-22-6710",
+    idType: "Driver's License",
+    idNumber: "229184003",
+    idState: "TN",
+    issueDate: "11/02/2020",
+    expirationDate: "11/19/2028",
+    idDocument: "drivers-license.pdf",
+    employer: "Knoxville Utilities Board",
+    occupation: "Customer Service Supervisor",
   },
   {
     accountNumber: "0048001122",
@@ -139,6 +166,15 @@ export const KNOWN_CUSTOMERS: KnownCustomer[] = [
     address: "220 Broadway, Nashville, TN 37201",
     existingAccount: "Checking · $812.40",
     branchId: "cleveland",
+    ssn: "228-15-4408",
+    idType: "State ID",
+    idNumber: "551203884",
+    idState: "TN",
+    issueDate: "08/14/2021",
+    expirationDate: "06/03/2029",
+    idDocument: "state-id.pdf",
+    employer: "Whirlpool Corporation",
+    occupation: "Production Supervisor",
   },
   {
     accountNumber: "0048004488",
@@ -150,6 +186,15 @@ export const KNOWN_CUSTOMERS: KnownCustomer[] = [
     address: "14 Linden Ave, Nashville, TN 37212",
     existingAccount: "Savings · $6,240.00",
     branchId: "athens",
+    ssn: "517-63-2290",
+    idType: "Driver's License",
+    idNumber: "772910445",
+    idState: "TN",
+    issueDate: "02/11/2019",
+    expirationDate: "09/28/2027",
+    idDocument: "drivers-license.pdf",
+    employer: "Athens City Schools",
+    occupation: "Teacher",
   },
 ];
 
@@ -759,9 +804,9 @@ export function buildOpening(input: CreateAccountOpeningInput, id: string, now: 
   if (input.attachSampleCall) {
     fields = {
       ...fields,
-      availableFunds: sourced("", "conversation"),
-      transferAmount: sourced("", "conversation"),
-      productId: sourced("", "conversation"),
+      availableFunds: sourced("50000", "conversation"),
+      transferAmount: sourced("15000", "conversation"),
+      productId: sourced("cd-12", "conversation"),
     };
   }
   const activity = [
@@ -785,7 +830,7 @@ export function buildOpening(input: CreateAccountOpeningInput, id: string, now: 
       event(
         `${id}-call`,
         now,
-        "Call transcript added. $50,000 available, $15,000 to open, and a 12-month CD are waiting for Kate to accept.",
+        "Call transcript added. $50,000 available, $15,000 to open, and a 12-month CD were applied from the call.",
       ),
     );
   }
@@ -802,7 +847,7 @@ export function buildOpening(input: CreateAccountOpeningInput, id: string, now: 
     handoff: "not-sent",
     fields,
     transcript: input.attachSampleCall ? SAMPLE_TRANSCRIPT.map((line) => ({ ...line })) : [],
-    insights: input.attachSampleCall ? cloneInsights() : [],
+    insights: input.attachSampleCall ? cloneInsights("accepted") : [],
     activity,
     callIntake: input.relationship === "new" ? input.callIntake : undefined,
   };

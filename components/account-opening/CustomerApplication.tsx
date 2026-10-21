@@ -10,7 +10,7 @@ import loginPage from "@/app/page.module.css";
 
 const gmailFont = Roboto({ weight: ["400", "500", "700"], subsets: ["latin"] });
 import { Dropdown, DropdownItem } from "@/components/ui/Dropdown";
-import { PRODUCTS, branchName, disclosuresFor, formatPostalAddress as formatAddress, parseMoney, parsePostalAddress as parseAddress, productById, productTermLabel } from "@/lib/account-opening-data";
+import { PRODUCTS, branchName, customerByAccount, disclosuresFor, formatPostalAddress as formatAddress, parseMoney, parsePostalAddress as parseAddress, productById, productTermLabel } from "@/lib/account-opening-data";
 import { money, percent } from "@/lib/format";
 import type { AccountOpening } from "@/lib/account-opening-types";
 import {
@@ -116,6 +116,7 @@ export function CustomerApplication({
 function CustomerApplicationFlow({ opening, startAtLogin }: { opening: AccountOpening; startAtLogin: boolean }) {
   const id = opening.id;
   const intake = opening.callIntake;
+  const profile = opening.relationship === "existing" ? customerByAccount(opening.fields.accountNumber.value) : null;
   const initialAddress = parseAddress(opening.fields.address.value);
   const initialAmount = parseMoney(opening.fields.transferAmount.value);
   const [screen, setScreen] = useState<Screen>(startAtLogin ? "login" : "email");
@@ -132,16 +133,16 @@ function CustomerApplicationFlow({ opening, startAtLogin }: { opening: AccountOp
   const [state, setState] = useState(initialAddress.state);
   const [zip, setZip] = useState(initialAddress.zip);
   const [sameMailing, setSameMailing] = useState(true);
-  const [ssn, setSsn] = useState("");
+  const [ssn, setSsn] = useState(profile?.ssn || "");
   const [pep, setPep] = useState<Answer>(intake?.pep || "no");
-  const [idType, setIdType] = useState("");
-  const [idNumber, setIdNumber] = useState("");
-  const [idState, setIdState] = useState("");
-  const [issueDate, setIssueDate] = useState("");
-  const [expirationDate, setExpirationDate] = useState("");
-  const [uploadedFile, setUploadedFile] = useState("");
-  const [employer, setEmployer] = useState(intake?.employer || "");
-  const [occupation, setOccupation] = useState(intake?.occupation || "");
+  const [idType, setIdType] = useState(profile?.idType || "");
+  const [idNumber, setIdNumber] = useState(profile?.idNumber || "");
+  const [idState, setIdState] = useState(profile?.idState || "");
+  const [issueDate, setIssueDate] = useState(profile?.issueDate || "");
+  const [expirationDate, setExpirationDate] = useState(profile?.expirationDate || "");
+  const [uploadedFile, setUploadedFile] = useState(profile?.idDocument || "");
+  const [employer, setEmployer] = useState(intake?.employer || profile?.employer || "");
+  const [occupation, setOccupation] = useState(intake?.occupation || profile?.occupation || "");
   const [phoneCode, setPhoneCode] = useState("");
   const [purpose, setPurpose] = useState(intake?.purpose || "");
   const [frequency, setFrequency] = useState(intake?.frequency || "");

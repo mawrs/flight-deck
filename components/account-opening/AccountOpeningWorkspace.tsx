@@ -29,7 +29,6 @@ import { money, percent, shortDate } from "@/lib/format";
 import {
   acceptAllInsights,
   acceptInsight,
-  dismissInsight,
   loadSampleCall,
   setOpeningBranch,
   setOpeningCallIntake,
@@ -96,6 +95,13 @@ export function AccountOpeningWorkspace({ id }: { id: string }) {
   const captureHighlight =
     replaying && opening ? [...replayCapture(opening.transcript, shownLines).highlight].join("|") : "";
 
+  const pendingInsights = !replaying && opening?.insights.some((insight) => insight.status === "suggested");
+
+  useEffect(() => {
+    if (!opening || !pendingInsights || opening.status === "opened") return;
+    acceptAllInsights(opening.id);
+  }, [opening, pendingInsights]);
+
   useEffect(() => {
     if (!captureHighlight) return;
     const field = captureHighlight.split("|")[0];
@@ -105,7 +111,6 @@ export function AccountOpeningWorkspace({ id }: { id: string }) {
   if (!opening) return <p className="uw-page-status">Account opening {id} was not found.</p>;
 
   const locked = opening.status === "opened";
-  const suggested = opening.insights.filter((insight) => insight.status === "suggested");
   const replayedTranscript = opening.transcript.slice(0, shownLines);
   const detectedDuringReplay = opening.insights.filter((insight) =>
     replayedTranscript.some((line) => line.id === insight.transcriptId),
@@ -146,17 +151,7 @@ export function AccountOpeningWorkspace({ id }: { id: string }) {
             onStart={startTranscription}
           />
           <section className="flex min-w-0 flex-col border-t border-gray-light min-[1100px]:flex-1 min-[1100px]:border-t-0 min-[1100px]:border-l">
-            <PanelHeader
-              action={
-                replaying ? (
-                  <span className="text-sm text-primary">Updating from the call…</span>
-                ) : suggested.length > 0 && !locked ? (
-                  <button className="uw-btn-link" type="button" onClick={() => acceptAllInsights(opening.id)}>
-                    Add all
-                  </button>
-                ) : null
-              }
-            >
+            <PanelHeader action={replaying ? <span className="text-sm text-primary">Updating from the call…</span> : null}>
               Application Details
             </PanelHeader>
             <div className="grid gap-md p-lg">
@@ -193,7 +188,9 @@ export function AccountOpeningWorkspace({ id }: { id: string }) {
                 highlighted={replaying && currentFields.has("transferAmount")}
                 locked={locked || replaying}
               />
-              <CallDetails opening={opening} disabled={locked || replaying} live={liveCapture} />
+              {opening.relationship === "new" ? (
+                <CallDetails opening={opening} disabled={locked || replaying} live={liveCapture} />
+              ) : null}
             </div>
             <ProductSummary
               opening={opening}
@@ -565,11 +562,7 @@ function Conversation({
         </p>
       ) : (
         <ul aria-live="polite">
-          {lines.map((line) => {
-            const pending = line.partial
-              ? []
-              : opening.insights.filter((insight) => insight.transcriptId === line.id && insight.status === "suggested");
-            return (
+          {lines.map((line) => (
               <li key={line.id} className="border-b border-gray-light px-lg py-md">
                 <p className="text-xs text-gray-medium">{line.at} · {line.speaker === "kate" ? "Kate" : "Customer"}</p>
                 <p className="mt-xs text-sm text-black">
@@ -579,23 +572,8 @@ function Conversation({
                   ])}
                   {line.partial ? <span className="ml-[1px] text-primary">▍</span> : null}
                 </p>
-                {pending.length > 0 && !locked ? (
-                  <div className="mt-sm flex flex-col items-start gap-xs">
-                    {pending.map((insight) => (
-                      <span key={insight.id} className="flex flex-wrap items-center gap-sm">
-                        <button className="uw-btn-link" type="button" onClick={() => acceptInsight(opening.id, insight.id)}>
-                          Add {insight.displayValue}
-                        </button>
-                        <button className="uw-btn-link" type="button" onClick={() => dismissInsight(opening.id, insight.id)}>
-                          Dismiss
-                        </button>
-                      </span>
-                    ))}
-                  </div>
-                ) : null}
               </li>
-            );
-          })}
+            ))}
         </ul>
       )}
     </section>

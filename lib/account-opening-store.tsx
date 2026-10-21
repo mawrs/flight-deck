@@ -226,7 +226,7 @@ export function updateOpeningField(id: string, field: OpeningField, value: strin
       },
       insights: opening.insights.map((insight) => {
         if (insight.field !== field) return insight;
-        if (!value.trim()) return { ...insight, status: "suggested" };
+        if (!value.trim()) return { ...insight, status: "dismissed" };
         return { ...insight, status: matchesInsight ? "accepted" : "dismissed" };
       }),
     };
@@ -341,7 +341,7 @@ export function loadSampleCall(id: string) {
         activity(
           opening.relationship === "new"
             ? "Transcription started. The call includes the product, the deposit, and the application details."
-            : "Transcription started. $50,000 available, $15,000 to open, and a 12-month CD are waiting for Kate to accept.",
+            : "Transcription started. $50,000 available, $15,000 to open, and a 12-month CD are applied from the call.",
         ),
       ],
     };
