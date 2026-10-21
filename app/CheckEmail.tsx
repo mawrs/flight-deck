@@ -9,9 +9,11 @@ type CheckEmailProps = {
   email: string;
   onBack: () => void;
   onAuthenticated?: () => void;
+  backLabel?: string;
+  submitLabel?: string;
 };
 
-export function CheckEmail({ email, onBack, onAuthenticated }: CheckEmailProps) {
+export function CheckEmail({ email, onBack, onAuthenticated, backLabel = "Back to Login", submitLabel = "Log In" }: CheckEmailProps) {
   const router = useRouter();
   const [passcode, setPasscode] = useState("");
   const [loading, setLoading] = useState(false);
@@ -60,9 +62,9 @@ export function CheckEmail({ email, onBack, onAuthenticated }: CheckEmailProps) 
           fullWidth
           disabled={passcode.length !== 6}
           loading={loading}
-          loadingLabel="Logging in"
+          loadingLabel={submitLabel}
         >
-          Log In
+          {submitLabel}
         </Button>
       </form>
       <div className={styles.prompts}>
@@ -73,7 +75,7 @@ export function CheckEmail({ email, onBack, onAuthenticated }: CheckEmailProps) 
         <p className={styles.prompt}>
           <span>Not the right email?</span>
           <Button variant="link" size="small" onClick={onBack}>
-            Back to Login
+            {backLabel}
           </Button>
         </p>
       </div>

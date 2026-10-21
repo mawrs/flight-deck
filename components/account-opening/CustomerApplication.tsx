@@ -5,10 +5,12 @@ import Image from "next/image";
 import { Roboto } from "next/font/google";
 import { FooterDisclaimer } from "@/components";
 import { LoginFlow } from "@/app/LoginFlow";
+import { SignupFlow } from "@/app/SignupFlow";
 import loginPage from "@/app/page.module.css";
 
 const gmailFont = Roboto({ weight: ["400", "500", "700"], subsets: ["latin"] });
-import { PRODUCTS, disclosuresFor, parseMoney, productById } from "@/lib/account-opening-data";
+import { Dropdown, DropdownItem } from "@/components/ui/Dropdown";
+import { PRODUCTS, branchName, disclosuresFor, formatPostalAddress as formatAddress, parseMoney, parsePostalAddress as parseAddress, productById, productTermLabel } from "@/lib/account-opening-data";
 import { money, percent } from "@/lib/format";
 import type { AccountOpening } from "@/lib/account-opening-types";
 import {
@@ -38,9 +40,11 @@ type Screen =
   | "initial-deposit"
   | "deposit-amount"
   | "submitting"
+  | "product"
   | "review"
   | "submitted-loading"
-  | "submitted";
+  | "submitted"
+  | "overview";
 
 type Answer = "" | "yes" | "no";
 type Funding = "" | "internal" | "plaid" | "manual";
@@ -72,7 +76,7 @@ type OwnerDraft = {
 
 const STATES = ["AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "FL", "GA", "HI", "ID", "IL", "IN", "IA", "KS", "KY", "LA", "ME", "MD", "MA", "MI", "MN", "MS", "MO", "MT", "NE", "NV", "NH", "NJ", "NM", "NY", "NC", "ND", "OH", "OK", "OR", "PA", "RI", "SC", "SD", "TN", "TX", "UT", "VT", "VA", "WA", "WV", "WI", "WY"];
 
-const SCREEN_META: Record<Exclude<Screen, "email" | "login" | "submitted-loading" | "submitted">, { section: number; step: number }> = {
+const SCREEN_META: Record<Exclude<Screen, "email" | "login" | "product" | "submitted-loading" | "submitted" | "overview">, { section: number; step: number }> = {
   "ownership-loading": { section: 1, step: 1 },
   ownership: { section: 1, step: 1 },
   "joint-owner-details": { section: 1, step: 2 },
@@ -93,7 +97,13 @@ const SCREEN_META: Record<Exclude<Screen, "email" | "login" | "submitted-loading
 
 const SECTION_LABELS = ["Application Ownership", "About You", "Account Security", "Bank Details", "Summary"];
 
-export function CustomerApplication({ id, startAtLogin = false }: { id: string; startAtLogin?: boolean }) {
+export function CustomerApplication({
+  id,
+  startAtLogin = false,
+}: {
+  id: string;
+  startAtLogin?: boolean;
+}) {
   const opening = useAccountOpening(id);
 
   if (!opening) {
@@ -105,39 +115,47 @@ export function CustomerApplication({ id, startAtLogin = false }: { id: string; 
 
 function CustomerApplicationFlow({ opening, startAtLogin }: { opening: AccountOpening; startAtLogin: boolean }) {
   const id = opening.id;
+  const intake = opening.callIntake;
   const initialAddress = parseAddress(opening.fields.address.value);
   const initialAmount = parseMoney(opening.fields.transferAmount.value);
   const [screen, setScreen] = useState<Screen>(startAtLogin ? "login" : "email");
-  const [ownership, setOwnership] = useState<"Individual" | "Joint" | "">("");
-  const [jointOwners, setJointOwners] = useState([{ firstName: "", lastName: "", email: "" }]);
+  const [preferSignIn, setPreferSignIn] = useState(false);
+  const [ownership, setOwnership] = useState<"Individual" | "Joint" | "">(intake?.ownership || "");
+  const [jointOwners, setJointOwners] = useState(() => {
+    const owner = intake?.jointOwner;
+    if (owner && (owner.firstName || owner.lastName || owner.email)) return [owner];
+    return [{ firstName: "", lastName: "", email: "" }];
+  });
   const [street, setStreet] = useState(initialAddress.street);
-  const [unit, setUnit] = useState("");
+  const [unit, setUnit] = useState(initialAddress.unit);
   const [city, setCity] = useState(initialAddress.city);
   const [state, setState] = useState(initialAddress.state);
   const [zip, setZip] = useState(initialAddress.zip);
   const [sameMailing, setSameMailing] = useState(true);
   const [ssn, setSsn] = useState("");
-  const [pep, setPep] = useState<Answer>("no");
+  const [pep, setPep] = useState<Answer>(intake?.pep || "no");
   const [idType, setIdType] = useState("");
   const [idNumber, setIdNumber] = useState("");
   const [idState, setIdState] = useState("");
   const [issueDate, setIssueDate] = useState("");
   const [expirationDate, setExpirationDate] = useState("");
   const [uploadedFile, setUploadedFile] = useState("");
-  const [employer, setEmployer] = useState("");
-  const [occupation, setOccupation] = useState("");
+  const [employer, setEmployer] = useState(intake?.employer || "");
+  const [occupation, setOccupation] = useState(intake?.occupation || "");
   const [phoneCode, setPhoneCode] = useState("");
-  const [purpose, setPurpose] = useState("");
-  const [frequency, setFrequency] = useState("");
-  const [expectedDeposit, setExpectedDeposit] = useState("");
+  const [purpose, setPurpose] = useState(intake?.purpose || "");
+  const [frequency, setFrequency] = useState(intake?.frequency || "");
+  const [expectedDeposit, setExpectedDeposit] = useState(intake?.expectedDeposit || "");
   const [answers, setAnswers] = useState<Record<string, Answer>>({
-    movement: "yes",
-    cashIn: "no",
-    cashOut: "no",
-    ach: "no",
-    wire: "no",
+    movement: intake?.movement || "yes",
+    cashIn: intake?.cashIn || "no",
+    cashOut: intake?.cashOut || "no",
+    ach: intake?.ach || "no",
+    wire: intake?.wire || "no",
+    ...(intake?.cashInAmount ? { cashInAmount: intake.cashInAmount as Answer } : {}),
   });
   const [funding, setFunding] = useState<Funding>("");
+  const [plaidOpen, setPlaidOpen] = useState(false);
   const [sourceAccount, setSourceAccount] = useState("");
   const [routing, setRouting] = useState("");
   const [externalAccount, setExternalAccount] = useState("");
@@ -148,6 +166,7 @@ function CustomerApplicationFlow({ opening, startAtLogin }: { opening: AccountOp
   const [agreementConsent, setAgreementConsent] = useState(false);
   const [navOpen, setNavOpen] = useState(false);
   const [ownerDraft, setOwnerDraft] = useState<OwnerDraft | null>(null);
+  const [changingProduct, setChangingProduct] = useState(false);
   const [callSnapshot] = useState(() => ({
     productId: opening.fields.productId.source === "conversation" ? opening.fields.productId.value : "",
     transferAmount: opening.fields.transferAmount.source === "conversation" ? opening.fields.transferAmount.value : "",
@@ -156,6 +175,7 @@ function CustomerApplicationFlow({ opening, startAtLogin }: { opening: AccountOp
     phone: opening.relationship === "new" ? opening.fields.phone.value.trim() : "",
     birthDate: opening.relationship === "new" ? opening.fields.birthDate.value.trim() : "",
     address: opening.relationship === "new" ? opening.fields.address.value.trim() : "",
+    job: intake?.employer && intake.occupation ? `${intake.occupation} at ${intake.employer}` : "",
   }));
 
   const product = productById(opening.fields.productId.value);
@@ -166,7 +186,8 @@ function CustomerApplicationFlow({ opening, startAtLogin }: { opening: AccountOp
   const name = opening.fields.fullName.value || "Customer";
   const amountValue = parseMoney(amount);
   const shownAddress = formatAddress(street, unit, city, state, zip);
-  const fromCall = {
+  const isNew = opening.relationship === "new";
+  const captured = {
     name: matchesCall(callSnapshot.fullName, opening.fields.fullName.value),
     product: matchesCall(callSnapshot.productId, opening.fields.productId.value),
     phone: matchesCall(callSnapshot.phone, opening.fields.phone.value),
@@ -174,10 +195,22 @@ function CustomerApplicationFlow({ opening, startAtLogin }: { opening: AccountOp
     birthDate: matchesCall(callSnapshot.birthDate, opening.fields.birthDate.value),
     address: matchesCall(callSnapshot.address, shownAddress),
     amount: Boolean(callSnapshot.transferAmount) && sameMoney(callSnapshot.transferAmount, amount),
+    job: matchesCall(callSnapshot.job, occupation || employer ? `${occupation} at ${employer}` : ""),
   };
+  const fromCall = isNew
+    ? { name: false, product: false, phone: false, email: false, birthDate: false, address: false, amount: false, job: false }
+    : captured;
   function openApplication() {
     markOpeningReviewing(id);
-    go("review");
+    go("product");
+  }
+
+  function chooseProduct(productId: string) {
+    if (productId !== opening.fields.productId.value) {
+      updateOpeningField(id, "productId", productId);
+      setAccepted([]);
+    }
+    setChangingProduct(false);
   }
 
   function go(next: Screen) {
@@ -191,6 +224,13 @@ function CustomerApplicationFlow({ opening, startAtLogin }: { opening: AccountOp
     updateOpeningField(id, "transferAmount", String(amountValue));
     go("submitting");
     window.setTimeout(() => go("review"), 1400);
+  }
+
+  function confirmPlaid() {
+    setFunding("plaid");
+    setSourceAccount(PLAID_ACCOUNTS[0].name);
+    setPlaidOpen(false);
+    go("deposit-amount");
   }
 
   function beginBankDetails() {
@@ -229,7 +269,7 @@ function CustomerApplicationFlow({ opening, startAtLogin }: { opening: AccountOp
     updateOpeningField(id, "fullName", fullName);
     updateOpeningField(id, "phone", ownerDraft.phone);
     updateOpeningField(id, "email", ownerDraft.email);
-    updateOpeningField(id, "birthDate", ownerDraft.birthDate);
+    updateOpeningField(id, "birthDate", formatDate(ownerDraft.birthDate));
     updateOpeningField(id, "address", formatAddress(ownerDraft.street, ownerDraft.unit, ownerDraft.city, ownerDraft.state, ownerDraft.zip));
     updateOpeningField(id, "productId", ownerDraft.productId);
     setStreet(ownerDraft.street);
@@ -241,8 +281,8 @@ function CustomerApplicationFlow({ opening, startAtLogin }: { opening: AccountOp
     setIdType(ownerDraft.idType);
     setIdNumber(ownerDraft.idNumber);
     setIdState(ownerDraft.idState);
-    setIssueDate(ownerDraft.issueDate);
-    setExpirationDate(ownerDraft.expirationDate);
+    setIssueDate(formatDate(ownerDraft.issueDate));
+    setExpirationDate(formatDate(ownerDraft.expirationDate));
     setUploadedFile(ownerDraft.uploadedFile);
     setEmployer(ownerDraft.employer);
     setOccupation(ownerDraft.occupation);
@@ -268,16 +308,46 @@ function CustomerApplicationFlow({ opening, startAtLogin }: { opening: AccountOp
         name={name}
         email={opening.fields.email.value}
         product={product?.name || "new account"}
+        apy={product ? percent(product.apy) : ""}
+        term={product ? productTermLabel(product) : ""}
         amount={agreedAmount}
         applyHref={`/account-opening/customer/${opening.id}?apply=1`}
       />
     );
   }
 
+  if (screen === "product") {
+    return (
+      <ProductSheet
+        opening={opening}
+        onProductChange={(productId) => {
+          if (productId !== opening.fields.productId.value) {
+            updateOpeningField(id, "productId", productId);
+            setAccepted([]);
+          }
+        }}
+        onContinue={() => go("review")}
+      />
+    );
+  }
+
   if (screen === "login") {
+    const signUp = opening.relationship === "new" && !preferSignIn;
     return (
       <div className={loginPage.page}>
-        <LoginFlow showBadge={false} onAuthenticated={openApplication} />
+        {signUp ? (
+          <SignupFlow
+            email={opening.fields.email.value}
+            onAuthenticated={openApplication}
+            onSignIn={() => setPreferSignIn(true)}
+          />
+        ) : (
+          <LoginFlow
+            showBadge={false}
+            onAuthenticated={openApplication}
+            onSignUp={opening.relationship === "new" ? () => setPreferSignIn(false) : undefined}
+          />
+        )}
         <FooterDisclaimer />
       </div>
     );
@@ -309,14 +379,26 @@ function CustomerApplicationFlow({ opening, startAtLogin }: { opening: AccountOp
           <div className="customer-review-card customer-submitted-card">
             <ReviewRow label="Account number" value={opening.newAccountNumber || "Opening…"} />
             <ReviewRow label="Product" value={product?.name || "—"} />
+            <ReviewRow label="Branch" value={branchName(opening.branchId) || "—"} />
             <ReviewRow label="Initial deposit" value={openedAmount == null ? "—" : money(openedAmount)} />
           </div>
-          <button type="button" className="customer-btn customer-btn-primary customer-btn-large customer-submitted-action" onClick={() => completeOpening(id)}>
+          <button
+            type="button"
+            className="customer-btn customer-btn-primary customer-btn-large customer-submitted-action"
+            onClick={() => {
+              completeOpening(id);
+              go("overview");
+            }}
+          >
             Go to Application Overview
           </button>
         </div>
       </StandaloneLayout>
     );
+  }
+
+  if (screen === "overview") {
+    return <ApplicationOverview opening={opening} />;
   }
 
   const meta = SCREEN_META[screen];
@@ -358,15 +440,36 @@ function CustomerApplicationFlow({ opening, startAtLogin }: { opening: AccountOp
                 <div>
                   <h3>{product?.name || "Deposit account"}</h3>
                   <p>
-                    {product?.kind === "cd"
-                      ? `${product.termMonths} months at ${percent(product.apy)} APY`
-                      : "Earn cash back on everyday purchases."}
+                    {product ? productRateLine(product) : "Choose the account you want to open."}
                   </p>
+                  {branchName(opening.branchId) ? <p>This account is assigned to {branchName(opening.branchId)}.</p> : null}
+                  {changingProduct ? (
+                    <div className="customer-product-list">
+                      {PRODUCTS.map((item) => (
+                        <button
+                          key={item.id}
+                          type="button"
+                          className={item.id === product?.id ? "selected" : ""}
+                          onClick={() => chooseProduct(item.id)}
+                        >
+                          <strong>{item.name}</strong>
+                          <span>{productRateLine(item)}</span>
+                        </button>
+                      ))}
+                      <button type="button" className="customer-product-cancel" onClick={() => setChangingProduct(false)}>
+                        Cancel
+                      </button>
+                    </div>
+                  ) : (
+                    <button type="button" className="customer-product-change" onClick={() => setChangingProduct(true)}>
+                      Change product
+                    </button>
+                  )}
                 </div>
-                <ul>
-                  <li>Monthly compounded interest on your savings</li>
-                  <li>Unlimited deposits</li>
-                  <li>Secure online and mobile banking access</li>
+                <ul key={product?.id ?? "product"}>
+                  {ownershipDetails(product).map((detail) => (
+                    <li key={detail}>{detail}</li>
+                  ))}
                 </ul>
               </div>
               <div className="customer-ownership-options">
@@ -558,8 +661,8 @@ function CustomerApplicationFlow({ opening, startAtLogin }: { opening: AccountOp
               </div>
               <div className="customer-form-row customer-form-row-three">
                 <AppSelect label="Issuing State" value={idState} onChange={setIdState} options={STATES} />
-                <AppInput label="Issue Date" value={issueDate} onChange={setIssueDate} />
-                <AppInput label="Expiration Date" value={expirationDate} onChange={setExpirationDate} />
+                <AppInput label="Issue Date" value={formatDate(issueDate)} placeholder="MM/DD/YYYY" onChange={(value) => setIssueDate(formatDate(value))} />
+                <AppInput label="Expiration Date" value={formatDate(expirationDate)} placeholder="MM/DD/YYYY" onChange={(value) => setExpirationDate(formatDate(value))} />
               </div>
               <div className="customer-upload">
                 {uploadedFile ? (
@@ -726,7 +829,13 @@ function CustomerApplicationFlow({ opening, startAtLogin }: { opening: AccountOp
                 title="Link a bank"
                 badge="Recommended"
                 detail="Sync your bank with Plaid and add up to $250,000 instantly."
-                onClick={() => setFunding("plaid")}
+                onClick={() => {
+                  if (existing) {
+                    setFunding("plaid");
+                    return;
+                  }
+                  setPlaidOpen(true);
+                }}
               />
               <DepositOption
                 selected={funding === "manual"}
@@ -735,6 +844,7 @@ function CustomerApplicationFlow({ opening, startAtLogin }: { opening: AccountOp
                 detail="Manually add your bank's Account and Routing information. Add up to $1,000."
                 onClick={() => setFunding("manual")}
               />
+              {/* Existing customers only. A new customer has no SouthEast Bank account to transfer from. */}
               {existing ? (
                 <DepositOption
                   selected={funding === "internal"}
@@ -776,7 +886,9 @@ function CustomerApplicationFlow({ opening, startAtLogin }: { opening: AccountOp
                   label="Select source account"
                   value={sourceAccount}
                   onChange={setSourceAccount}
-                  options={["Chase Bank **4487", "Bank of America **1234", "Wells Fargo **5678"]}
+                  options={PLAID_ACCOUNTS.map((account) => account.name)}
+                  icons={Object.fromEntries(PLAID_ACCOUNTS.map((account) => [account.name, account.logo]))}
+                  balances={Object.fromEntries(PLAID_ACCOUNTS.map((account) => [account.name, account.balance]))}
                 />
               ) : (
                 <div className="customer-form">
@@ -798,7 +910,7 @@ function CustomerApplicationFlow({ opening, startAtLogin }: { opening: AccountOp
                   onChange={(event) => setAmount(event.target.value)}
                 />
               </div>
-              <p>{product?.name || "Account"} deposits require between $1,000 - $250,000</p>
+              <p>Minimum opening deposit {money(product?.minimum ?? 1000)}.</p>
             </div>
             <button type="button" className="customer-change-method" onClick={() => go("initial-deposit")}>
               Use a different transfer method
@@ -849,17 +961,22 @@ function CustomerApplicationFlow({ opening, startAtLogin }: { opening: AccountOp
               {ownerDraft ? (
                 <OwnerEditor
                   draft={ownerDraft}
-                  fromCall={{
-                    name: matchesCall(callSnapshot.fullName, [ownerDraft.first, ownerDraft.middle, ownerDraft.last, ownerDraft.suffix].filter(Boolean).join(" ")),
-                    product: matchesCall(callSnapshot.productId, ownerDraft.productId),
-                    phone: matchesCall(callSnapshot.phone, ownerDraft.phone),
-                    email: matchesCall(callSnapshot.email, ownerDraft.email),
-                    birthDate: matchesCall(callSnapshot.birthDate, ownerDraft.birthDate),
-                    address: matchesCall(
-                      callSnapshot.address,
-                      formatAddress(ownerDraft.street, ownerDraft.unit, ownerDraft.city, ownerDraft.state, ownerDraft.zip),
-                    ),
-                  }}
+                  fromCall={
+                    isNew
+                      ? { name: false, product: false, phone: false, email: false, birthDate: false, address: false }
+                      : {
+                          name: matchesCall(callSnapshot.fullName, [ownerDraft.first, ownerDraft.middle, ownerDraft.last, ownerDraft.suffix].filter(Boolean).join(" ")),
+                          product: matchesCall(callSnapshot.productId, ownerDraft.productId),
+                          phone: matchesCall(callSnapshot.phone, ownerDraft.phone),
+                          email: matchesCall(callSnapshot.email, ownerDraft.email),
+                          birthDate: matchesCall(callSnapshot.birthDate, ownerDraft.birthDate),
+                          address: matchesCall(
+                            callSnapshot.address,
+                            formatAddress(ownerDraft.street, ownerDraft.unit, ownerDraft.city, ownerDraft.state, ownerDraft.zip),
+                          ),
+                        }
+                  }
+                  needed={isNew}
                   onChange={(partial) => setOwnerDraft((current) => (current ? { ...current, ...partial } : current))}
                 />
               ) : (
@@ -874,16 +991,17 @@ function CustomerApplicationFlow({ opening, startAtLogin }: { opening: AccountOp
                     value={[street, unit, `${city}, ${state} ${zip}`.trim()].filter(Boolean).join("\n")}
                     fromCall={fromCall.address}
                   />
-                  <ReviewRow label="Social Security" value={ssn ? `*** - ** - ${ssn.slice(-4)}` : ""} />
+                  <ReviewRow label="Social Security" value={ssn ? `*** - ** - ${ssn.slice(-4)}` : ""} needed={isNew} />
                   <ReviewRow
                     label="Government ID"
+                    needed={isNew}
                     value={
                       idType
                         ? `${idType}: #${idNumber}\nIssued: ${issueDate}\nExpires: ${expirationDate}${uploadedFile ? `\n${uploadedFile}` : ""}`
                         : ""
                     }
                   />
-                  <ReviewRow label="Job Status" value={occupation || employer ? `${occupation} at ${employer}` : ""} />
+                  <ReviewRow label="Job Status" value={occupation || employer ? `${occupation} at ${employer}` : ""} fromCall={fromCall.job} />
                 </>
               )}
             </ReviewSection>
@@ -902,6 +1020,7 @@ function CustomerApplicationFlow({ opening, startAtLogin }: { opening: AccountOp
               <ReviewRow label="Funding Amount" value={amountValue == null ? "—" : money(amountValue)} fromCall={fromCall.amount} />
               <ReviewRow
                 label="Funding Source"
+                needed={isNew}
                 value={
                   funding === "manual"
                     ? `Account ${externalAccount}`
@@ -966,6 +1085,7 @@ function CustomerApplicationFlow({ opening, startAtLogin }: { opening: AccountOp
       </main>
       <CustomerFooter />
 
+      {plaidOpen ? <PlaidModal onClose={() => setPlaidOpen(false)} onContinue={confirmPlaid} /> : null}
       {activeDisclosure ? (
         <DisclosureModal
           title={disclosures.find((item) => item.id === activeDisclosure)?.title || "Disclosure"}
@@ -1007,16 +1127,87 @@ function ApplicationStepSkeleton({ variant }: { variant: "ownership" | "bank" })
   );
 }
 
+function ProductSheet({
+  opening,
+  onProductChange,
+  onContinue,
+}: {
+  opening: AccountOpening;
+  onProductChange: (productId: string) => void;
+  onContinue: () => void;
+}) {
+  const product = productById(opening.fields.productId.value);
+  const name = opening.fields.fullName.value || "Customer";
+  const amount = parseMoney(opening.fields.transferAmount.value);
+  return (
+    <div className="customer-application">
+      <CustomerHeader name={name} />
+      <main className="customer-page-content customer-product-page">
+        {product ? (
+          <div className="customer-product-sheet">
+            <PageHeading title={product.name} subtitle="Change the product here, or continue to your application." />
+            <AppSelect
+              label="Product"
+              value={product.name}
+              onChange={(value) => {
+                const next = PRODUCTS.find((item) => item.name === value);
+                if (next) onProductChange(next.id);
+              }}
+              options={PRODUCTS.map((item) => item.name)}
+              details={Object.fromEntries(PRODUCTS.map((item) => [item.name, ownershipDetails(item)]))}
+            />
+            <dl className="customer-product-facts">
+              <dt>APY</dt>
+              <dd>{percent(product.apy)}</dd>
+              <dt>Term</dt>
+              <dd>{productTermLabel(product)}</dd>
+              <dt>Minimum deposit</dt>
+              <dd>{money(product.minimum)}</dd>
+              {amount != null ? (
+                <>
+                  <dt>Amount to open</dt>
+                  <dd>{money(amount)}</dd>
+                </>
+              ) : null}
+              {branchName(opening.branchId) ? (
+                <>
+                  <dt>Branch</dt>
+                  <dd>{branchName(opening.branchId)}</dd>
+                </>
+              ) : null}
+            </dl>
+            <ul className="customer-product-features">
+              {product.features.map((feature) => (
+                <li key={feature}>{feature}</li>
+              ))}
+            </ul>
+            <button type="button" className="customer-btn customer-btn-primary customer-btn-large customer-product-continue" onClick={onContinue}>
+              Continue
+            </button>
+          </div>
+        ) : (
+          <PageHeading title="Product details" subtitle="A product has not been selected for this application yet." />
+        )}
+      </main>
+      <CustomerFooter />
+    </div>
+  );
+}
+
 function EmailPreview({
   name,
   email,
   product,
+  apy,
+  term,
   amount,
   applyHref,
 }: {
   name: string;
   email: string;
   product: string;
+  apy: string;
+  term: string;
   amount: number | null;
   applyHref: string;
 }) {
@@ -1100,10 +1291,22 @@ function EmailPreview({
               <div className="customer-gmail-summary">
                 <span>Product</span>
                 <strong>{product}</strong>
+                {apy ? (
+                  <>
+                    <span>APY</span>
+                    <strong>{apy}</strong>
+                  </>
+                ) : null}
+                {term ? (
+                  <>
+                    <span>Term</span>
+                    <strong>{term}</strong>
+                  </>
+                ) : null}
                 <span>Amount to open</span>
                 <strong>{amount == null ? "Confirm in application" : money(amount)}</strong>
               </div>
-              <p>Review the application, complete the remaining details, confirm the amount, and sign your disclosures.</p>
+              <p>Review the product, complete the remaining details, confirm the amount, and sign your disclosures. You can change the product once you open the application.</p>
               <a className="customer-gmail-cta" href={applyHref} target="_blank" rel="noopener noreferrer">
                 Review and submit application
               </a>
@@ -1136,19 +1339,21 @@ function ChevronDown() {
   );
 }
 
-function CustomerHeader({ name, progress }: { name: string; progress: number }) {
+function CustomerHeader({ name, progress }: { name: string; progress?: number }) {
   return (
     <header className="customer-app-header">
       <Image src="/dashboard/logo.png" alt="SouthEast Bank" width={224} height={60} priority />
       <button type="button">
         {name} <ChevronDown />
       </button>
-      <div className="customer-progress">
-        <span style={{ width: `${progress}%` }} />
-        <i style={{ left: "25%" }} />
-        <i style={{ left: "50%" }} />
-        <i style={{ left: "75%" }} />
-      </div>
+      {progress != null ? (
+        <div className="customer-progress">
+          <span style={{ width: `${progress}%` }} />
+          <i style={{ left: "25%" }} />
+          <i style={{ left: "50%" }} />
+          <i style={{ left: "75%" }} />
+        </div>
+      ) : null}
     </header>
   );
 }
@@ -1197,20 +1402,25 @@ function AppInput({
   onChange,
   readOnly,
   type = "text",
+  placeholder,
 }: {
   label: string;
   value: string;
   onChange?: (value: string) => void;
   readOnly?: boolean;
   type?: string;
+  placeholder?: string;
 }) {
+  const [focused, setFocused] = useState(false);
   return (
     <label className="customer-input">
       <input
         type={type}
         value={value}
-        placeholder=" "
+        placeholder={focused && !value && placeholder ? placeholder : " "}
         readOnly={readOnly}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
         onChange={(event) => onChange?.(event.target.value)}
       />
       <span>{label}</span>
@@ -1223,22 +1433,76 @@ function AppSelect({
   value,
   onChange,
   options,
+  details,
+  icons,
+  balances,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   options: string[];
+  details?: Record<string, string[]>;
+  icons?: Record<string, string>;
+  balances?: Record<string, string>;
 }) {
+  const choices = options.filter(Boolean);
+  const icon = value ? icons?.[value] : "";
   return (
-    <label className="customer-select">
-      <select value={value} onChange={(event) => onChange(event.target.value)}>
-        <option value="">{label}</option>
-        {options.filter(Boolean).map((option) => (
-          <option key={option} value={option}>{option}</option>
-        ))}
-      </select>
-      <span>⌄</span>
-    </label>
+    <div className="customer-select">
+      <Dropdown
+        maxHeight={details ? 640 : 360}
+        trigger={
+          <button type="button" className={`customer-select-trigger${icon ? " customer-select-trigger-plain" : ""}`}>
+            {icon ? null : <span className={value ? "raised" : ""}>{label}</span>}
+            {value ? (
+              <strong className={icon ? "customer-bank-value" : undefined}>
+                {icon ? <img className="customer-bank-mark" src={icon} alt="" /> : null}
+                {value}
+              </strong>
+            ) : null}
+            <ChevronDown />
+          </button>
+        }
+      >
+        {({ close }) =>
+          choices.map((option) => {
+            const lines = details?.[option] ?? [];
+            const mark = icons?.[option];
+            const balance = balances?.[option];
+            return (
+              <DropdownItem
+                key={option}
+                role="option"
+                selected={option === value}
+                onClick={() => {
+                  onChange(option);
+                  close();
+                }}
+              >
+                {mark ? (
+                  <span className="customer-bank-option">
+                    <img className="customer-bank-mark" src={mark} alt="" />
+                    <strong>{option}</strong>
+                    {balance ? <em>Balance: <span>{balance}</span></em> : null}
+                  </span>
+                ) : lines.length > 0 ? (
+                  <span className="customer-select-option">
+                    <strong>{option}</strong>
+                    <ul>
+                      {lines.map((line) => (
+                        <li key={line}>{line}</li>
+                      ))}
+                    </ul>
+                  </span>
+                ) : (
+                  option
+                )}
+              </DropdownItem>
+            );
+          })
+        }
+      </Dropdown>
+    </div>
   );
 }
 
@@ -1323,7 +1587,7 @@ function DepositOption({
   return (
     <button type="button" className={selected ? "selected" : ""} onClick={onClick}>
       <span className={`customer-deposit-icon customer-deposit-icon-${icon}`}>
-        {icon === "seb" ? <SebMark /> : icon === "bank" ? "▥" : "▤"}
+        {icon === "seb" ? <SebMark /> : icon === "bank" ? <BankIcon /> : <ManualIcon />}
       </span>
       <span className="customer-deposit-copy">
         <span><strong>{title}</strong>{badge ? <em>{badge}</em> : null}</span>
@@ -1358,20 +1622,21 @@ function ReviewSection({
   );
 }
 
-function ReviewRow({ label, value, fromCall = false }: { label: string; value: string; fromCall?: boolean }) {
+function ReviewRow({ label, value, fromCall = false, needed = false }: { label: string; value: string; fromCall?: boolean; needed?: boolean }) {
+  const mark = fromCall ? " from-call" : needed ? " needs-you" : "";
   return (
-    <div className={`customer-review-row${fromCall ? " from-call" : ""}`}>
-      <span>{label}{fromCall ? <em>From your call</em> : null}</span>
+    <div className={`customer-review-row${mark}`}>
+      <span>{label}{fromCall ? <em>From your call</em> : needed ? <em>Needed from you</em> : null}</span>
       <strong>{value || "—"}</strong>
     </div>
   );
 }
 
-function CallFields({ active, children }: { active: boolean; children: React.ReactNode }) {
+function CallFields({ active, note = "From your call", children }: { active: boolean; note?: string; children: React.ReactNode }) {
   return (
     <div className={active ? "customer-call-field" : undefined}>
       {children}
-      {active ? <em>From your call</em> : null}
+      {active ? <em>{note}</em> : null}
     </div>
   );
 }
@@ -1379,10 +1644,12 @@ function CallFields({ active, children }: { active: boolean; children: React.Rea
 function OwnerEditor({
   draft,
   fromCall,
+  needed = false,
   onChange,
 }: {
   draft: OwnerDraft;
   fromCall: { name: boolean; product: boolean; phone: boolean; email: boolean; birthDate: boolean; address: boolean };
+  needed?: boolean;
   onChange: (partial: Partial<OwnerDraft>) => void;
 }) {
   return (
@@ -1401,6 +1668,7 @@ function OwnerEditor({
           value={productById(draft.productId)?.name || ""}
           onChange={(value) => onChange({ productId: PRODUCTS.find((item) => item.name === value)?.id || draft.productId })}
           options={PRODUCTS.map((item) => item.name)}
+          details={Object.fromEntries(PRODUCTS.map((item) => [item.name, ownershipDetails(item)]))}
         />
       </CallFields>
       <CallFields active={fromCall.phone}>
@@ -1410,7 +1678,7 @@ function OwnerEditor({
         <AppInput label="Email Address" value={draft.email} onChange={(value) => onChange({ email: value })} />
       </CallFields>
       <CallFields active={fromCall.birthDate}>
-        <AppInput label="Date of Birth" value={draft.birthDate} onChange={(value) => onChange({ birthDate: value })} />
+        <AppInput label="Date of Birth" value={formatDate(draft.birthDate)} placeholder="MM/DD/YYYY" onChange={(value) => onChange({ birthDate: formatDate(value) })} />
       </CallFields>
       <CallFields active={fromCall.address}>
         <div className="customer-form">
@@ -1423,42 +1691,44 @@ function OwnerEditor({
           <AppInput label="Zip Code" value={draft.zip} onChange={(value) => onChange({ zip: value })} />
         </div>
       </CallFields>
-      <AppInput label="Social Security Number" value={draft.ssn} onChange={(value) => onChange({ ssn: formatSsn(value) })} />
-      <div className="customer-form-row">
-        <AppSelect
-          label="ID Type"
-          value={draft.idType}
-          onChange={(value) => onChange({ idType: value })}
-          options={["Driver's License", "Passport", "State ID"]}
-        />
-        <AppInput label="ID Number" value={draft.idNumber} onChange={(value) => onChange({ idNumber: value })} />
-      </div>
-      <div className="customer-form-row customer-form-row-three">
-        <AppSelect label="Issuing State" value={draft.idState} onChange={(value) => onChange({ idState: value })} options={STATES} />
-        <AppInput label="Issue Date" value={draft.issueDate} onChange={(value) => onChange({ issueDate: value })} />
-        <AppInput label="Expiration Date" value={draft.expirationDate} onChange={(value) => onChange({ expirationDate: value })} />
-      </div>
-      <div className="customer-upload customer-upload-compact">
-        {draft.uploadedFile ? (
-          <div className="customer-upload-file">
-            <DocumentIcon />
-            <div>
-              <strong>{draft.uploadedFile}</strong>
-              <span>Completed</span>
+      <CallFields active={needed} note="Needed from you">
+        <AppInput label="Social Security Number" value={draft.ssn} onChange={(value) => onChange({ ssn: formatSsn(value) })} />
+        <div className="customer-form-row">
+          <AppSelect
+            label="ID Type"
+            value={draft.idType}
+            onChange={(value) => onChange({ idType: value })}
+            options={["Driver's License", "Passport", "State ID"]}
+          />
+          <AppInput label="ID Number" value={draft.idNumber} onChange={(value) => onChange({ idNumber: value })} />
+        </div>
+        <div className="customer-form-row customer-form-row-three">
+          <AppSelect label="Issuing State" value={draft.idState} onChange={(value) => onChange({ idState: value })} options={STATES} />
+          <AppInput label="Issue Date" value={formatDate(draft.issueDate)} placeholder="MM/DD/YYYY" onChange={(value) => onChange({ issueDate: formatDate(value) })} />
+          <AppInput label="Expiration Date" value={formatDate(draft.expirationDate)} placeholder="MM/DD/YYYY" onChange={(value) => onChange({ expirationDate: formatDate(value) })} />
+        </div>
+        <div className="customer-upload customer-upload-compact">
+          {draft.uploadedFile ? (
+            <div className="customer-upload-file">
+              <DocumentIcon />
+              <div>
+                <strong>{draft.uploadedFile}</strong>
+                <span>Completed</span>
+              </div>
+              <button type="button" aria-label="Remove file" onClick={() => onChange({ uploadedFile: "" })}>×</button>
             </div>
-            <button type="button" aria-label="Remove file" onClick={() => onChange({ uploadedFile: "" })}>×</button>
-          </div>
-        ) : (
-          <>
-            <UploadIcon />
-            <strong>Choose a file or drag & drop it here</strong>
-            <span>JPEG, PNG, and PDF formats up to 10MB</span>
-            <button type="button" className="customer-btn customer-btn-secondary" onClick={() => onChange({ uploadedFile: "drivers-license.pdf" })}>
-              Browse files
-            </button>
-          </>
-        )}
-      </div>
+          ) : (
+            <>
+              <UploadIcon />
+              <strong>Choose a file or drag & drop it here</strong>
+              <span>JPEG, PNG, and PDF formats up to 10MB</span>
+              <button type="button" className="customer-btn customer-btn-secondary" onClick={() => onChange({ uploadedFile: "drivers-license.pdf" })}>
+                Browse files
+              </button>
+            </>
+          )}
+        </div>
+      </CallFields>
       <div className="customer-form-row">
         <AppInput label="Employer" value={draft.employer} onChange={(value) => onChange({ employer: value })} />
         <AppInput label="Occupation" value={draft.occupation} onChange={(value) => onChange({ occupation: value })} />
@@ -1482,6 +1752,64 @@ function Consent({
     <button type="button" className={`customer-consent${box ? " customer-consent-box" : ""} ${checked ? "checked" : ""}`} onClick={onClick}>
       <span>{checked ? "✓" : ""}</span> {children}
     </button>
+  );
+}
+
+const PLAID_ACCOUNTS = [
+  { name: "Chase Bank **4487", balance: "$5,102.27", logo: "/brand/bank-chase.png" },
+  { name: "Wells Fargo **1403", balance: "$403.00", logo: "/brand/bank-wells.png" },
+  { name: "Bank of America **9117", balance: "", logo: "/brand/bank-bofa.png" },
+];
+
+function PlaidModal({ onClose, onContinue }: { onClose: () => void; onContinue: () => void }) {
+  return (
+    <div className="customer-modal-backdrop" onClick={onClose}>
+      <div className="customer-plaid" role="dialog" aria-modal="true" aria-labelledby="plaid-title" onClick={(event) => event.stopPropagation()}>
+        <img src="/brand/plaid-connect.png" alt="" />
+        <h2 id="plaid-title">SouthEast Bank uses <strong>Plaid</strong> to connect your account</h2>
+        <div className="customer-plaid-point">
+          <LinkIcon />
+          <div>
+            <strong>Connect effortlessly</strong>
+            <p>Plaid lets you securely connect your financial accounts in seconds</p>
+          </div>
+        </div>
+        <div className="customer-plaid-point">
+          <EyeIcon />
+          <div>
+            <strong>Your data belongs to you</strong>
+            <p>Plaid doesn&apos;t sell personal info, and will only use it with your permission</p>
+          </div>
+        </div>
+        <p className="customer-plaid-note">
+          By selecting &quot;Continue&quot; you agree to the{" "}
+          <a href="https://plaid.com/legal/#end-user-privacy-policy" target="_blank" rel="noreferrer">
+            Plaid End User Privacy Policy
+          </a>
+        </p>
+        <button type="button" className="customer-plaid-continue" onClick={onContinue}>
+          Continue
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function LinkIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden>
+      <path d="M10 13a5 5 0 0 0 7.1.1l2-2a5 5 0 0 0-7.1-7.1l-1.1 1.1" />
+      <path d="M14 11a5 5 0 0 0-7.1-.1l-2 2a5 5 0 0 0 7.1 7.1l1.1-1.1" />
+    </svg>
+  );
+}
+
+function EyeIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden>
+      <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12z" />
+      <circle cx="12" cy="12" r="3" />
+    </svg>
   );
 }
 
@@ -1549,6 +1877,84 @@ function OpenAccountMark() {
   );
 }
 
+function ApplicationOverview({ opening }: { opening: AccountOpening }) {
+  const name = opening.fields.fullName.value || "Customer";
+  const first = splitName(name).first || name;
+  const product = productById(opening.fields.productId.value);
+  const openedOn = formatOverviewDate(opening.openedAt);
+  const amount = parseMoney(opening.fields.transferAmount.value);
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div className="customer-application">
+      <CustomerHeader name={name} />
+      <main className="customer-page-content customer-overview-page">
+        <div className="customer-overview-heading">
+          <h1>Welcome, {first}</h1>
+          <p>Here&apos;s an overview of your applications. Please select what you would like to do.</p>
+        </div>
+        <section className="customer-overview-section">
+          <h2>Completed Applications</h2>
+          <article className="customer-overview-card">
+            <div className="customer-overview-card-copy">
+              <h3>{product?.name || "Account"}</h3>
+              <p className="customer-overview-id">
+                <span>Application ID:</span>
+                <span>{opening.id}</span>
+              </p>
+              <div className="customer-overview-badges">
+                <span className="customer-overview-badge customer-overview-badge-opened">Account opened</span>
+                <span className="customer-overview-badge">{openedOn ? `Opened on ${openedOn}` : "Opened"}</span>
+              </div>
+              {open ? (
+                <dl className="customer-overview-details">
+                  <div>
+                    <dt>Account number</dt>
+                    <dd>{opening.newAccountNumber || "—"}</dd>
+                  </div>
+                  <div>
+                    <dt>Branch</dt>
+                    <dd>{branchName(opening.branchId) || "—"}</dd>
+                  </div>
+                  <div>
+                    <dt>Initial deposit</dt>
+                    <dd>{amount == null ? "—" : money(amount)}</dd>
+                  </div>
+                </dl>
+              ) : null}
+            </div>
+            <button
+              type="button"
+              className={`customer-overview-toggle${open ? " customer-overview-toggle-open" : ""}`}
+              aria-expanded={open}
+              aria-label={open ? "Hide application details" : "Show application details"}
+              onClick={() => setOpen((current) => !current)}
+            >
+              <ChevronDown />
+            </button>
+          </article>
+        </section>
+        <button type="button" className="customer-btn customer-btn-primary customer-btn-large customer-overview-explore">
+          Explore New Products
+        </button>
+      </main>
+      <footer className="customer-app-footer">
+        <div>
+          <a href="#">Privacy Policy</a>
+          <i />
+          <a href="#">Contact Us</a>
+          <i />
+          <a href="#">Patriot Act</a>
+        </div>
+        <div className="customer-overview-meta">
+          <span>Site is secured using 256-bit SSL encryption.</span>
+          <span>2025 SouthEast Bank. All rights reserved.</span>
+        </div>
+      </footer>
+    </div>
+  );
+}
+
 function StandaloneLayout({ name, children, complete = false }: { name: string; children: React.ReactNode; complete?: boolean }) {
   return (
     <div className={`customer-application${complete ? " customer-application-complete" : ""}`}>
@@ -1557,6 +1963,15 @@ function StandaloneLayout({ name, children, complete = false }: { name: string; 
       <CustomerFooter />
     </div>
   );
+}
+
+function formatOverviewDate(value: string | null) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${month}/${day}/${date.getFullYear()}`;
 }
 
 function splitName(full: string) {
@@ -1569,8 +1984,14 @@ function splitName(full: string) {
   return { first, middle: parts.join(" "), last, suffix };
 }
 
-function formatAddress(street: string, unit: string, city: string, state: string, zip: string) {
-  return [street, unit, city, `${state} ${zip}`.trim()].map((part) => part.trim()).filter(Boolean).join(", ");
+function productRateLine(product: { kind: "cd" | "checking"; termMonths: number; apy: number }) {
+  return product.kind === "cd" ? `${product.termMonths} months at ${percent(product.apy)} APY` : `${percent(product.apy)} APY`;
+}
+
+function ownershipDetails(product: ReturnType<typeof productById>) {
+  if (!product) return ["Secure online and mobile banking access"];
+  const minimum = product.minimum.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
+  return [`${minimum} minimum to open`, ...product.features];
 }
 
 function matchesCall(original: string, current: string) {
@@ -1583,14 +2004,15 @@ function sameMoney(original: string, current: string) {
   return left != null && right != null && left === right;
 }
 
-function parseAddress(address: string) {
-  const [street = "", city = "", stateZip = ""] = address.split(",").map((part) => part.trim());
-  const match = stateZip.match(/^([A-Z]{2})\s+(.+)$/);
-  return { street, city, state: match?.[1] || "", zip: match?.[2] || "" };
-}
-
 function validJointOwner(owner: { firstName: string; lastName: string; email: string }) {
   return Boolean(owner.firstName.trim() && owner.lastName.trim() && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(owner.email));
+}
+
+function formatDate(value: string) {
+  const digits = value.replace(/\D/g, "").slice(0, 8);
+  if (digits.length <= 2) return digits;
+  if (digits.length <= 4) return `${digits.slice(0, 2)}/${digits.slice(2)}`;
+  return `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4)}`;
 }
 
 function formatSsn(value: string) {
@@ -1634,7 +2056,29 @@ function PeopleIcon() {
 }
 
 function SebMark() {
-  return <span className="customer-seb-mark"><b>S</b><i>E</i><em>B</em></span>;
+  return <Image className="customer-seb-mark" src="/brand/seb-mark.png" alt="SouthEast Bank" width={40} height={40} />;
+}
+
+function ManualIcon() {
+  return (
+    <svg viewBox="0 0 38 38" aria-hidden>
+      <path
+        fill="currentColor"
+        d="M12.3562 5.22578C12.3562 4.43609 11.7208 3.80078 10.9312 3.80078C10.1415 3.80078 9.50615 4.43609 9.50615 5.22578V7.60078H7.60615C5.51022 7.60078 3.80615 9.30484 3.80615 11.4008V28.5008C3.80615 30.5967 5.51022 32.3008 7.60615 32.3008H16.6668L16.934 30.9648C17.0408 30.4423 17.2071 29.9317 17.4327 29.4508H7.60615C7.08365 29.4508 6.65615 29.0233 6.65615 28.5008V11.4008C6.65615 10.8783 7.08365 10.4508 7.60615 10.4508H26.6062C27.1287 10.4508 27.5562 10.8783 27.5562 11.4008V18.7633L28.8683 17.4511C29.3315 16.988 29.854 16.608 30.4061 16.323V11.4008C30.4061 9.30484 28.7021 7.60078 26.6062 7.60078H24.7062V5.22578C24.7062 4.43609 24.0708 3.80078 23.2812 3.80078C22.4915 3.80078 21.8562 4.43609 21.8562 5.22578V7.60078H12.3562V5.22578ZM9.50615 18.5258C9.50615 19.3155 10.1415 19.9508 10.9312 19.9508H19.4812C20.2708 19.9508 20.9062 19.3155 20.9062 18.5258C20.9062 17.7361 20.2708 17.1008 19.4812 17.1008H10.9312C10.1415 17.1008 9.50615 17.7361 9.50615 18.5258ZM10.9312 22.8008C10.1415 22.8008 9.50615 23.4361 9.50615 24.2258C9.50615 25.0155 10.1415 25.6508 10.9312 25.6508H15.6812C16.4708 25.6508 17.1062 25.0155 17.1062 24.2258C17.1062 23.4361 16.4708 22.8008 15.6812 22.8008H10.9312ZM19.7305 31.523L19.024 35.0617C19.0121 35.1152 19.0062 35.1745 19.0062 35.2339C19.0062 35.7089 19.3921 36.1008 19.873 36.1008C19.9324 36.1008 19.9858 36.0948 20.0452 36.083L23.584 35.3764C24.3202 35.228 24.9971 34.8658 25.5255 34.3373L32.5852 27.2777L27.8352 22.5277L20.7755 29.5873C20.2471 30.1158 19.8849 30.7927 19.7365 31.5289L19.7305 31.523ZM35.6311 24.2198C36.9433 22.9077 36.9433 20.782 35.6311 19.4698C34.319 18.1577 32.1933 18.1577 30.8811 19.4698L29.1712 21.1798L33.9211 25.9298L35.6311 24.2198Z"
+      />
+    </svg>
+  );
+}
+
+function BankIcon() {
+  return (
+    <svg viewBox="0 0 44 44" aria-hidden>
+      <path
+        fill="currentColor"
+        d="M22.9079 5.22125C22.3579 4.86375 21.6498 4.86375 21.0998 5.22125L5.14977 15.6712C4.53789 16.07 4.26289 16.8263 4.46914 17.5275C4.67539 18.2288 5.32164 18.7031 6.05039 18.7031H8.80039V29.7031H8.25039C7.33602 29.7031 6.60039 30.4388 6.60039 31.3531C6.60039 32.2675 7.33602 33.0031 8.25039 33.0031H35.7504C36.6648 33.0031 37.4004 32.2675 37.4004 31.3531C37.4004 30.4388 36.6648 29.7031 35.7504 29.7031H35.2004V18.7031H37.9504C38.6791 18.7031 39.3254 18.2219 39.5316 17.5275C39.7379 16.8331 39.4629 16.0769 38.8579 15.6781L22.9079 5.22812V5.22125ZM16.5004 29.7031H12.1004V18.7031H16.5004V29.7031ZM24.2004 29.7031H19.8004V18.7031H24.2004V29.7031ZM31.9004 29.7031H27.5004V18.7031H31.9004V29.7031ZM20.096 15.4031H11.5779L22.0004 8.57625L32.4229 15.4031H23.9048C24.0904 15.08 24.2004 14.7019 24.2004 14.3031C24.2004 13.0863 23.2173 12.1031 22.0004 12.1031C20.7835 12.1031 19.8004 13.0863 19.8004 14.3031C19.8004 14.7019 19.9104 15.08 20.096 15.4031ZM4.40039 37.9531C4.40039 38.8675 5.13602 39.6031 6.05039 39.6031H37.9504C38.8648 39.6031 39.6004 38.8675 39.6004 37.9531C39.6004 37.0387 38.8648 36.3031 37.9504 36.3031H6.05039C5.13602 36.3031 4.40039 37.0387 4.40039 37.9531Z"
+      />
+    </svg>
+  );
 }
 
 function MailIcon({ name }: { name: string }) {

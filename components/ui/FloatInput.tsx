@@ -8,8 +8,11 @@ export function FloatInput({
   value,
   onChange,
   readOnly,
+  quiet,
+  highlighted,
   autoFocus,
   type = "text",
+  placeholder,
   step,
   multiline,
   onKeyDown,
@@ -21,8 +24,11 @@ export function FloatInput({
   value: string;
   onChange?: (value: string, caret: number) => void;
   readOnly?: boolean;
+  quiet?: boolean;
+  highlighted?: boolean;
   autoFocus?: boolean;
   type?: string;
+  placeholder?: string;
   step?: string;
   multiline?: boolean;
   onKeyDown?: (event: KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
@@ -37,7 +43,7 @@ export function FloatInput({
     value,
     readOnly,
     autoFocus,
-    placeholder: " ",
+    placeholder: focused && !value ? placeholder || " " : " ",
     onChange: (event: { target: { value: string; selectionStart: number | null } }) =>
       onChange?.(event.target.value, event.target.selectionStart ?? event.target.value.length),
     onKeyDown,
@@ -50,7 +56,12 @@ export function FloatInput({
       setFocused(false);
       onBlur?.(event);
     },
-    className: multiline ? "uw-float-input uw-float-input-multiline" : "uw-float-input",
+    className: [
+      "uw-float-input",
+      multiline ? "uw-float-input-multiline" : "",
+      quiet ? "uw-float-input-quiet" : "",
+      highlighted ? "uw-float-input-highlight" : "",
+    ].filter(Boolean).join(" "),
   };
 
   return (

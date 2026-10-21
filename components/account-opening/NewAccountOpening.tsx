@@ -1,11 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { Combobox, Select } from "@/components/ui/Dropdown";
 import { FloatInput } from "@/components/ui/FloatInput";
-import { customerByAccount, KNOWN_CUSTOMERS, normalizeAccount } from "@/lib/account-opening-data";
+import { branchName, customerByAccount, KNOWN_CUSTOMERS, normalizeAccount } from "@/lib/account-opening-data";
 import { createOpening } from "@/lib/account-opening-store";
 import type { AccountOpeningChannel } from "@/lib/account-opening-types";
 
@@ -15,9 +15,11 @@ export function NewAccountOpening() {
   const [relationship, setRelationship] = useState<"existing" | "new">("existing");
   const [customerName, setCustomerName] = useState("");
   const [accountNumber, setAccountNumber] = useState("");
-  const [fullName, setFullName] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
+  const phoneRef = useRef<HTMLInputElement>(null);
   const match = relationship === "existing" ? customerByAccount(accountNumber) : null;
   const jordan = normalizeAccount(accountNumber) === "0048219931";
   const customerOptions = KNOWN_CUSTOMERS.map((customer) => ({
@@ -25,7 +27,24 @@ export function NewAccountOpening() {
     label: customer.fullName,
     detail: customer.accountNumber,
   }));
-  const missing = relationship === "existing" ? accountNumber.trim().length === 0 : fullName.trim().length === 0 || phone.trim().length === 0;
+  const fullName = [firstName.trim(), lastName.trim()].filter(Boolean).join(" ");
+  const phoneDigits = phone.replace(/\D/g, "");
+  const missing = relationship === "existing" ? accountNumber.trim().length === 0 : firstName.trim().length === 0 || lastName.trim().length === 0 || phoneDigits.length < 10;
+
+  function onPhone(value: string, caret: number) {
+    const previous = phone.replace(/\D/g, "");
+    let digits = value.replace(/\D/g, "").slice(0, 10);
+    let digitsBefore = value.slice(0, caret).replace(/\D/g, "").length;
+    if (digits === previous && value.length < phone.length) {
+      const dropAt = Math.max(0, digitsBefore - 1);
+      digits = digits.slice(0, dropAt) + digits.slice(dropAt + 1);
+      digitsBefore = dropAt;
+    }
+    const next = formatPhone(digits);
+    setPhone(next);
+    const pos = phoneCaret(next, Math.min(digitsBefore, digits.length));
+    requestAnimationFrame(() => phoneRef.current?.setSelectionRange(pos, pos));
+  }
 
   function start() {
     const id = createOpening({
@@ -85,8 +104,11 @@ export function NewAccountOpening() {
             />
           ) : (
             <>
-              <FloatInput label="Full name" value={fullName} onChange={setFullName} />
-              <FloatInput label="Phone" value={phone} type="tel" onChange={setPhone} />
+              <div className="grid grid-cols-2 gap-md">
+                <FloatInput label="First name" value={firstName} onChange={setFirstName} />
+                <FloatInput label="Last name" value={lastName} onChange={setLastName} />
+              </div>
+              <FloatInput label="Phone" value={formatPhone(phone)} type="tel" placeholder="(___) ___-____" inputRef={phoneRef} onChange={onPhone} />
               <FloatInput label="Email" value={email} type="email" onChange={setEmail} />
             </>
           )}
@@ -107,20 +129,43 @@ export function NewAccountOpening() {
               <ProfileItem label="Name" value={match.fullName} />
               <ProfileItem label="Customer ID" value={match.customerId} />
               <ProfileItem label="Relationship" value={match.existingAccount} />
+              <ProfileItem label="Home branch" value={branchName(match.branchId)} />
               <ProfileItem label="Email" value={match.email} />
               <ProfileItem label="Phone" value={match.phone} />
             </>
           ) : (
             <p className="text-sm text-gray-medium">
-              {relationship === "existing" && accountNumber.trim()
-                ? "No customer profile matched that account number."
-                : "Profile fields appear after a customer is selected."}
+              {relationship === "new"
+                ? "A new customer has no profile on file."
+                : relationship === "existing" && accountNumber.trim()
+                  ? "No customer profile matched that account number."
+                  : "Profile fields appear after a customer is selected."}
             </p>
           )}
         </dl>
       </section>
     </div>
   );
+}
+
+function formatPhone(value: string) {
+  const digits = value.replace(/\D/g, "").slice(0, 10);
+  if (!digits) return "";
+  if (digits.length < 4) return `(${digits}`;
+  if (digits.length < 7) return `(${digits.slice(0, 3)}) ${digits.slice(3)}`;
+  return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
+}
+
+function phoneCaret(formatted: string, digitCount: number) {
+  if (digitCount <= 0) return 0;
+  let seen = 0;
+  for (let index = 0; index < formatted.length; index += 1) {
+    if (/\d/.test(formatted[index])) {
+      seen += 1;
+      if (seen === digitCount) return index + 1;
+    }
+  }
+  return formatted.length;
 }
 
 function ProfileItem({ label, value }: { label: string; value: string }) {

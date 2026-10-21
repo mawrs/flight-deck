@@ -63,6 +63,7 @@ export type AccountOpening = {
   id: string;
   agentName: string;
   channel: AccountOpeningChannel;
+  branchId: string;
   relationship: "existing" | "new";
   status: AccountOpeningStatus;
   startedAt: string;
@@ -73,6 +74,12 @@ export type AccountOpening = {
   transcript: TranscriptLine[];
   insights: ConversationInsight[];
   activity: ActivityEvent[];
+  callIntake?: CallIntake;
+};
+
+export type Branch = {
+  id: string;
+  name: string;
 };
 
 export type DepositProduct = {
@@ -81,6 +88,8 @@ export type DepositProduct = {
   termMonths: number;
   apy: number;
   kind: "cd" | "checking";
+  minimum: number;
+  features: string[];
 };
 
 export type KnownCustomer = {
@@ -92,6 +101,26 @@ export type KnownCustomer = {
   birthDate: string;
   address: string;
   existingAccount: string;
+  branchId: string;
+};
+
+export type YesNo = "" | "yes" | "no";
+
+export type CallIntake = {
+  ownership: "" | "Individual" | "Joint";
+  jointOwner: { firstName: string; lastName: string; email: string };
+  employer: string;
+  occupation: string;
+  pep: YesNo;
+  purpose: string;
+  frequency: string;
+  expectedDeposit: string;
+  movement: YesNo;
+  cashIn: YesNo;
+  cashInAmount: string;
+  cashOut: YesNo;
+  ach: YesNo;
+  wire: YesNo;
 };
 
 export type CreateAccountOpeningInput = {
@@ -101,5 +130,8 @@ export type CreateAccountOpeningInput = {
   fullName: string;
   phone: string;
   email: string;
+  birthDate?: string;
+  address?: string;
+  callIntake?: CallIntake;
   attachSampleCall: boolean;
 };

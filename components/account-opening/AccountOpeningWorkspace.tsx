@@ -1,20 +1,29 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { SectionTabs } from "@/components/ui/SectionTabs";
 import { Select } from "@/components/ui/Dropdown";
+import { FloatInput } from "@/components/ui/FloatInput";
 import {
+  BRANCHES,
+  branchName,
   channelLabel,
   disclosuresFor,
+  emptyCallIntake,
   fieldLabel,
+  formatPostalAddress,
+  lineCapture,
   handoffStep,
   handoffSteps,
   missingSendRequirements,
   parseMoney,
+  parsePostalAddress,
   productById,
   productQuote,
+  replayCapture,
   PRODUCTS,
   statusLabel,
+  type CaptureField,
 } from "@/lib/account-opening-data";
 import { money, percent, shortDate } from "@/lib/format";
 import {
@@ -22,12 +31,20 @@ import {
   acceptInsight,
   dismissInsight,
   loadSampleCall,
+  setOpeningBranch,
+  setOpeningCallIntake,
   setOpeningChannel,
   updateOpeningField,
   useAccountOpening,
   restoreProfileValue,
 } from "@/lib/account-opening-store";
-import type { AccountOpening, AccountOpeningChannel, OpeningField } from "@/lib/account-opening-types";
+import type { AccountOpening, AccountOpeningChannel, CallIntake, OpeningField, YesNo } from "@/lib/account-opening-types";
+
+const STATES = ["AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "FL", "GA", "HI", "ID", "IL", "IN", "IA", "KS", "KY", "LA", "ME", "MD", "MA", "MI", "MN", "MS", "MO", "MT", "NE", "NV", "NH", "NJ", "NM", "NY", "NC", "ND", "OH", "OK", "OR", "PA", "RI", "SC", "SD", "TN", "TX", "UT", "VT", "VA", "WA", "WV", "WI", "WY"];
+const YES_NO = [
+  { id: "yes", label: "Yes" },
+  { id: "no", label: "No" },
+];
 import { ProvenanceField } from "./ProvenanceField";
 
 type SectionId = "transcript" | "activity" | "customer" | "disclosures";
@@ -76,6 +93,15 @@ export function AccountOpeningWorkspace({ id }: { id: string }) {
     return () => window.clearTimeout(timer);
   }, [opening, replaying, shownLines, transcriptLength, typedCharacters]);
 
+  const captureHighlight =
+    replaying && opening ? [...replayCapture(opening.transcript, shownLines).highlight].join("|") : "";
+
+  useEffect(() => {
+    if (!captureHighlight) return;
+    const field = captureHighlight.split("|")[0];
+    document.querySelector(`[data-capture-field="${field}"]`)?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }, [captureHighlight]);
+
   if (!opening) return <p className="uw-page-status">Account opening {id} was not found.</p>;
 
   const locked = opening.status === "opened";
@@ -90,6 +116,8 @@ export function AccountOpeningWorkspace({ id }: { id: string }) {
   const currentFields = new Set(
     opening.insights.filter((insight) => insight.transcriptId === currentLine?.id).map((insight) => insight.field),
   );
+  const liveCapture = replaying ? replayCapture(opening.transcript, shownLines) : null;
+  const branchValue = liveCapture ? liveCapture.branchId : opening.branchId;
 
   function replayCall() {
     setSection("transcript");
@@ -129,7 +157,7 @@ export function AccountOpeningWorkspace({ id }: { id: string }) {
                 ) : null
               }
             >
-              Product Details
+              Application Details
             </PanelHeader>
             <div className="grid gap-md p-lg">
               <FundingField
@@ -139,6 +167,18 @@ export function AccountOpeningWorkspace({ id }: { id: string }) {
                 highlighted={replaying && currentFields.has("productId")}
                 locked={locked || replaying}
               />
+              <CapturedField field="branch">
+                <Select
+                  variant="float"
+                  label="Branch"
+                  value={branchValue}
+                  placeholder="Select a branch"
+                  disabled={locked || replaying}
+                  highlighted={Boolean(liveCapture?.highlight.has("branch"))}
+                  options={BRANCHES.map((branch) => ({ id: branch.id, label: branch.name }))}
+                  onChange={(value) => setOpeningBranch(opening.id, value)}
+                />
+              </CapturedField>
               <FundingField
                 opening={opening}
                 field="availableFunds"
@@ -153,6 +193,7 @@ export function AccountOpeningWorkspace({ id }: { id: string }) {
                 highlighted={replaying && currentFields.has("transferAmount")}
                 locked={locked || replaying}
               />
+              <CallDetails opening={opening} disabled={locked || replaying} live={liveCapture} />
             </div>
             <ProductSummary
               opening={opening}
@@ -187,6 +228,8 @@ export function AccountOpeningWorkspace({ id }: { id: string }) {
               onChange={(value) => updateOpeningField(opening.id, "accountNumber", value)}
             />
             <ReadField label="Existing relationship" value={opening.fields.existingAccount.value || "No profile match"} />
+            <ReadField label="New account" value={opening.status === "opened" ? opening.newAccountNumber || "TBD" : "TBD"} />
+            <ReadField label="Branch" value={branchName(opening.branchId) || "Not assigned"} />
             <ApplicantFields opening={opening} fields={["email", "phone", "birthDate", "address"]} locked={locked || !editingCustomer} />
             {editingCustomer && !locked ? (
               <Select
@@ -281,10 +324,158 @@ function FundingField({
       value={value ?? opening.fields[field].value}
       options={field === "productId" ? PRODUCTS.map((product) => ({ id: product.id, label: product.name })) : undefined}
       focused={highlighted}
+      keepControl
       moneyInput={field !== "productId"}
       readOnly={locked}
       onChange={(value) => updateOpeningField(opening.id, field, value)}
     />
+  );
+}
+
+function CapturedField({ field, children }: { field: string; children: ReactNode }) {
+  return <div data-capture-field={field}>{children}</div>;
+}
+
+function CallDetails({
+  opening,
+  disabled,
+  live,
+}: {
+  opening: AccountOpening;
+  disabled: boolean;
+  live: ReturnType<typeof replayCapture> | null;
+}) {
+  const intake = live?.intake ?? opening.callIntake ?? emptyCallIntake();
+  const address = parsePostalAddress(live ? live.address : opening.fields.address.value);
+  const birthDate = live ? live.birthDate : opening.fields.birthDate.value;
+  const active = (field: CaptureField) => Boolean(live?.highlight.has(field));
+
+  function writeIntake(partial: Partial<CallIntake>) {
+    setOpeningCallIntake(opening.id, { ...intake, ...partial });
+  }
+
+  function writeAddress(partial: Partial<typeof address>) {
+    const next = { ...address, ...partial };
+    updateOpeningField(opening.id, "address", formatPostalAddress(next.street, next.unit, next.city, next.state, next.zip));
+  }
+
+  return (
+    <>
+      <div data-capture-field="birthDate">
+        <ProvenanceField
+          id="opening-birthDate"
+          label={fieldLabel("birthDate")}
+          value={birthDate}
+          profileValue={opening.fields.birthDate.profileValue}
+          focused={active("birthDate")}
+          keepControl
+          readOnly={disabled}
+          onChange={(value) => updateOpeningField(opening.id, "birthDate", value)}
+          onUseProfile={() => restoreProfileValue(opening.id, "birthDate")}
+        />
+      </div>
+      <CapturedField field="street">
+        <FloatInput label="Primary street address" value={address.street} readOnly={disabled} quiet={disabled} highlighted={active("street")} onChange={(value) => writeAddress({ street: value })} />
+      </CapturedField>
+      <CapturedField field="unit">
+        <FloatInput label="Unit (optional)" value={address.unit} readOnly={disabled} quiet={disabled} highlighted={active("unit")} onChange={(value) => writeAddress({ unit: value })} />
+      </CapturedField>
+      <CapturedField field="city">
+        <FloatInput label="City" value={address.city} readOnly={disabled} quiet={disabled} highlighted={active("city")} onChange={(value) => writeAddress({ city: value })} />
+      </CapturedField>
+      <CapturedField field="state">
+        <Select variant="float" label="State" value={address.state} options={STATES} disabled={disabled} highlighted={active("state")} onChange={(value) => writeAddress({ state: value })} />
+      </CapturedField>
+      <CapturedField field="zip">
+        <FloatInput label="Zip code" value={address.zip} readOnly={disabled} quiet={disabled} highlighted={active("zip")} onChange={(value) => writeAddress({ zip: value })} />
+      </CapturedField>
+      <CapturedField field="employer">
+        <FloatInput label="Employer" value={intake.employer} readOnly={disabled} quiet={disabled} highlighted={active("employer")} onChange={(value) => writeIntake({ employer: value })} />
+      </CapturedField>
+      <CapturedField field="occupation">
+        <FloatInput label="Occupation" value={intake.occupation} readOnly={disabled} quiet={disabled} highlighted={active("occupation")} onChange={(value) => writeIntake({ occupation: value })} />
+      </CapturedField>
+      <CapturedField field="pep">
+        <Select variant="float" label="Politically exposed" value={intake.pep} options={YES_NO} disabled={disabled} highlighted={active("pep")} onChange={(value) => writeIntake({ pep: value as YesNo })} />
+      </CapturedField>
+      <CapturedField field="ownership">
+        <Select
+          variant="float"
+          label="Ownership"
+          value={intake.ownership}
+          disabled={disabled}
+          highlighted={active("ownership")}
+          options={[
+            { id: "Individual", label: "Individual" },
+            { id: "Joint", label: "Joint" },
+          ]}
+          onChange={(value) => writeIntake({ ownership: value as CallIntake["ownership"] })}
+        />
+      </CapturedField>
+      {intake.ownership === "Joint" ? (
+        <>
+          <FloatInput
+            label="Joint owner first name"
+            value={intake.jointOwner.firstName}
+            readOnly={disabled}
+            quiet={disabled}
+            onChange={(value) => writeIntake({ jointOwner: { ...intake.jointOwner, firstName: value } })}
+          />
+          <FloatInput
+            label="Joint owner last name"
+            value={intake.jointOwner.lastName}
+            readOnly={disabled}
+            quiet={disabled}
+            onChange={(value) => writeIntake({ jointOwner: { ...intake.jointOwner, lastName: value } })}
+          />
+          <FloatInput
+            label="Joint owner email"
+            value={intake.jointOwner.email}
+            type="email"
+            readOnly={disabled}
+            quiet={disabled}
+            onChange={(value) => writeIntake({ jointOwner: { ...intake.jointOwner, email: value } })}
+          />
+        </>
+      ) : null}
+      <CapturedField field="purpose">
+        <Select variant="float" label="Purpose of account" value={intake.purpose} disabled={disabled} highlighted={active("purpose")} options={["Personal", "Business", "Savings", "Investment"]} onChange={(value) => writeIntake({ purpose: value })} />
+      </CapturedField>
+      <CapturedField field="frequency">
+        <Select variant="float" label="Expected deposit frequency" value={intake.frequency} disabled={disabled} highlighted={active("frequency")} options={["Weekly", "Bi-weekly", "Monthly", "Quarterly"]} onChange={(value) => writeIntake({ frequency: value })} />
+      </CapturedField>
+      <CapturedField field="expectedDeposit">
+        <Select variant="float" label="Expected deposit" value={intake.expectedDeposit} disabled={disabled} highlighted={active("expectedDeposit")} options={["Employment Income", "Savings", "Investment Income", "Other"]} onChange={(value) => writeIntake({ expectedDeposit: value })} />
+      </CapturedField>
+      <CapturedField field="movement">
+        <Select variant="float" label="Expects deposits or withdrawals" value={intake.movement} options={YES_NO} disabled={disabled} highlighted={active("movement")} onChange={(value) => writeIntake({ movement: value as YesNo })} />
+      </CapturedField>
+      <CapturedField field="cashIn">
+        <Select variant="float" label="Expects cash deposits" value={intake.cashIn} options={YES_NO} disabled={disabled} highlighted={active("cashIn")} onChange={(value) => writeIntake({ cashIn: value as YesNo, cashInAmount: value === "yes" ? intake.cashInAmount : "" })} />
+      </CapturedField>
+      {intake.cashIn === "yes" ? (
+        <CapturedField field="cashInAmount">
+          <Select
+            variant="float"
+            label="Monthly cash deposit volume"
+            value={intake.cashInAmount}
+            disabled={disabled}
+            highlighted={active("cashInAmount")}
+            options={["$0 - $1,000", "$1,001 - $3,000", "$3,001 - $5,000", "$5,001 - $10,000", "$10,001+"]}
+            onChange={(value) => writeIntake({ cashInAmount: value })}
+          />
+        </CapturedField>
+      ) : null}
+      <CapturedField field="cashOut">
+        <Select variant="float" label="Expects cash withdrawals" value={intake.cashOut} options={YES_NO} disabled={disabled} highlighted={active("cashOut")} onChange={(value) => writeIntake({ cashOut: value as YesNo })} />
+      </CapturedField>
+      <CapturedField field="ach">
+        <Select variant="float" label="Expects ACH transfers" value={intake.ach} options={YES_NO} disabled={disabled} highlighted={active("ach")} onChange={(value) => writeIntake({ ach: value as YesNo })} />
+      </CapturedField>
+      <CapturedField field="wire">
+        <Select variant="float" label="Expects wire transfers" value={intake.wire} options={YES_NO} disabled={disabled} highlighted={active("wire")} onChange={(value) => writeIntake({ wire: value as YesNo })} />
+      </CapturedField>
+    </>
   );
 }
 
@@ -382,10 +573,10 @@ function Conversation({
               <li key={line.id} className="border-b border-gray-light px-lg py-md">
                 <p className="text-xs text-gray-medium">{line.at} · {line.speaker === "kate" ? "Kate" : "Customer"}</p>
                 <p className="mt-xs text-sm text-black">
-                  {highlightTranscript(
-                    line.text,
-                    opening.insights.filter((insight) => !insight.id.startsWith("sample-")).map((insight) => insight.quote),
-                  )}
+                  {highlightTranscript(line.text, [
+                    ...opening.insights.filter((insight) => !insight.id.startsWith("sample-")).map((insight) => insight.quote),
+                    lineCapture(line.id)?.quote ?? "",
+                  ])}
                   {line.partial ? <span className="ml-[1px] text-primary">▍</span> : null}
                 </p>
                 {pending.length > 0 && !locked ? (
@@ -484,7 +675,7 @@ function Disclosures({ opening }: { opening: AccountOpening }) {
               );
             })}
           </ol>
-          <StepDetail opening={opening} current={current} missing={missing} />
+          <StepDetail current={current} missing={missing} />
         </div>
       </section>
       <section className="flex min-w-0 flex-col border-t border-gray-light">
@@ -523,7 +714,7 @@ function StepCheck() {
   );
 }
 
-function StepDetail({ opening, current, missing }: { opening: AccountOpening; current: number; missing: string[] }) {
+function StepDetail({ current, missing }: { current: number; missing: string[] }) {
   if (current === 0 && missing.length > 0) {
     return (
       <div>
@@ -535,9 +726,6 @@ function StepDetail({ opening, current, missing }: { opening: AccountOpening; cu
         </ul>
       </div>
     );
-  }
-  if (current === 4 && opening.newAccountNumber) {
-    return <p className="text-sm text-black">New account {opening.newAccountNumber}</p>;
   }
   return null;
 }

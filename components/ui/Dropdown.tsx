@@ -50,12 +50,13 @@ function panelStyle(
   minWidth = 0,
   fit: "trigger" | "content" | "match" = "trigger",
   maxWidth = 640,
+  maxMenuHeight = 360,
 ): CSSProperties {
   const gap = 4;
   const spaceBelow = window.innerHeight - trigger.bottom - gap - 8;
   const spaceAbove = trigger.top - gap - 8;
   const openUp = spaceBelow < 160 && spaceAbove > spaceBelow;
-  const maxHeight = Math.min(360, Math.max(120, openUp ? spaceAbove : spaceBelow));
+  const maxHeight = Math.min(maxMenuHeight, Math.max(120, openUp ? spaceAbove : spaceBelow));
   const height = panel?.height ?? Math.min(maxHeight, 240);
   const top = openUp ? Math.max(8, trigger.top - gap - height) : trigger.bottom + gap;
   const cap = fit === "match" ? trigger.width : Math.min(maxWidth, window.innerWidth - 16);
@@ -89,6 +90,7 @@ function useMenu(
   minWidth = 0,
   fit: "trigger" | "content" | "match" = "trigger",
   maxWidth = 640,
+  maxMenuHeight = 360,
 ) {
   const triggerRef = useRef<HTMLElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -98,8 +100,8 @@ function useMenu(
   const update = useCallback(() => {
     const trigger = triggerRef.current?.getBoundingClientRect();
     if (!trigger) return;
-    setStyle(panelStyle(trigger, panelRef.current?.getBoundingClientRect() ?? null, align, minWidth, fit, maxWidth));
-  }, [align, fit, maxWidth, minWidth]);
+    setStyle(panelStyle(trigger, panelRef.current?.getBoundingClientRect() ?? null, align, minWidth, fit, maxWidth, maxMenuHeight));
+  }, [align, fit, maxMenuHeight, maxWidth, minWidth]);
 
   useLayoutEffect(() => {
     if (!open) {
@@ -201,6 +203,7 @@ export function Dropdown({
   disabled,
   minWidth = 208,
   maxWidth = 640,
+  maxHeight = 360,
   panelClassName = "",
 }: {
   trigger: ReactElement<ButtonHTMLAttributes<HTMLButtonElement>>;
@@ -209,11 +212,12 @@ export function Dropdown({
   disabled?: boolean;
   minWidth?: number;
   maxWidth?: number;
+  maxHeight?: number;
   panelClassName?: string;
 }) {
   const [open, setOpen] = useState(false);
   const close = useCallback(() => setOpen(false), []);
-  const { triggerRef, panelRef, style, ready } = useMenu(open, close, align, minWidth, "trigger", maxWidth);
+  const { triggerRef, panelRef, style, ready } = useMenu(open, close, align, minWidth, "trigger", maxWidth, maxHeight);
   const triggerEl = isValidElement(trigger)
     ? cloneElement(trigger, {
         disabled: disabled || trigger.props.disabled,
@@ -255,6 +259,7 @@ export function Select({
   placeholder,
   variant = "field",
   label,
+  highlighted = false,
 }: {
   value: string;
   options: ReadonlyArray<string | SelectOption>;
@@ -267,6 +272,7 @@ export function Select({
   placeholder?: string;
   variant?: SelectVariant;
   label?: string;
+  highlighted?: boolean;
 }) {
   const listId = useId();
   const items = toOptions(options);
@@ -353,6 +359,7 @@ export function Select({
         }}
         onKeyDown={onTriggerKey}
         className={`${triggerClass[variant]} ${triggerClassName}`.trim()}
+        style={highlighted ? { background: "var(--warning-background)", borderColor: "var(--warning)" } : undefined}
       >
         {variant === "float" && label ? (
           <span className="pointer-events-none absolute top-[6px] left-[15px] text-[10px] leading-[1.4] text-gray-dark">
